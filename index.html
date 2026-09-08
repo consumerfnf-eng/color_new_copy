@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_SALES_QTYLABEL_FIX_v80 (2026-09-07) -->
+<!-- BUILD_VERSION: DISC_COLORWAY_BOTTOM_RATIO_v82 (2026-09-07) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7552,13 +7552,16 @@ function toggleCatEditMode() {
 // Category Curation 팔레트를 옷 실루엣에 입혀서 배색을 한눈에 확인
 // ══════════════════════════════════════════════════════════════
 
-// 카테고리별 실루엣 구성 (top: 메인 파트 / bottom: 서브1) — 신발 없음
-// 포멀한 룩(코트·정장류)은 전 카테고리 금지. 카테고리마다 다운(패딩) 아이템도 배색 후보로 포함.
-const CW_CAT_CONFIG = {
-  commute:  { topTypes:['windbreaker','down'], bottomType:'pants' },
-  wellness: { topTypes:['sportstop','down'],   bottomType:'leggings' },
-  resort:   { topTypes:['knit','parka','down'],bottomType:'pants' },
-};
+// ── 실제 디스커버리 25FW 도식화 314벌 분석 기반 상의 종류 비율 ──
+// 다운 계열(다운재킷·사파리다운·하이브리드후드·다운베스트) 116벌 47.2%
+// 바람막이/자켓 계열(사파리자켓·트레이닝자켓·집업트랙자켓·후드자켓) 74벌 30.1%
+// 티 계열(반집업티·맨투맨·긴팔티·카라티·반팔티) 56벌 22.8%
+// → 총 9벌(카테고리 3 × 배색 3) 기준으로 환산: 다운 4 : 바람막이 3 : 티 2, 고르게 섞은 순서
+const CW_GLOBAL_TOP_SEQUENCE = ['down','windbreaker','tee','down','windbreaker','down','tee','down','windbreaker'];
+
+// ── 하의 종류 비율 (PT+TP 팬츠 59벌 88.1% · SK 스커트 6벌 9.0% · LG 레깅스 2벌 3.0%) ──
+// → 9벌 기준: 팬츠 7 : 스커트 1 : 레깅스 1 (레깅스·스커트는 실제로도 소수라 최소 1개씩만 반영)
+const CW_GLOBAL_BOTTOM_SEQUENCE = ['pants','pants','pants','skirt','pants','pants','leggings','pants','pants'];
 
 function _cwIsLightHex(hex){
   if(!hex) return true;
@@ -7568,28 +7571,18 @@ function _cwIsLightHex(hex){
 const _CW_NONE_FILL = 'transparent';
 const _CW_NONE_STROKE = 'rgba(150,150,150,0.4)';
 
+// 도식화(기술 평면도) 스타일 — 앞면만, 심플한 라인 실루엣
 function _cwShapeTop(type, color){
   const fill = color || _CW_NONE_FILL;
   const stroke = color ? 'rgba(0,0,0,0.18)' : _CW_NONE_STROKE;
   const dash = color ? '' : 'stroke-dasharray="3,3"';
-  if(type === 'sportstop'){
-    return `<path d="M40,22 L47,12 L73,12 L80,22 L80,72 L40,72 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" ${dash}/>
-      <path d="M47,12 L43,26 M73,12 L77,26" stroke="${stroke}" fill="none" stroke-width="1.5"/>`;
-  }
-  if(type === 'knit'){
-    return `<path d="M35,22 Q60,9 85,22 L93,42 L82,47 L82,95 L38,95 L38,47 L27,42 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" ${dash}/>
-      <line x1="38" y1="87" x2="82" y2="87" stroke="${stroke}" stroke-width="1.2"/>
-      <line x1="38" y1="91" x2="82" y2="91" stroke="${stroke}" stroke-width="1.2"/>
-      <ellipse cx="60" cy="20" rx="9" ry="5" fill="none" stroke="${stroke}" stroke-width="1.5"/>`;
-  }
-  if(type === 'parka'){
-    return `<circle cx="60" cy="16" r="13" fill="${fill}" stroke="${stroke}" stroke-width="1.5" ${dash}/>
-      <path d="M30,32 L46,20 L74,20 L90,32 L96,95 L24,95 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" ${dash}/>
-      <line x1="60" y1="32" x2="60" y2="95" stroke="${stroke}" stroke-width="1.2"/>
-      <path d="M24,95 L96,95 M28,60 L20,66 M92,60 L100,66" stroke="${stroke}" stroke-width="1.2" fill="none"/>`;
+  if(type === 'tee'){
+    // 긴팔 티(레귤러핏) — 크루넥 + 긴소매, 도식화의 RL/MT 실루엣 참고
+    return `<path d="M38,20 L47,10 L73,10 L82,20 L100,32 L92,48 L82,40 L82,95 L38,95 L38,40 L28,48 L20,32 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" ${dash}/>
+      <path d="M47,10 Q60,20 73,10" fill="none" stroke="${stroke}" stroke-width="1.5"/>`;
   }
   if(type === 'down'){
-    // 패딩(다운) 자켓 — 볼륨감 있는 몸통 + 누빔(퀼팅) 가로선
+    // 다운(패딩) 재킷 — 볼륨감 있는 몸통 + 누빔(퀼팅) 가로선, 도식화의 DJ 실루엣 참고
     return `<path d="M28,30 L47,16 L73,16 L92,30 L98,95 L22,95 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" ${dash}/>
       <line x1="60" y1="30" x2="60" y2="95" stroke="${stroke}" stroke-width="1.2"/>
       <line x1="24" y1="46" x2="96" y2="46" stroke="${stroke}" stroke-width="1"/>
@@ -7597,9 +7590,11 @@ function _cwShapeTop(type, color){
       <line x1="22" y1="74" x2="98" y2="74" stroke="${stroke}" stroke-width="1"/>
       <line x1="22" y1="88" x2="98" y2="88" stroke="${stroke}" stroke-width="1"/>`;
   }
-  // windbreaker (default)
+  // windbreaker (default) — 사파리형 자켓, 앞지퍼 + 패치포켓, 도식화의 WJ/TR 실루엣 참고
   return `<path d="M35,15 L50,10 L70,10 L85,15 L101,36 L90,46 L85,36 L85,95 L35,95 L35,36 L30,46 L19,36 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" ${dash}/>
-    <line x1="60" y1="15" x2="60" y2="95" stroke="${stroke}" stroke-width="1.3"/>`;
+    <line x1="60" y1="15" x2="60" y2="95" stroke="${stroke}" stroke-width="1.3"/>
+    <rect x="42" y="55" width="16" height="18" rx="1.5" fill="none" stroke="${stroke}" stroke-width="1"/>
+    <rect x="62" y="55" width="16" height="18" rx="1.5" fill="none" stroke="${stroke}" stroke-width="1"/>`;
 }
 
 function _cwShapeBottom(type, color){
@@ -7609,28 +7604,35 @@ function _cwShapeBottom(type, color){
   if(type === 'leggings'){
     return `<path d="M46,100 L74,100 L69,178 L61,178 L60,138 L59,178 L51,178 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" ${dash}/>`;
   }
+  if(type === 'skirt'){
+    // 스커트(A라인·미디) — 도식화의 SK(파라슈트 스커트) 실루엣 참고
+    return `<path d="M42,100 L78,100 L88,155 L32,155 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" ${dash}/>
+      <line x1="60" y1="100" x2="60" y2="155" stroke="${stroke}" stroke-width="1"/>`;
+  }
   // pants (default)
   return `<path d="M40,100 L80,100 L83,174 L67,174 L62,128 L57,174 L41,174 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" ${dash}/>`;
 }
 
 function _cwBuildOutfitSVG(catKey, variant){
-  const cfg = CW_CAT_CONFIG[catKey] || CW_CAT_CONFIG.commute;
-  const topType = variant.topType || cfg.topTypes[variant.idx % cfg.topTypes.length];
+  const bottomType = variant.bottomType || 'pants';
+  const topType = variant.topType || 'down';
   return `<svg viewBox="0 0 120 180" width="100%" style="max-width:120px;overflow:visible">
     <g onclick="_cwEditPart('${catKey}',${variant.idx},'main')" style="cursor:pointer">${_cwShapeTop(topType, variant.main)}</g>
-    <g onclick="_cwEditPart('${catKey}',${variant.idx},'sub1')" style="cursor:pointer">${_cwShapeBottom(cfg.bottomType, variant.sub1)}</g>
+    <g onclick="_cwEditPart('${catKey}',${variant.idx},'sub1')" style="cursor:pointer">${_cwShapeBottom(bottomType, variant.sub1)}</g>
   </svg>`;
 }
 
-// 팔레트(최대 6색)에서 3벌의 배색 조합을 자동 생성 (겹치지 않게 순환) — 옷 종류도 카테고리의 topTypes를 순환
-function _cwInitVariants(catKey, palette){
-  const cfg = CW_CAT_CONFIG[catKey] || CW_CAT_CONFIG.commute;
+// 팔레트(최대 6색)에서 3벌의 배색 조합을 자동 생성 (겹치지 않게 순환)
+// 상의·하의 종류는 카테고리 구분 없이 CW_GLOBAL_TOP/BOTTOM_SEQUENCE(실제 도식화 비율 반영)를 전역 순서로 배분
+function _cwInitVariants(catKey, palette, catOffset){
   const colors = palette.map(c=>c.hex).filter(Boolean);
   if(!colors.length) return [];
   const pick = i => colors[i % colors.length];
+  const off = (catOffset||0) * 3;
   return [0,1,2].map(i => ({
     idx:i,
-    topType: cfg.topTypes[i % cfg.topTypes.length],
+    topType: CW_GLOBAL_TOP_SEQUENCE[(off+i) % CW_GLOBAL_TOP_SEQUENCE.length],
+    bottomType: CW_GLOBAL_BOTTOM_SEQUENCE[(off+i) % CW_GLOBAL_BOTTOM_SEQUENCE.length],
     main: pick(i*2)||null,
     sub1: pick(i*2+1)||null,
   }));
@@ -7649,7 +7651,7 @@ function renderColorwayPage(){
   if(notice) notice.innerHTML='';
 
   const defs = (window._catDefs && window._catDefs.length ? window._catDefs : DISCOVERY_CAT_DEFS)
-    .filter(d => CW_CAT_CONFIG[d.key]); // 실루엣 매핑 있는 카테고리만
+    .filter(d => ['commute','wellness','resort'].includes(d.key)); // 실루엣 지원하는 카테고리만
 
   // getAIColors는 _fillCatColors() 내부 전용 함수라 여기서 직접 못 씀 —
   // Category Curation(03 페이지)이 렌더될 때 window._catColorsCache에 채워둔 값을 재사용.
@@ -7659,12 +7661,12 @@ function renderColorwayPage(){
   }
 
   // 카테고리별 state 먼저 전부 준비 (요약 통계·차트에 필요)
-  const catStates = defs.map(cat=>{
+  const catStates = defs.map((cat, catIdx)=>{
     let state = window._colorwayState[cat.key];
     if(!state){
       const cached = (window._catColorsCache && window._catColorsCache[cat.key]) || {point:[],sub:[]};
       const palette = [...(cached.point||[]), ...(cached.sub||[])].filter(c=>c && c.hex);
-      state = window._colorwayState[cat.key] = { palette, variants: _cwInitVariants(cat.key, palette) };
+      state = window._colorwayState[cat.key] = { palette, variants: _cwInitVariants(cat.key, palette, catIdx), catOffset: catIdx };
     }
     return { cat, state };
   });
@@ -7790,7 +7792,7 @@ function _cwSetPart(catKey, variantIdx, part, hexOrNull){
 function _cwResetCategory(catKey){
   const state = window._colorwayState[catKey];
   if(!state) return;
-  state.variants = _cwInitVariants(catKey, state.palette);
+  state.variants = _cwInitVariants(catKey, state.palette, state.catOffset||0);
   renderColorwayPage();
 }
 
