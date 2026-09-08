@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_SALES_BASED_SECTION_v75 (2026-09-07) -->
+<!-- BUILD_VERSION: DISC_SALES_DATA_REAL_v76 (2026-09-07) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -1550,11 +1550,11 @@ function enterBrandFromHome(brand) {
             <div class="spp-trend-market-hd">
               <span class="spp-trend-market-flame">📊 Sales-Based</span>
               <span class="spp-trend-market-title">DISCOVERY</span>
-              <span class="spp-trend-market-sub">Sales Qty × Sell-Through</span>
+              <span class="spp-trend-market-sub">25FW · 상품 등록 컬러 빈도</span>
               <span class="spp-trend-market-cnt" id="disc-sales-cnt">0</span>
             </div>
-            <div class="spp-trend-market-desc">실판매 수량 · 판매율(입고비) 기준 · 클릭 시 상세</div>
-            <div class="spp-cat-row"><div class="spp-cat-label">SUB <span class="cnt" id="disc-sales-sub-cnt">0</span></div><div class="spp-chip-row" id="disc-sales-sub"><span class="spp-empty" style="font-size:9px">실판매 데이터 대기 중</span></div></div>
+            <div class="spp-trend-market-desc">25FW 상품 1,003건(상세데이터 시트, image_hex_color 기준) · 근접색 병합 후 빈도순 · 클릭 시 상세</div>
+            <div class="spp-cat-row"><div class="spp-cat-label">SUB <span class="cnt" id="disc-sales-sub-cnt">0</span></div><div class="spp-chip-row" id="disc-sales-sub"></div></div>
             <div class="spp-cat-row"><div class="spp-cat-label">KEY <span class="cnt" id="disc-sales-key-cnt">0</span></div><div class="spp-chip-row" id="disc-sales-key"></div></div>
             <div class="spp-cat-row" style="margin-bottom:0"><div class="spp-cat-label">BASIC <span class="cnt" id="disc-sales-basic-cnt">0</span></div><div class="spp-chip-row" id="disc-sales-basic"></div></div>
           </div>
@@ -9288,6 +9288,9 @@ function _renderDiscoveryPalette(){
   // Season Color Distribution 렌더 (02 Market 월별 데이터 기준)
   if(typeof _discRenderSeasonDist==='function') _discRenderSeasonDist();
 
+  // Sales-Based 렌더 (디스커버리 자체 상품 데이터 기준)
+  if(typeof _discRenderSalesBased==='function') _discRenderSalesBased();
+
   // Category Curation도 갱신
   if(typeof renderCatGrid==='function') renderCatGrid();
 }
@@ -9566,6 +9569,35 @@ function _discOpenSeasonDetail(groupLabel){
     <div>${rows}</div>
   `;
   modal.style.display = 'flex';
+}
+
+// ── DISCOVERY Sales-Based 데이터 ──
+// 출처: 디스커버리_컬러밸런스_25FW_pantone.xlsx · '상세데이터' 시트 (1,003개 상품, image_hex_color 기준)
+// '컬러밸런스' 시트의 컬러칩은 사용하지 않음 — 상세데이터의 실제 hex를 근접색(rgbDist<22) 병합 후 빈도순 정렬
+window.DISC_SALES_DATA = {"sub": [{"hex": "#AD9F8B", "count": 39, "pantone": "16-1105 TCX Plaza Taupe"}, {"hex": "#574638", "count": 33, "pantone": "19-1020 TCX Dark Earth"}, {"hex": "#998769", "count": 30, "pantone": "17-1022 TCX Kelp"}, {"hex": "#DBD5C5", "count": 28, "pantone": "12-5202 TCX Turtledove"}, {"hex": "#8D807B", "count": 18, "pantone": "17-1506 TCX Cinder"}, {"hex": "#4C372A", "count": 16, "pantone": "19-1218 TCX Potting Soil"}, {"hex": "#6A5A43", "count": 12, "pantone": "18-0920 TCX Kangaroo"}, {"hex": "#CFC2B9", "count": 12, "pantone": "13-0403 TCX Gray Morn"}, {"hex": "#B7AF9F", "count": 12, "pantone": "15-1305 TCX Feather Gray"}, {"hex": "#786D5E", "count": 9, "pantone": "18-1112 TCX Walnut"}, {"hex": "#AFBAC3", "count": 8, "pantone": "14-4206 TCX Pearl Blue"}, {"hex": "#9BA7B3", "count": 8, "pantone": "15-4008 TCX Blue Fog"}], "key": [{"hex": "#D7943D", "count": 6, "pantone": "16-1054 TCX Sunflower"}, {"hex": "#C1C645", "count": 5, "pantone": "14-0445 TCX Bright Chartreuse"}, {"hex": "#CECD56", "count": 4, "pantone": "13-0648 TCX Green Sheen"}, {"hex": "#EE87AC", "count": 4, "pantone": "15-2216 TCX Sachet Pink"}, {"hex": "#DB772E", "count": 2, "pantone": "16-1253 TCX Orange Ochre"}, {"hex": "#E2815B", "count": 2, "pantone": "16-1344 TCX Dusty Orange"}, {"hex": "#CF8710", "count": 2, "pantone": "15-0953 TCX Golden Yellow"}, {"hex": "#A85226", "count": 2, "pantone": "17-1342 TCX Autumnal"}], "basic": [{"hex": "#28282A", "count": 251, "pantone": "19-4006 TCX Caviar"}, {"hex": "#18161A", "count": 95, "pantone": "19-3911 TCX Black Beauty"}, {"hex": "#36363A", "count": 89, "pantone": "19-4205 TCX Phantom"}, {"hex": "#48484A", "count": 60, "pantone": "19-3906 TCX Dark Shadow"}, {"hex": "#F4F3F1", "count": 55, "pantone": "11-0602 TCX Snow White"}, {"hex": "#605C5E", "count": 45, "pantone": "18-5204 TCX Granite Gray"}, {"hex": "#0B050D", "count": 6, "pantone": "19-3911 TCX Black Beauty"}, {"hex": "#E4E4DF", "count": 5, "pantone": "11-4303 TCX Mystic Blue"}, {"hex": "#264473", "count": 4, "pantone": "19-3964 TCX Monaco Blue"}, {"hex": "#2F2013", "count": 1, "pantone": "19-0712 TCX Demitasse"}, {"hex": "#202C3F", "count": 1, "pantone": "19-4024 TCX Dress Blues"}]};
+
+function _discRenderSalesBased(){
+  const data = window.DISC_SALES_DATA;
+  if(!data) return;
+  const makeChip = (c) => {
+    const ptShort = (c.pantone||'').replace(/ TCX.*/,'') || c.hex;
+    return `<div onclick="openCompColorDetail('${c.hex}','${(c.pantone||c.hex).replace(/'/g,"\\'")}',${c.count},'DISCOVERY')" style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer">
+      <div style="width:40px;height:40px;border-radius:6px;background:${c.hex};border:1px solid rgba(255,255,255,0.12)" title="${c.hex} · ${c.pantone||''} · ${c.count}개"></div>
+      <div style="font-family:var(--mono);font-size:7px;color:var(--text3);text-align:center;max-width:52px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ptShort}</div>
+      <div style="font-family:var(--mono);font-size:7px;color:var(--text4)">×${c.count}</div>
+    </div>`;
+  };
+  const setRow = (id, cntId, list) => {
+    const el = document.getElementById(id);
+    const cntEl = document.getElementById(cntId);
+    if(el) el.innerHTML = (list && list.length) ? list.map(makeChip).join('') : '<span class="spp-empty" style="font-size:9px">데이터 없음</span>';
+    if(cntEl) cntEl.textContent = list ? list.length : 0;
+  };
+  setRow('disc-sales-sub', 'disc-sales-sub-cnt', data.sub);
+  setRow('disc-sales-key', 'disc-sales-key-cnt', data.key);
+  setRow('disc-sales-basic', 'disc-sales-basic-cnt', data.basic);
+  const totalCnt = document.getElementById('disc-sales-cnt');
+  if(totalCnt) totalCnt.textContent = (data.sub.length||0) + (data.key.length||0) + (data.basic.length||0);
 }
 
 function _discRenderSeasonDist(){
