@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: LIFESTYLE_MAP_VUORI_SATISFY_v57 (2026-09-07) -->
+<!-- BUILD_VERSION: DISC_CATCUR_WORDBOUNDARY_MATCH_v58 (2026-09-07) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7622,7 +7622,7 @@ function _fillCatColors() {
       if (!/^#[0-9A-F]{6}$/.test(h)) return;
       if(_isDiscovery && _discBrandList){
         // Discovery: brandList에 속하는 브랜드만 포함
-        const _bMatch = _discBrandList.some(b=>c.brand.toLowerCase().includes(b.toLowerCase())||b.toLowerCase().includes(c.brand.toLowerCase()));
+        const _bMatch = _discBrandList.some(b=> typeof brandMatches==='function' ? brandMatches(c.brand, b) : (c.brand.toLowerCase()===b.toLowerCase()));
         if(!_bMatch) return;
       } else {
         const ls = typeof getLifestyle === 'function' ? getLifestyle(c.brand, c.group || '', c.source, c.court) : (c.group || '');
