@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_CATFILTER_SELECT_APPLY_v61 (2026-09-07) -->
+<!-- BUILD_VERSION: DISC_CATFILTER_02PAGE_v62 (2026-09-07) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -15753,6 +15753,7 @@ function renderChinaBrandCards(wrap, activeBrand){
   // 브랜드별 Colors 그룹핑
   const brandMap = {};
   cnMarketData.forEach(c=>{
+    if (typeof _activeBrand !== 'undefined' && _activeBrand === 'DISCOVERY' && typeof _passesCategoryFilter === 'function' && !_passesCategoryFilter(c)) return;
     (c.brands||[]).forEach(brand=>{
       if(!brand) return;
       if(!brandMap[brand]) brandMap[brand] = [];
@@ -15949,6 +15950,8 @@ function renderCompBrandPage() {
   const _applySourceFilter = (typeof _activeBrand !== 'undefined' && _activeBrand === 'SERGIO');
   compData.forEach(c => {
     if (!c.hex || !c.brand) return;
+    // DISCOVERY: 품목 카테고리 필터(Outerwear/Top/Bottom/Dress) 적용
+    if (typeof _activeBrand !== 'undefined' && _activeBrand === 'DISCOVERY' && typeof _passesCategoryFilter === 'function' && !_passesCategoryFilter(c)) return;
     if(_applySourceFilter) {
       // EU source 데이터는 EU 탭일 때만 표시
       if(_euSources.has(c.source) && activeCountry !== 'eu' && activeCountry !== 'all') return;
