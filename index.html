@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_SEASON_DIST_NOGREY_v65 (2026-09-07) -->
+<!-- BUILD_VERSION: DISC_SEASON_DIST_CAP24_v66 (2026-09-07) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -9176,10 +9176,12 @@ function _discBuildSeasonDist(){
       agg.sub+=byMonth[m].sub; agg.key+=byMonth[m].key; agg.basic+=byMonth[m].basic; agg.total+=byMonth[m].total;
       Object.entries(byMonth[m].hexCount).forEach(([hex,c])=>{ hexCount[hex]=(hexCount[hex]||0)+c; });
     });
-    const allColors = _mergeNearColors(hexCount);
-    const hexTotal = allColors.reduce((s,c)=>s+c.count, 0);
+    const allColorsFull = _mergeNearColors(hexCount);
+    const hexTotal = allColorsFull.reduce((s,c)=>s+c.count, 0);
+    // 02 Market Analysis 브랜드 카드와 동일한 개수 제한(accent 16 + basic 8 = 24)을 맞춰 상위 24개까지만 표시
+    const allColors = allColorsFull.slice(0, 24);
     const topColors = allColors.slice(0,7);
-    return { ...g, monthsWithData, ...agg, topColors, allColors, hexTotal };
+    return { ...g, monthsWithData, ...agg, topColors, allColors, allColorsFull, hexTotal };
   });
 
   return { byMonth, byGroup };
@@ -9264,12 +9266,13 @@ function _discOpenSeasonDetail(groupLabel){
     </div>`;
   }).join('');
   const hiddenCount = g.allColors.length - g.allColors.filter(c => (c.count/g.hexTotal*100) >= 0.5).length;
+  const cappedCount = (g.allColorsFull ? g.allColorsFull.length : g.allColors.length) - g.allColors.length;
   document.getElementById('disc-season-detail-card').innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
       <span style="font-family:var(--sans);font-size:15px;font-weight:700;color:var(--text)">${groupLabel} — 전체 컬러</span>
       <span onclick="document.getElementById('disc-season-detail-modal').style.display='none'" style="cursor:pointer;color:var(--text4);font-size:16px;padding:2px 6px">×</span>
     </div>
-    <div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-bottom:12px">${g.monthsWithData.map(m=>m+'월').join('·')} 기준 · 총 ${g.hexTotal}건 · 컬러 ${g.allColors.length}종 · 빈도순${hiddenCount>0?` · 0% 반올림되는 ${hiddenCount}종 제외`:''}</div>
+    <div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-bottom:12px">${g.monthsWithData.map(m=>m+'월').join('·')} 기준 · 총 ${g.hexTotal}건 · 컬러 ${g.allColors.length}종(상위 24개 제한) · 빈도순${hiddenCount>0?` · 0% 반올림되는 ${hiddenCount}종 제외`:''}${cappedCount>0?` · 24개 제한으로 ${cappedCount}종 더 있음`:''}</div>
     <div>${rows}</div>
   `;
   modal.style.display = 'flex';
