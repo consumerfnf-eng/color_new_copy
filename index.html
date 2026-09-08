@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_COLORWAY_MASKED_COLOR_v87 (2026-09-07) -->
+<!-- BUILD_VERSION: DISC_COLORWAY_UNIFORM_SIZE_v89 (2026-09-07) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7593,22 +7593,29 @@ const _CW_NONE_STROKE = 'rgba(150,150,150,0.4)';
 // 도식화 이미지에 배색 — 2단 레이어 방식
 //  1) 아래: 색 div에 이미지의 알파(실루엣 바깥 여백은 투명 처리됨)를 마스크로 적용 → 실루엣 안에서만 색이 보임
 //  2) 위: 원본 이미지를 mix-blend-mode:multiply로 얹음 → 흰 채움은 색이 비치고, 검은 선은 그대로 검게 유지
-function _cwImagePart(typeKey, imgIdx, color, onclickAttr){
+// ★ 원본 이미지마다 가로세로 비율이 달라서(예: 팬츠끼리도 ar 0.69~2.13로 제각각) 박스를 이미지 비율에 맞추면
+//   같은 종류(예: 팬츠)인데도 화면에 보이는 크기가 들쭉날쭉해짐 → 슬롯별로 고정 박스 크기를 쓰고
+//   object-fit:contain으로 그 안에서 비율 유지하며 맞춰서 항상 균일한 크기로 보이게 함
+function _cwImagePart(typeKey, imgIdx, color, onclickAttr, boxW, boxH){
   const list = CW_TYPE_IMAGES[typeKey] || CW_TYPE_IMAGES.down;
   const imgKey = list[imgIdx % list.length];
   const imgData = CW_IMG_LIB[imgKey];
   if(!imgData) return '';
-  const w = 76;
-  const h = Math.round(w * imgData.ar);
+  const w = boxW || 76;
+  const h = boxH || 76;
   const bg = color || _CW_NONE_FILL;
   const borderStyle = color ? '' : ('border:1px dashed ' + _CW_NONE_STROKE + ';');
   const maskCss = '-webkit-mask-image:url(' + imgData.src + ');-webkit-mask-size:contain;-webkit-mask-repeat:no-repeat;-webkit-mask-position:center;'
     + 'mask-image:url(' + imgData.src + ');mask-size:contain;mask-repeat:no-repeat;mask-position:center;';
-  return '<div ' + onclickAttr + ' style="position:relative;width:' + w + 'px;height:' + h + 'px;cursor:pointer;' + borderStyle + '">'
+  return '<div ' + onclickAttr + ' style="position:relative;width:' + w + 'px;height:' + h + 'px;cursor:pointer;display:flex;align-items:center;justify-content:center;' + borderStyle + '">'
     + '<div style="position:absolute;inset:0;background:' + bg + ';' + maskCss + '"></div>'
     + '<img src="' + imgData.src + '" style="position:absolute;inset:0;width:100%;height:100%;mix-blend-mode:multiply;object-fit:contain;pointer-events:none" />'
     + '</div>';
 }
+
+// 상의/하의 슬롯 고정 박스 크기 (모든 이미지가 이 크기 안에서 비율 유지하며 균일하게 표시됨)
+const CW_TOP_BOX = { w: 78, h: 78 };
+const CW_BOTTOM_BOX = { w: 78, h: 78 };
 
 function _cwBuildOutfitSVG(catKey, variant){
   const bottomType = variant.bottomType || 'pants';
@@ -7616,8 +7623,8 @@ function _cwBuildOutfitSVG(catKey, variant){
   const topOnclick = 'onclick="_cwEditPart(\'' + catKey + '\',' + variant.idx + ',\'main\')"';
   const botOnclick = 'onclick="_cwEditPart(\'' + catKey + '\',' + variant.idx + ',\'sub1\')"';
   return '<div style="display:flex;flex-direction:column;align-items:center;gap:2px">'
-    + _cwImagePart(topType, variant.idx, variant.main, topOnclick)
-    + _cwImagePart(bottomType, variant.idx, variant.sub1, botOnclick)
+    + _cwImagePart(topType, variant.idx, variant.main, topOnclick, CW_TOP_BOX.w, CW_TOP_BOX.h)
+    + _cwImagePart(bottomType, variant.idx, variant.sub1, botOnclick, CW_BOTTOM_BOX.w, CW_BOTTOM_BOX.h)
     + '</div>';
 }
 
@@ -7704,7 +7711,7 @@ function renderColorwayPage(){
 
   const cardsHtml = catStates.map(({cat, state})=>{
     if(!state.palette.length){
-      return `<div style="border:1px solid var(--border);border-radius:12px;padding:16px;background:var(--bg2)">
+      return `<div style="border:1px solid var(--border);border-radius:12px;padding:16px;background:var(--bg2);flex:0 0 340px;min-width:340px">
         <div style="font-family:var(--sans);font-size:14px;font-weight:700;color:var(--text);margin-bottom:10px">${cat.emoji||''} ${cat.name}</div>
         <div class="spp-empty" style="font-size:10px">02 Market Analysis 데이터 필요 (색 없음)</div>
       </div>`;
@@ -7722,7 +7729,7 @@ function renderColorwayPage(){
     }).join('');
     const repHex = state.palette[0] ? state.palette[0].hex : '#999';
     const repLabel = (typeof pantoneApprox==='function' ? (pantoneApprox(repHex)||'').replace(/ TCX$/i,'') : '') || repHex;
-    return `<div style="border:1px solid var(--border);border-radius:12px;padding:18px;background:var(--bg2)">
+    return `<div style="border:1px solid var(--border);border-radius:12px;padding:18px;background:var(--bg2);flex:0 0 340px;min-width:340px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
         <div style="font-family:var(--sans);font-size:15px;font-weight:700;color:var(--text)">${cat.emoji||''} ${(cat.name||'').toUpperCase()}</div>
         <div style="display:flex;align-items:center;gap:8px">
@@ -7739,7 +7746,7 @@ function renderColorwayPage(){
   }).join('');
 
   grid.innerHTML = boardHtml +
-    `<div style="display:flex;flex-direction:column;gap:20px">${cardsHtml}</div>`;
+    `<div style="display:flex;flex-direction:row;gap:20px;align-items:flex-start;overflow-x:auto">${cardsHtml}</div>`;
 }
 
 // 부위 클릭 → 그 카테고리 팔레트에서 색 선택 (또는 '없음') 팝오버
