@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_COLORWAY_BOARD_STYLE_v74 (2026-09-07) -->
+<!-- BUILD_VERSION: DISC_SALES_BASED_SECTION_v75 (2026-09-07) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -1541,6 +1541,22 @@ function enterBrandFromHome(brand) {
           </div>
           <div id="disc-season-dist-body">
             <div class="spp-empty">월별 스타일 컬러 데이터를 받으면 이 자리에 채워집니다.</div>
+          </div>
+        </div>
+
+        <!-- ★ Sales-Based (DISCOVERY 실판매 데이터 · MLB/Sergio 스타일) -->
+        <div id="disc-sales-section" class="spp-market-section" style="margin-top:20px">
+          <div class="spp-trend-market-box" style="background:rgba(232,192,96,0.05);border:1px solid rgba(232,192,96,0.2)">
+            <div class="spp-trend-market-hd">
+              <span class="spp-trend-market-flame">📊 Sales-Based</span>
+              <span class="spp-trend-market-title">DISCOVERY</span>
+              <span class="spp-trend-market-sub">Sales Qty × Sell-Through</span>
+              <span class="spp-trend-market-cnt" id="disc-sales-cnt">0</span>
+            </div>
+            <div class="spp-trend-market-desc">실판매 수량 · 판매율(입고비) 기준 · 클릭 시 상세</div>
+            <div class="spp-cat-row"><div class="spp-cat-label">SUB <span class="cnt" id="disc-sales-sub-cnt">0</span></div><div class="spp-chip-row" id="disc-sales-sub"><span class="spp-empty" style="font-size:9px">실판매 데이터 대기 중</span></div></div>
+            <div class="spp-cat-row"><div class="spp-cat-label">KEY <span class="cnt" id="disc-sales-key-cnt">0</span></div><div class="spp-chip-row" id="disc-sales-key"></div></div>
+            <div class="spp-cat-row" style="margin-bottom:0"><div class="spp-cat-label">BASIC <span class="cnt" id="disc-sales-basic-cnt">0</span></div><div class="spp-chip-row" id="disc-sales-basic"></div></div>
           </div>
         </div>
       </div>
