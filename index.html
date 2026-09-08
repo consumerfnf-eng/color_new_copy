@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_SEASON_DIST_HIDE_ZEROPCT_v54 (2026-09-07) -->
+<!-- BUILD_VERSION: LIFESTYLE_MAP_VUORI_SATISFY_v57 (2026-09-07) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -5076,7 +5076,8 @@ async function fetchSheetsCsv(url, retry=0) {
 // ── season 값 정규화 ──
 // 시트에 "2025-12", "2026-01" 같은 YYYY-MM 형식으로 들어오는 값은 날짜 기준으로 분기:
 //  - 2026-03까지(포함) → 27FW
-//  - 2026-04부터(2026-04, 2026-05 등) → 28SS (미리 넣어둔 다음 시즌 데이터, 27FW엔 적용 안 함)
+//  - 2026-04 ~ 2026-09 → 28SS
+//  - 2026-10부터 → 28FW
 function _normalizeSeasonValue(raw){
   const s = (raw || '').trim();
   if (!s) return s;
@@ -5084,9 +5085,12 @@ function _normalizeSeasonValue(raw){
   if (m) {
     const year = parseInt(m[1], 10);
     const month = parseInt(m[2], 10);
-    const CUTOFF_YEAR = 2026, CUTOFF_MONTH = 4; // 2026-04부터 28SS (2026-03까지는 27FW)
-    const isBeforeCutoff = (year < CUTOFF_YEAR) || (year === CUTOFF_YEAR && month < CUTOFF_MONTH);
-    return isBeforeCutoff ? '27FW' : '28SS';
+    const ym = year*12 + month; // 연-월을 하나의 숫자로 비교
+    const CUTOFF_28SS = 2026*12 + 4;  // 2026-04부터 28SS
+    const CUTOFF_28FW = 2026*12 + 10; // 2026-10부터 28FW
+    if (ym < CUTOFF_28SS) return '27FW';
+    if (ym < CUTOFF_28FW) return '28SS';
+    return '28FW';
   }
   return s.toUpperCase();
 }
@@ -15276,10 +15280,10 @@ const COMP_LIFESTYLE_MAP = {
                     'casablanca','Casablanca',
                     '루이비통','셀린느','디올','프라다','미우미우','발렌티노'],
   'Athleisure':      ['ALO YOGA','Alo Yoga','Alo','lululemon','Lululemon','On Running','On','Aritzia','Sporty & Rich','Sporty And Rich',
-                    'Adanola','adanola','Skims','SKIMS',
-                    '온러닝','알로','룰루레몬','아리티지아','스포티앤리치'],
-  'Outdoor/Sports':['Moncler','Stone Island','Salomon','New Balance','Sansan Gear','The North Face','North Face','TNF',
-                    '몽클레어','스톤아일랜드','살로몬','뉴발란스','산산기어','노스페이스'],
+                    'Adanola','adanola','Skims','SKIMS','Vuori','vuori',
+                    '온러닝','알로','룰루레몬','아리티지아','스포티앤리치','뷰오리'],
+  'Outdoor/Sports':['Moncler','Stone Island','Salomon','New Balance','Sansan Gear','The North Face','North Face','TNF','Satisfy','satisfy',
+                    '몽클레어','스톤아일랜드','살로몬','뉴발란스','산산기어','노스페이스','세티스파이'],
   'KR Brands':   ['Somewherebutter','Somewhere Butter','Ttudement','Raive','Dunst','The Barnet','Levar','Ronron','Partimento',
                     '썸웨어버터','튜드먼트','레이브','던스트','더바넷','론론','르바','파르티멘토'],
 };
@@ -17363,13 +17367,16 @@ window.renderMarketCsvBrands = function(brands, season) {
 
   var sel = window._curMarketSel();
   var seasonTxt = window._marketCsvSeason ? (' [' + window._marketCsvSeason + ']') : '';
+  // 표시 카운트는 sel.size(정규화 키 전체, 화면에 없는 브랜드 변형명까지 포함될 수 있음)가 아니라
+  // 실제 화면에 보이는 브랜드 체크박스 중 체크된 것만 센다
+  var visibleCheckedCount = list.filter(function(b){ return sel.has(window._brandKeyNorm(b)); }).length;
 
   box.style.display = 'block';
   box.innerHTML =
       '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">'
     +   '<span style="color:var(--text2);font-weight:700">CSV 브랜드 ' + list.length + '개' + seasonTxt + '</span>'
     +   '<span style="color:var(--text4)">— 분석할 브랜드 체크 (다중, ' + (_activeBrand||'MLB') + ' 선택 기억됨)</span>'
-    +   '<span id="mbsel-count" style="color:var(--accent);font-weight:700">· 체크 ' + sel.size + '개</span>'
+    +   '<span id="mbsel-count" style="color:var(--accent);font-weight:700">· 체크 ' + visibleCheckedCount + '개</span>'
     +   '<span style="flex:1"></span>'
     +   '<button onclick="window.marketSelectAll()" style="font-family:var(--mono);font-size:9px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text2);padding:3px 8px;cursor:pointer">전체 체크</button>'
     +   '<button onclick="window.marketClearSel()" style="font-family:var(--mono);font-size:9px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text2);padding:3px 8px;cursor:pointer">전체 해제</button>'
