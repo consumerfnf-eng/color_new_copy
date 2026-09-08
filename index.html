@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_COLORWAY_BOTTOM_RATIO_v82 (2026-09-07) -->
+<!-- BUILD_VERSION: DISC_COLORWAY_BASIC_ADDED_v84 (2026-09-07) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7552,16 +7552,13 @@ function toggleCatEditMode() {
 // Category Curation 팔레트를 옷 실루엣에 입혀서 배색을 한눈에 확인
 // ══════════════════════════════════════════════════════════════
 
-// ── 실제 디스커버리 25FW 도식화 314벌 분석 기반 상의 종류 비율 ──
-// 다운 계열(다운재킷·사파리다운·하이브리드후드·다운베스트) 116벌 47.2%
-// 바람막이/자켓 계열(사파리자켓·트레이닝자켓·집업트랙자켓·후드자켓) 74벌 30.1%
-// 티 계열(반집업티·맨투맨·긴팔티·카라티·반팔티) 56벌 22.8%
-// → 총 9벌(카테고리 3 × 배색 3) 기준으로 환산: 다운 4 : 바람막이 3 : 티 2, 고르게 섞은 순서
-const CW_GLOBAL_TOP_SEQUENCE = ['down','windbreaker','tee','down','windbreaker','down','tee','down','windbreaker'];
-
-// ── 하의 종류 비율 (PT+TP 팬츠 59벌 88.1% · SK 스커트 6벌 9.0% · LG 레깅스 2벌 3.0%) ──
-// → 9벌 기준: 팬츠 7 : 스커트 1 : 레깅스 1 (레깅스·스커트는 실제로도 소수라 최소 1개씩만 반영)
-const CW_GLOBAL_BOTTOM_SEQUENCE = ['pants','pants','pants','skirt','pants','pants','leggings','pants','pants'];
+// ── 카테고리 카드 안에서 같은 하의(팬츠 고정) 위에 상의 스타일별로 배색 개수를 다르게 보여줌 ──
+// 실제 도식화 비율(다운47%·바람막이30%·티23%)에 가깝게, 카드당 다운 8벌·바람막이 5벌·티 3벌 = 총 16벌
+const CW_GROUP_COUNTS = [
+  { type:'down',        count:8 },
+  { type:'windbreaker', count:5 },
+  { type:'tee',         count:3 },
+];
 
 function _cwIsLightHex(hex){
   if(!hex) return true;
@@ -7616,26 +7613,34 @@ function _cwShapeBottom(type, color){
 function _cwBuildOutfitSVG(catKey, variant){
   const bottomType = variant.bottomType || 'pants';
   const topType = variant.topType || 'down';
-  return `<svg viewBox="0 0 120 180" width="100%" style="max-width:120px;overflow:visible">
+  return `<svg viewBox="0 0 120 180" width="100%" style="max-width:72px;overflow:visible">
     <g onclick="_cwEditPart('${catKey}',${variant.idx},'main')" style="cursor:pointer">${_cwShapeTop(topType, variant.main)}</g>
     <g onclick="_cwEditPart('${catKey}',${variant.idx},'sub1')" style="cursor:pointer">${_cwShapeBottom(bottomType, variant.sub1)}</g>
   </svg>`;
 }
 
-// 팔레트(최대 6색)에서 3벌의 배색 조합을 자동 생성 (겹치지 않게 순환)
-// 상의·하의 종류는 카테고리 구분 없이 CW_GLOBAL_TOP/BOTTOM_SEQUENCE(실제 도식화 비율 반영)를 전역 순서로 배분
-function _cwInitVariants(catKey, palette, catOffset){
+// 팔레트(최대 6색)를 순환시켜 그룹별(다운 8·바람막이 5·티 3) 배색을 생성.
+// 하의는 팬츠로 고정(스타일 초점은 상의 종류 변화에 있음), main/sub1 색은 팔레트를 계속 순환해서 채움.
+function _cwInitVariants(catKey, palette){
   const colors = palette.map(c=>c.hex).filter(Boolean);
   if(!colors.length) return [];
   const pick = i => colors[i % colors.length];
-  const off = (catOffset||0) * 3;
-  return [0,1,2].map(i => ({
-    idx:i,
-    topType: CW_GLOBAL_TOP_SEQUENCE[(off+i) % CW_GLOBAL_TOP_SEQUENCE.length],
-    bottomType: CW_GLOBAL_BOTTOM_SEQUENCE[(off+i) % CW_GLOBAL_BOTTOM_SEQUENCE.length],
-    main: pick(i*2)||null,
-    sub1: pick(i*2+1)||null,
-  }));
+  const variants = [];
+  let globalIdx = 0;
+  CW_GROUP_COUNTS.forEach(g=>{
+    for(let i=0; i<g.count; i++){
+      variants.push({
+        idx: globalIdx,
+        group: g.type,
+        topType: g.type,
+        bottomType: 'pants',
+        main: pick(globalIdx*2)||null,
+        sub1: pick(globalIdx*2+1)||null,
+      });
+      globalIdx++;
+    }
+  });
+  return variants;
 }
 
 window._colorwayState = window._colorwayState || {}; // { commute:{variants:[...], palette:[...]}, ... }
@@ -7661,12 +7666,18 @@ function renderColorwayPage(){
   }
 
   // 카테고리별 state 먼저 전부 준비 (요약 통계·차트에 필요)
+  // ★ BASIC(무채색)은 Category Curation엔 없어서, KOREA 03 팔레트의 BASIC 상위 4개를 모든 카테고리에 기본으로 추가
+  const _basicPool = (typeof resultPalette !== 'undefined' && resultPalette.asia && Array.isArray(resultPalette.asia.basic))
+    ? resultPalette.asia.basic.slice(0,4).filter(c=>c && c.hex)
+    : [];
   const catStates = defs.map((cat, catIdx)=>{
     let state = window._colorwayState[cat.key];
     if(!state){
       const cached = (window._catColorsCache && window._catColorsCache[cat.key]) || {point:[],sub:[]};
-      const palette = [...(cached.point||[]), ...(cached.sub||[])].filter(c=>c && c.hex);
-      state = window._colorwayState[cat.key] = { palette, variants: _cwInitVariants(cat.key, palette, catIdx), catOffset: catIdx };
+      const _catOnly = [...(cached.point||[]), ...(cached.sub||[])].filter(c=>c && c.hex);
+      const _basicToAdd = _basicPool.filter(b => !_catOnly.some(c=>(c.hex||'').toUpperCase()===(b.hex||'').toUpperCase()));
+      const palette = [..._catOnly, ..._basicToAdd];
+      state = window._colorwayState[cat.key] = { palette, variants: _cwInitVariants(cat.key, palette) };
     }
     return { cat, state };
   });
@@ -7722,28 +7733,37 @@ function renderColorwayPage(){
         <div class="spp-empty" style="font-size:10px">02 Market Analysis 데이터 필요 (색 없음)</div>
       </div>`;
     }
-    const outfits = state.variants.map(v => `<div style="display:flex;flex-direction:column;align-items:center;gap:6px">
-        ${_cwBuildOutfitSVG(cat.key, v)}
-      </div>`).join('');
+    const groupLabel = { down:'다운', windbreaker:'바람막이', tee:'티' };
+    const groupSections = CW_GROUP_COUNTS.map(g=>{
+      const items = state.variants.filter(v=>v.group===g.type);
+      const outfits = items.map(v => `<div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+          ${_cwBuildOutfitSVG(cat.key, v)}
+        </div>`).join('');
+      return `<div style="margin-bottom:14px">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text3);font-weight:700;margin-bottom:8px">${groupLabel[g.type]||g.type} × ${items.length}</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">${outfits}</div>
+      </div>`;
+    }).join('');
     const repHex = state.palette[0] ? state.palette[0].hex : '#999';
     const repLabel = (typeof pantoneApprox==='function' ? (pantoneApprox(repHex)||'').replace(/ TCX$/i,'') : '') || repHex;
-    return `<div style="border:1px solid var(--border);border-radius:12px;padding:16px;background:var(--bg2)">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <span style="font-family:var(--mono);font-size:9px;font-weight:700;background:rgba(90,140,220,0.12);color:#4A7FD6;border-radius:10px;padding:3px 10px">${state.palette.length}개 컬러</span>
-        <button onclick="_cwResetCategory('${cat.key}')" style="font-family:var(--mono);font-size:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text3);padding:3px 8px;cursor:pointer" title="자동 생성 배색으로 되돌리기">↺ 복구</button>
+    return `<div style="border:1px solid var(--border);border-radius:12px;padding:18px;background:var(--bg2)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div style="font-family:var(--sans);font-size:15px;font-weight:700;color:var(--text)">${cat.emoji||''} ${(cat.name||'').toUpperCase()}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-family:var(--mono);font-size:9px;font-weight:700;background:rgba(90,140,220,0.12);color:#4A7FD6;border-radius:10px;padding:3px 10px">${state.palette.length}개 컬러 · 총 ${state.variants.length}벌</span>
+          <button onclick="_cwResetCategory('${cat.key}')" style="font-family:var(--mono);font-size:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text3);padding:3px 8px;cursor:pointer" title="자동 생성 배색으로 되돌리기">↺ 복구</button>
+        </div>
       </div>
-      <div style="display:flex;gap:8px;justify-content:space-around;margin-bottom:12px">${outfits}</div>
-      <div style="font-family:var(--sans);font-size:14px;font-weight:700;color:var(--text)">${cat.emoji||''} ${(cat.name||'').toUpperCase()}</div>
-      <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:10px">대표 컬러코드: ${repLabel}</div>
-      <div style="display:flex;justify-content:space-between;padding-top:10px;border-top:1px solid var(--border)">
-        <div><div style="font-family:var(--mono);font-size:8px;color:var(--text4)">색상 수</div><div style="font-family:var(--sans);font-size:13px;font-weight:700;color:var(--text)">${state.palette.length}</div></div>
-        <div><div style="font-family:var(--mono);font-size:8px;color:var(--text4)">배색 수</div><div style="font-family:var(--sans);font-size:13px;font-weight:700;color:var(--text)">${state.variants.length}</div></div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:14px">대표 컬러코드: ${repLabel}</div>
+      ${groupSections}
+      <div style="display:flex;gap:4px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--border)">
+        ${state.palette.map(c=>`<div style="width:16px;height:16px;border-radius:4px;background:${c.hex};border:1px solid rgba(255,255,255,0.15)" title="${c.hex}"></div>`).join('')}
       </div>
     </div>`;
   }).join('');
 
   grid.innerHTML = summaryHtml + chartHtml + boardHtml +
-    `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">${cardsHtml}</div>`;
+    `<div style="display:flex;flex-direction:column;gap:20px">${cardsHtml}</div>`;
 }
 
 // 부위 클릭 → 그 카테고리 팔레트에서 색 선택 (또는 '없음') 팝오버
@@ -7792,7 +7812,7 @@ function _cwSetPart(catKey, variantIdx, part, hexOrNull){
 function _cwResetCategory(catKey){
   const state = window._colorwayState[catKey];
   if(!state) return;
-  state.variants = _cwInitVariants(catKey, state.palette, state.catOffset||0);
+  state.variants = _cwInitVariants(catKey, state.palette);
   renderColorwayPage();
 }
 
