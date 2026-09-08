@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_SEASON_DIST_NOGAP_v67 (2026-09-07) -->
+<!-- BUILD_VERSION: DISC_INTERSECTION_HEX_FALLBACK_v69 (2026-09-07) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -9055,9 +9055,13 @@ function _renderDiscIntersection(){
       ? `<div style="font-family:var(--mono);font-size:6px;color:var(--accent);letter-spacing:0.04em;margin-bottom:2px;text-align:center">KR</div>`
       : `<div style="font-family:var(--mono);font-size:6px;color:var(--gold);letter-spacing:0.04em;margin-bottom:2px;text-align:center">CN</div>`;
     const _fr = c.total||c.freq||1;
-    const _pt = (typeof pantoneApprox==='function' ? (pantoneApprox(c.hex)||'') : '').replace(/ TCX$/i,'') || (c.name||c.hex||'');
+    const _ptRaw = (typeof pantoneApprox==='function' ? pantoneApprox(c.hex) : '—');
+    const _pt = (_ptRaw && _ptRaw !== '—') ? _ptRaw.replace(/ TCX$/i,'') : (c.hex||c.name||'—');
     const _cl = c._mode==='kr' ? 'var(--accent)' : 'var(--gold)';
-    return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+    const safeHex = (c.hex||'').replace(/'/g,"\\'");
+    const safeName = (c.name||c.hex||'').replace(/'/g,"\\'");
+    const safeBrand = (c.brand||(Array.isArray(c.brands)?c.brands[0]:'')||'').replace(/'/g,"\\'");
+    return `<div onclick="openCompColorDetail('${safeHex}','${safeName}',${_fr},'${safeBrand}')" style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer" title="클릭하면 상세 정보(브랜드 등) 확인 가능">
       ${label}
       <div style="width:44px;height:44px;border-radius:7px;background:${c.hex};border:1px solid rgba(255,255,255,0.12)"></div>
       <div style="font-family:var(--mono);font-size:8px;color:${_cl};text-align:center">×${_fr}</div>
@@ -9288,13 +9292,12 @@ function _discRenderSeasonDist(){
     body.innerHTML = '<div class="spp-empty">02 Market Analysis에 월별(YYYY-MM) season 데이터가 없습니다. 시트의 season 컬럼이 2025-12, 2026-01 같은 월 단위 값인지 확인해주세요.</div>';
     return;
   }
-  const legend = `<div style="font-family:var(--mono);font-size:8px;color:var(--text3);margin-bottom:14px">각 구간 막대 = 실제 컬러가 빈도 비율만큼 이어붙은 것 · 회색 = 상위 7색 외 나머지 · 막대 클릭하면 전체 목록 보기</div>`;
   byGroup.forEach(g=>{ window._discSeasonDistData[g.label] = g; });
   const bars = byGroup.map(g=>{
     const note = g.monthsWithData.length ? `${g.monthsWithData.map(m=>m+'월').join('·')} 기준` : '데이터 없음';
     return _discRenderSeasonDistDonut(g.label, g.total, g.total ? note : null, g.allColors, g.hexTotal);
   }).join('');
-  body.innerHTML = legend + `<div style="display:flex;flex-direction:column;gap:20px">${bars}</div>
+  body.innerHTML = `<div style="display:flex;flex-direction:column;gap:20px">${bars}</div>
     <div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:14px">02 Market Analysis(GLOBAL+KOREA) 기준 · 있는 달만 집계 (빈 달은 제외, 0으로 채우지 않음) · 막대 아래 칩은 그 구간 빈도 상위 실제 컬러</div>`;
 }
 
