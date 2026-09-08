@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_SEASON_DIST_CAP24_v66 (2026-09-07) -->
+<!-- BUILD_VERSION: DISC_SEASON_DIST_NOGAP_v67 (2026-09-07) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -9203,11 +9203,12 @@ function _discRenderSeasonDistDonut(label, total, note, allColors, hexTotal){
     </div>`;
 
   const colors = allColors || [];
-  // ★ "기타" 회색 뭉치 없이 — 실제 색 전부를 각자 자기 색으로 표시 (빈도 비율만큼 폭)
-  const segs = colors.map(c=>({ pct: c.count/hexTotal*100, hex:c.hex, count:c.count }));
+  // ★ 24개로 제한된 표시분끼리 다시 100%로 정규화 — 안 그러면 잘려나간 나머지 색들의 몫만큼 바 끝에 빈 여백이 남음
+  const shownSum = colors.reduce((s,c)=>s+c.count, 0) || 1;
+  const segs = colors.map(c=>({ pct: c.count/shownSum*100, truePct: c.count/hexTotal*100, hex:c.hex, count:c.count }));
 
   const segments = segs.filter(s=>s.pct>0).map(s=>{
-    const pctLabel = Math.round(s.pct);
+    const pctLabel = Math.round(s.truePct);
     const showLabel = s.pct >= 5;
     const textColor = isLightHex(s.hex) ? '#1a1a1a' : '#ffffff';
     const segLabel = `${s.hex} · ${pctLabel}%`;
@@ -9217,8 +9218,8 @@ function _discRenderSeasonDistDonut(label, total, note, allColors, hexTotal){
   }).join('');
 
   // 범례는 상위 1% 이상만 (다 넣으면 너무 많아 지저분해짐)
-  const legend = segs.filter(s=>s.pct>=1).map(s=>{
-    const pctLabel = Math.round(s.pct);
+  const legend = segs.filter(s=>s.truePct>=1).map(s=>{
+    const pctLabel = Math.round(s.truePct);
     return `<div style="display:flex;align-items:center;gap:4px;white-space:nowrap">
       <div style="width:10px;height:10px;border-radius:2px;background:${s.hex};flex-shrink:0;${isLightHex(s.hex) ? 'border:1px solid rgba(0,0,0,0.15);' : ''}"></div>
       <span style="font-family:var(--mono);font-size:8px;color:var(--text3)">${s.hex}</span>
