@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_CATCUR_WORDBOUNDARY_MATCH_v58 (2026-09-07) -->
+<!-- BUILD_VERSION: DISC_CATCUR_MINFREQ2_v59 (2026-09-07) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7660,11 +7660,14 @@ function _fillCatColors() {
       //     "같은 계열"로 묶여서 하나가 통째로 밀려나는 문제가 있어 rgbDist로 교체) ──
       const combined = [];
       const seenC = new Set();
-      [...poolPoint, ...poolSub].sort((a, b) => (b.count||1) - (a.count||1) || (b._s - a._s)).forEach(c => {
-        if (seenC.has(c.hex)) return;
-        seenC.add(c.hex);
-        combined.push(c);
-      });
+      [...poolPoint, ...poolSub]
+        .filter(c => (c.count||1) >= 2) // ★ 절대 빈도 2 미만(딱 1번만 나온 색)은 너무 희귀하므로 후보에서 제외
+        .sort((a, b) => (b.count||1) - (a.count||1) || (b._s - a._s))
+        .forEach(c => {
+          if (seenC.has(c.hex)) return;
+          seenC.add(c.hex);
+          combined.push(c);
+        });
       const picked = [];
       const pickedHex = new Set();
       // 1차: 색거리 70 이상(뚜렷이 다른 색)만
