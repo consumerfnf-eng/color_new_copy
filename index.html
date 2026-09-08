@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_INTERSECTION_STRICT_MIN2_v70 (2026-09-07) -->
+<!-- BUILD_VERSION: DISC_04_COLORWAY_PAGE_v71 (2026-09-07) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -715,6 +715,7 @@ function enterBrandFromHome(brand) {
     <button class="tab active" onclick="switchTab('trend',this)"><span class="tab-num">01</span>Trend Collection</button>
     <button class="tab" onclick="switchTab('competitor',this)"><span class="tab-num">02</span>Market Analysis</button>
     <button class="tab" onclick="switchTab('palette',this)"><span class="tab-num">03</span>Palette Proposal</button>
+    <button class="tab" onclick="switchTab('colorway',this)"><span class="tab-num">04</span>Colorway</button>
   </nav>
 
   <!-- ── 메인 레이아웃 (사이드바 + 콘텐츠) ── -->
@@ -1703,6 +1704,25 @@ function enterBrandFromHome(brand) {
     </div>
   </div>
 
+</div>
+
+<!-- ════ TAB 04: COLORWAY ════ -->
+<div id="tab-colorway" class="tab-content">
+  <div class="step-content">
+    <div style="max-width:1100px;margin:0 auto;padding:24px 0">
+      <div style="margin-bottom:20px">
+        <h2 style="font-family:var(--sans);font-size:20px;font-weight:700;color:var(--text);margin:0 0 4px">Colorway Visualization</h2>
+        <p style="font-family:var(--mono);font-size:10px;color:var(--text3);margin:0">Category Curation 팔레트를 실루엣에 입혀 배색을 한눈에 확인 · 색상 클릭해서 편집 가능</p>
+      </div>
+      <div id="colorway-notice"></div>
+      <div id="colorway-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px"></div>
+    </div>
+  </div>
+  <div class="step-nav">
+    <button class="btn btn-sec" onclick="switchTabByName('palette')" style="font-size:12px;padding:8px 20px;background:#FFFFFF;color:#1A1714;border:1px solid rgba(0,0,0,0.2);">&#8592; 03 Palette Proposal</button>
+    <div class="step-nav-info">STEP <strong>04</strong> / 04 &nbsp;&middot;&nbsp; Colorway</div>
+    <div style="flex:1"></div>
+  </div>
 </div>
 
 <!-- ── 스와치 Add 팝업 (색상 그룹별) ── -->
@@ -7511,6 +7531,185 @@ function toggleCatEditMode() {
 }
 
 // ─ 카테고리 카드 그리드 렌더 ─
+// ══════════════════════════════════════════════════════════════
+// ── 04 COLORWAY 페이지 ──────────────────────────────────────────
+// Category Curation 팔레트를 옷 실루엣에 입혀서 배색을 한눈에 확인
+// ══════════════════════════════════════════════════════════════
+
+// 카테고리별 실루엣 구성 (top: 메인 파트 / bottom: 서브1 / shoe: 서브2)
+// resort는 파카/니트를 배색(variant)마다 번갈아 사용 — 포멀한 룩(코트·정장류)은 전 카테고리 금지
+const CW_CAT_CONFIG = {
+  commute:  { topTypes:['windbreaker'],   bottomType:'pants',    shoeType:'sneaker' },
+  wellness: { topTypes:['sportstop'],     bottomType:'leggings', shoeType:'sneaker' },
+  resort:   { topTypes:['knit','parka'],  bottomType:'pants',    shoeType:'sneaker' },
+};
+
+function _cwIsLightHex(hex){
+  if(!hex) return true;
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return (0.299*r + 0.587*g + 0.114*b) > 180;
+}
+const _CW_NONE_FILL = 'transparent';
+const _CW_NONE_STROKE = 'rgba(150,150,150,0.4)';
+
+function _cwShapeTop(type, color){
+  const fill = color || _CW_NONE_FILL;
+  const stroke = color ? 'rgba(0,0,0,0.18)' : _CW_NONE_STROKE;
+  const dash = color ? '' : 'stroke-dasharray="3,3"';
+  if(type === 'sportstop'){
+    return `<path d="M40,22 L47,12 L73,12 L80,22 L80,72 L40,72 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" ${dash}/>
+      <path d="M47,12 L43,26 M73,12 L77,26" stroke="${stroke}" fill="none" stroke-width="1.5"/>`;
+  }
+  if(type === 'knit'){
+    return `<path d="M35,22 Q60,9 85,22 L93,42 L82,47 L82,95 L38,95 L38,47 L27,42 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" ${dash}/>
+      <line x1="38" y1="87" x2="82" y2="87" stroke="${stroke}" stroke-width="1.2"/>
+      <line x1="38" y1="91" x2="82" y2="91" stroke="${stroke}" stroke-width="1.2"/>
+      <ellipse cx="60" cy="20" rx="9" ry="5" fill="none" stroke="${stroke}" stroke-width="1.5"/>`;
+  }
+  if(type === 'parka'){
+    return `<circle cx="60" cy="16" r="13" fill="${fill}" stroke="${stroke}" stroke-width="1.5" ${dash}/>
+      <path d="M30,32 L46,20 L74,20 L90,32 L96,95 L24,95 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" ${dash}/>
+      <line x1="60" y1="32" x2="60" y2="95" stroke="${stroke}" stroke-width="1.2"/>
+      <path d="M24,95 L96,95 M28,60 L20,66 M92,60 L100,66" stroke="${stroke}" stroke-width="1.2" fill="none"/>`;
+  }
+  // windbreaker (default)
+  return `<path d="M35,15 L50,10 L70,10 L85,15 L101,36 L90,46 L85,36 L85,95 L35,95 L35,36 L30,46 L19,36 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" ${dash}/>
+    <line x1="60" y1="15" x2="60" y2="95" stroke="${stroke}" stroke-width="1.3"/>`;
+}
+
+function _cwShapeBottom(type, color){
+  const fill = color || _CW_NONE_FILL;
+  const stroke = color ? 'rgba(0,0,0,0.18)' : _CW_NONE_STROKE;
+  const dash = color ? '' : 'stroke-dasharray="3,3"';
+  if(type === 'leggings'){
+    return `<path d="M46,100 L74,100 L69,178 L61,178 L60,138 L59,178 L51,178 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" ${dash}/>`;
+  }
+  // pants (default)
+  return `<path d="M40,100 L80,100 L83,174 L67,174 L62,128 L57,174 L41,174 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" ${dash}/>`;
+}
+
+function _cwShapeShoe(type, color){
+  const fill = color || _CW_NONE_FILL;
+  const stroke = color ? 'rgba(0,0,0,0.18)' : _CW_NONE_STROKE;
+  const dash = color ? '' : 'stroke-dasharray="3,3"';
+  return `<path d="M35,190 L45,181 L70,181 L91,188 Q97,192 90,197 L38,197 Q31,197 35,190 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" ${dash}/>`;
+}
+
+function _cwBuildOutfitSVG(catKey, variant){
+  const cfg = CW_CAT_CONFIG[catKey] || CW_CAT_CONFIG.commute;
+  const topType = cfg.topTypes[variant.idx % cfg.topTypes.length];
+  return `<svg viewBox="0 0 120 210" width="100%" style="max-width:120px;overflow:visible">
+    <g onclick="_cwEditPart('${catKey}',${variant.idx},'main')" style="cursor:pointer">${_cwShapeTop(topType, variant.main)}</g>
+    <g onclick="_cwEditPart('${catKey}',${variant.idx},'sub1')" style="cursor:pointer">${_cwShapeBottom(cfg.bottomType, variant.sub1)}</g>
+    <g onclick="_cwEditPart('${catKey}',${variant.idx},'sub2')" style="cursor:pointer">${_cwShapeShoe(cfg.shoeType, variant.sub2)}</g>
+  </svg>`;
+}
+
+// 팔레트(최대 6색)에서 3벌의 배색 조합을 자동 생성 (겹치지 않게 순환)
+function _cwInitVariants(palette){
+  const colors = palette.map(c=>c.hex).filter(Boolean);
+  if(!colors.length) return [];
+  const pick = i => colors[i % colors.length];
+  return [0,1,2].map(i => ({
+    idx:i,
+    main: pick(i*2)||null,
+    sub1: pick(i*2+1)||null,
+    sub2: pick(i*2+2)||null,
+  }));
+}
+
+window._colorwayState = window._colorwayState || {}; // { commute:{variants:[...], palette:[...]}, ... }
+
+function renderColorwayPage(){
+  const grid = document.getElementById('colorway-grid');
+  const notice = document.getElementById('colorway-notice');
+  if(!grid) return;
+  if(typeof _activeBrand==='undefined' || _activeBrand!=='DISCOVERY'){
+    if(notice) notice.innerHTML = '<div class="spp-empty">Colorway 페이지는 현재 DISCOVERY 브랜드에서만 제공됩니다.</div>';
+    grid.innerHTML=''; return;
+  }
+  if(notice) notice.innerHTML='';
+
+  const defs = (window._catDefs && window._catDefs.length ? window._catDefs : DISCOVERY_CAT_DEFS)
+    .filter(d => CW_CAT_CONFIG[d.key]); // 실루엣 매핑 있는 카테고리만
+
+  // getAIColors는 _fillCatColors() 내부 전용 함수라 여기서 직접 못 씀 —
+  // Category Curation(03 페이지)이 렌더될 때 window._catColorsCache에 채워둔 값을 재사용.
+  // 캐시가 비어있으면(03을 아직 한 번도 안 본 경우) renderCatGrid()를 먼저 실행해 채운다.
+  if(!window._catColorsCache || !Object.keys(window._catColorsCache).length){
+    if(typeof renderCatGrid === 'function'){ try{ renderCatGrid(); }catch(e){} }
+  }
+
+  grid.innerHTML = defs.map(cat=>{
+    let state = window._colorwayState[cat.key];
+    if(!state){
+      const cached = (window._catColorsCache && window._catColorsCache[cat.key]) || {point:[],sub:[]};
+      const palette = [...(cached.point||[]), ...(cached.sub||[])].filter(c=>c && c.hex);
+      state = window._colorwayState[cat.key] = { palette, variants: _cwInitVariants(palette) };
+    }
+    if(!state.palette.length){
+      return `<div style="border:1px solid var(--border);border-radius:12px;padding:16px;background:var(--bg2)">
+        <div style="font-family:var(--sans);font-size:14px;font-weight:700;color:var(--text);margin-bottom:10px">${cat.emoji||''} ${cat.name}</div>
+        <div class="spp-empty" style="font-size:10px">02 Market Analysis 데이터 필요 (색 없음)</div>
+      </div>`;
+    }
+    const outfits = state.variants.map(v => `<div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+        ${_cwBuildOutfitSVG(cat.key, v)}
+      </div>`).join('');
+    return `<div style="border:1px solid var(--border);border-radius:12px;padding:16px;background:var(--bg2)">
+      <div style="font-family:var(--sans);font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px">${cat.emoji||''} ${cat.name}</div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:14px">${cat.subLabel||''}</div>
+      <div style="display:flex;gap:8px;justify-content:space-around">${outfits}</div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:14px;padding-top:10px;border-top:1px solid var(--border)">
+        ${state.palette.map(c=>`<div style="width:16px;height:16px;border-radius:4px;background:${c.hex};border:1px solid rgba(255,255,255,0.15)" title="${c.hex}"></div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// 부위 클릭 → 그 카테고리 팔레트에서 색 선택 (또는 '없음') 팝오버
+function _cwEditPart(catKey, variantIdx, part){
+  const state = window._colorwayState[catKey];
+  if(!state) return;
+  let pop = document.getElementById('cw-edit-popover');
+  if(!pop){
+    pop = document.createElement('div');
+    pop.id = 'cw-edit-popover';
+    pop.style.cssText = 'display:none;position:fixed;z-index:10002;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,0.35)';
+    document.body.appendChild(pop);
+  }
+  const swatches = state.palette.map(c=>
+    `<div onclick="_cwSetPart('${catKey}',${variantIdx},'${part}','${c.hex}')" style="width:26px;height:26px;border-radius:6px;background:${c.hex};cursor:pointer;border:1px solid rgba(255,255,255,0.15)" title="${c.hex}"></div>`
+  ).join('');
+  pop.innerHTML = `<div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:8px">색 선택 (${part==='main'?'메인':part==='sub1'?'서브1':'서브2'})</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;max-width:190px">
+      ${swatches}
+      <div onclick="_cwSetPart('${catKey}',${variantIdx},'${part}',null)" style="width:26px;height:26px;border-radius:6px;border:1px dashed var(--border2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;color:var(--text4)" title="색 없음">×</div>
+    </div>`;
+  const ev = window.event;
+  if(ev){
+    pop.style.left = Math.min(ev.clientX, window.innerWidth-220) + 'px';
+    pop.style.top = Math.min(ev.clientY, window.innerHeight-140) + 'px';
+  }
+  pop.style.display = 'block';
+  setTimeout(()=>{ document.addEventListener('click', _cwClosePopoverOnce); }, 0);
+}
+function _cwClosePopoverOnce(e){
+  const pop = document.getElementById('cw-edit-popover');
+  if(pop && !pop.contains(e.target)){
+    pop.style.display = 'none';
+    document.removeEventListener('click', _cwClosePopoverOnce);
+  }
+}
+function _cwSetPart(catKey, variantIdx, part, hexOrNull){
+  const state = window._colorwayState[catKey];
+  if(!state) return;
+  state.variants[variantIdx][part] = hexOrNull;
+  const pop = document.getElementById('cw-edit-popover');
+  if(pop) pop.style.display = 'none';
+  renderColorwayPage();
+}
+
 function renderCatGrid() {
   const grid = document.getElementById('cat-curation-grid');
   if (!grid) return;
@@ -7948,6 +8147,8 @@ function _fillCatColors() {
     const hiddenPoint = new Set((ov.hiddenPoint || []).map(h => h.toUpperCase()));
     const hiddenSub   = new Set((ov.hiddenSub   || []).map(h => h.toUpperCase()));
     const { point: aiPoint, sub: aiSub } = getAIColors(cat.key);
+    window._catColorsCache = window._catColorsCache || {};
+    window._catColorsCache[cat.key] = { point: aiPoint, sub: aiSub }; // Colorway 페이지(04)에서 재사용
     const addedPoint = ov.point || [];
     const addedSub   = ov.sub   || [];
 
@@ -13668,6 +13869,7 @@ function switchTab(name, btn){
     }
     if(name==='competitor') try{ renderCompBrandPage(); }catch(e){}
     if(name==='trend') setTimeout(updateTrendPreview, 50);
+    if(name==='colorway') try{ renderColorwayPage(); }catch(e){ console.error('renderColorwayPage error:', e); }
   }catch(e){ console.error('switchTab error:', e); }
 }
 
