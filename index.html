@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_INTERSECTION_HEX_FALLBACK_v69 (2026-09-07) -->
+<!-- BUILD_VERSION: DISC_INTERSECTION_STRICT_MIN2_v70 (2026-09-07) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -9069,12 +9069,12 @@ function _renderDiscIntersection(){
     </div>`;
   };
 
-  // 지역(KR/CN) 구분 없이 — 비슷한 컬러칩이 겹치는(≥2개) 색상군만 표시. PINNED는 항상 표시.
+  // 지역(KR/CN) 구분 없이 — 비슷한 컬러칩이 겹치는(≥2개) 색상군만 표시. PINNED라도 짝이 없으면 표시 안 함.
   const catGroups = COLOR_CATS.map(cat => {
     const chips = _allChips.filter(c => inCat(c.hex, cat));
     const isPinned = PINNED_CATS.includes(cat.label);
     return { ...cat, chips, isPinned };
-  }).filter(g => g.isPinned || g.chips.length >= 2);
+  }).filter(g => g.chips.length >= 2);
 
   if(!catGroups.length){
     wrap.innerHTML = '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);padding:4px 0">No Intersection</div>';
