@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_COLORWAY_NOSHOE_DOWN_RESET_v73 (2026-09-07) -->
+<!-- BUILD_VERSION: DISC_COLORWAY_BOARD_STYLE_v74 (2026-09-07) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -1713,7 +1713,7 @@ function enterBrandFromHome(brand) {
         <p style="font-family:var(--mono);font-size:10px;color:var(--text3);margin:0">Category Curation 팔레트를 실루엣에 입혀 배색을 한눈에 확인 · 색상 클릭해서 편집 가능</p>
       </div>
       <div id="colorway-notice"></div>
-      <div id="colorway-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px"></div>
+      <div id="colorway-grid" style="display:block"></div>
     </div>
   </div>
   <div class="step-nav">
@@ -7642,13 +7642,62 @@ function renderColorwayPage(){
     if(typeof renderCatGrid === 'function'){ try{ renderCatGrid(); }catch(e){} }
   }
 
-  grid.innerHTML = defs.map(cat=>{
+  // 카테고리별 state 먼저 전부 준비 (요약 통계·차트에 필요)
+  const catStates = defs.map(cat=>{
     let state = window._colorwayState[cat.key];
     if(!state){
       const cached = (window._catColorsCache && window._catColorsCache[cat.key]) || {point:[],sub:[]};
       const palette = [...(cached.point||[]), ...(cached.sub||[])].filter(c=>c && c.hex);
       state = window._colorwayState[cat.key] = { palette, variants: _cwInitVariants(cat.key, palette) };
     }
+    return { cat, state };
+  });
+
+  // ── 요약 통계 카드 (참고 이미지 스타일: 카테고리 수 · 색상 수 · 배색 수) ──
+  const totalColors = catStates.reduce((s,cs)=>s+cs.state.palette.length, 0);
+  const totalVariants = catStates.reduce((s,cs)=>s+cs.state.variants.length, 0);
+  const summaryHtml = `<div style="margin-bottom:10px">
+      <div style="font-family:var(--sans);font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">요약</div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text3)">Category Curation(03) 팔레트 기준 집계</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px">
+      <div style="background:rgba(90,140,220,0.08);border-radius:8px;padding:16px">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:6px">카테고리 수</div>
+        <div style="font-family:var(--sans);font-size:24px;font-weight:700;color:var(--text)">${catStates.length}개</div>
+      </div>
+      <div style="background:rgba(80,180,140,0.08);border-radius:8px;padding:16px">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:6px">색상 수 (카테고리 합)</div>
+        <div style="font-family:var(--sans);font-size:24px;font-weight:700;color:var(--text)">${totalColors}개</div>
+      </div>
+      <div style="background:rgba(230,170,60,0.08);border-radius:8px;padding:16px">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:6px">생성된 배색 수</div>
+        <div style="font-family:var(--sans);font-size:24px;font-weight:700;color:var(--text)">${totalVariants}벌</div>
+      </div>
+    </div>`;
+
+  // ── 카테고리별 색상 수 분포 막대차트 ──
+  const maxColorCount = Math.max(1, ...catStates.map(cs=>cs.state.palette.length));
+  const chartHtml = `<div style="margin-bottom:24px">
+      <div style="font-family:var(--sans);font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px">카테고리별 색상 수 분포</div>
+      <div style="display:flex;align-items:flex-end;gap:16px;height:120px;padding:0 8px">
+        ${catStates.map(cs=>{
+          const h = Math.round(cs.state.palette.length/maxColorCount*100);
+          return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end">
+            <div style="font-family:var(--mono);font-size:9px;color:var(--text3)">${cs.state.palette.length}</div>
+            <div style="width:100%;max-width:60px;height:${h}%;background:#4A7FD6;border-radius:4px 4px 0 0"></div>
+            <div style="font-family:var(--mono);font-size:8px;color:var(--text3);text-align:center">${(cs.cat.name||'').toUpperCase()}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+
+  // ── 팔레트 보드 (카테고리별 카드) ──
+  const boardHtml = `<div style="margin-bottom:12px">
+      <div style="font-family:var(--sans);font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">카테고리별 팔레트 보드</div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text3)">대표 배색(실루엣) · 색상 수 · 배색 수 · 클릭해서 편집</div>
+    </div>`;
+
+  const cardsHtml = catStates.map(({cat, state})=>{
     if(!state.palette.length){
       return `<div style="border:1px solid var(--border);border-radius:12px;padding:16px;background:var(--bg2)">
         <div style="font-family:var(--sans);font-size:14px;font-weight:700;color:var(--text);margin-bottom:10px">${cat.emoji||''} ${cat.name}</div>
@@ -7658,18 +7707,25 @@ function renderColorwayPage(){
     const outfits = state.variants.map(v => `<div style="display:flex;flex-direction:column;align-items:center;gap:6px">
         ${_cwBuildOutfitSVG(cat.key, v)}
       </div>`).join('');
+    const repHex = state.palette[0] ? state.palette[0].hex : '#999';
+    const repLabel = (typeof pantoneApprox==='function' ? (pantoneApprox(repHex)||'').replace(/ TCX$/i,'') : '') || repHex;
     return `<div style="border:1px solid var(--border);border-radius:12px;padding:16px;background:var(--bg2)">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:2px">
-        <div style="font-family:var(--sans);font-size:14px;font-weight:700;color:var(--text)">${cat.emoji||''} ${cat.name}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-family:var(--mono);font-size:9px;font-weight:700;background:rgba(90,140,220,0.12);color:#4A7FD6;border-radius:10px;padding:3px 10px">${state.palette.length}개 컬러</span>
         <button onclick="_cwResetCategory('${cat.key}')" style="font-family:var(--mono);font-size:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text3);padding:3px 8px;cursor:pointer" title="자동 생성 배색으로 되돌리기">↺ 복구</button>
       </div>
-      <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:14px">${cat.subLabel||''}</div>
-      <div style="display:flex;gap:8px;justify-content:space-around">${outfits}</div>
-      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:14px;padding-top:10px;border-top:1px solid var(--border)">
-        ${state.palette.map(c=>`<div style="width:16px;height:16px;border-radius:4px;background:${c.hex};border:1px solid rgba(255,255,255,0.15)" title="${c.hex}"></div>`).join('')}
+      <div style="display:flex;gap:8px;justify-content:space-around;margin-bottom:12px">${outfits}</div>
+      <div style="font-family:var(--sans);font-size:14px;font-weight:700;color:var(--text)">${cat.emoji||''} ${(cat.name||'').toUpperCase()}</div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:10px">대표 컬러코드: ${repLabel}</div>
+      <div style="display:flex;justify-content:space-between;padding-top:10px;border-top:1px solid var(--border)">
+        <div><div style="font-family:var(--mono);font-size:8px;color:var(--text4)">색상 수</div><div style="font-family:var(--sans);font-size:13px;font-weight:700;color:var(--text)">${state.palette.length}</div></div>
+        <div><div style="font-family:var(--mono);font-size:8px;color:var(--text4)">배색 수</div><div style="font-family:var(--sans);font-size:13px;font-weight:700;color:var(--text)">${state.variants.length}</div></div>
       </div>
     </div>`;
   }).join('');
+
+  grid.innerHTML = summaryHtml + chartHtml + boardHtml +
+    `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">${cardsHtml}</div>`;
 }
 
 // 부위 클릭 → 그 카테고리 팔레트에서 색 선택 (또는 '없음') 팝오버
