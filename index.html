@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_COLORWAY_INDIVIDUAL_EDIT_v92 (2026-09-07) -->
+<!-- BUILD_VERSION: DISC_COLORWAY_POPOVER_FIX_v93 (2026-09-07) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7781,6 +7781,7 @@ function _cwEditPart(catKey, variantIdx, part){
     pop.style.top = Math.min(ev.clientY, window.innerHeight-140) + 'px';
   }
   pop.style.display = 'block';
+  document.removeEventListener('click', _cwClosePopoverOnce); // ★ 혹시 남아있는 묵은 리스너 먼저 제거
   setTimeout(()=>{ document.addEventListener('click', _cwClosePopoverOnce); }, 0);
 }
 function _cwClosePopoverOnce(e){
@@ -7797,6 +7798,7 @@ function _cwSetPart(catKey, variantIdx, part, hexOrNull){
   state.variants[variantIdx][part] = hexOrNull;
   const pop = document.getElementById('cw-edit-popover');
   if(pop) pop.style.display = 'none';
+  document.removeEventListener('click', _cwClosePopoverOnce); // ★ 묵은 리스너 제거 (안 그러면 다음 편집 클릭을 즉시 닫아버림)
   renderColorwayPage();
 }
 // 이 카테고리를 자동 생성 배색(초기 상태)으로 되돌림 — 수동 편집 전부 취소
