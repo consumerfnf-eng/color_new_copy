@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_COLORWAY_WEIGHTED_BULKEDIT_v91 (2026-09-07) -->
+<!-- BUILD_VERSION: DISC_COLORWAY_INDIVIDUAL_EDIT_v92 (2026-09-07) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7790,19 +7790,11 @@ function _cwClosePopoverOnce(e){
     document.removeEventListener('click', _cwClosePopoverOnce);
   }
 }
-// 색 편집 — 같은 카테고리 안에서 이 파트(main 또는 sub1)에 "같은 색"을 쓰고 있던 다른 옷들도
-// 한꺼번에 같이 바뀌도록(중복 적용) 처리. 클릭한 옷 하나만 바뀌던 걸 개선.
+// 색 편집 — 클릭한 옷 하나만 낱개로 바뀜 (다른 옷들은 영향 없음)
 function _cwSetPart(catKey, variantIdx, part, hexOrNull){
   const state = window._colorwayState[catKey];
   if(!state) return;
-  const oldHex = state.variants[variantIdx][part];
-  if(oldHex){
-    state.variants.forEach(v=>{
-      if(v[part] === oldHex) v[part] = hexOrNull;
-    });
-  } else {
-    state.variants[variantIdx][part] = hexOrNull;
-  }
+  state.variants[variantIdx][part] = hexOrNull;
   const pop = document.getElementById('cw-edit-popover');
   if(pop) pop.style.display = 'none';
   renderColorwayPage();
