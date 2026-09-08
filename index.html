@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_SALES_NOGROUPCAP_v79 (2026-09-07) -->
+<!-- BUILD_VERSION: DISC_SALES_QTYLABEL_FIX_v80 (2026-09-07) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -9586,7 +9586,7 @@ function _discRenderSalesBased(){
     const safeName = `${c.group} ${c.code}`.replace(/'/g,"\\'");
     const safeCode = (c.code||'').replace(/'/g,"");
     const safePantone = (c.pantone||'').replace(/'/g,"\\'");
-    const onclickArgs = `{hex:'${c.hex}',name:'${safeName}',finalCode:'${safePantone}',qty:${c.style_cnt||0},rate:${(c.sell_rate||0)/100},saleScore:${c.saleScore||0},mlbColCode:'${safeCode}',mlbCode:'${safeCode}',_isSales:true}`;
+    const onclickArgs = `{hex:'${c.hex}',name:'${safeName}',finalCode:'${safePantone}',qty:${c.style_cnt||0},qtyLabel:'스타일수',rate:${(c.sell_rate||0)/100},saleScore:${c.saleScore||0},mlbColCode:'${safeCode}',mlbCode:'${safeCode}',_isSales:true}`;
     return `<div onclick="openPalDetail(${onclickArgs})" style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer">
       <div style="width:40px;height:40px;border-radius:6px;background:${c.hex};border:1px solid rgba(255,255,255,0.12)" title="${c.group}(${c.code}) · ${c.hex} · ${c.pantone||''} · 스타일 ${c.style_cnt}개 · 판매율 ${c.sell_rate}% · 군내비중 ${c.group_pct}%"></div>
       <div style="font-family:var(--mono);font-size:7px;color:var(--text2);text-align:center;font-weight:700">${c.group}</div>
@@ -11750,12 +11750,13 @@ function openPalDetail(c){
     scEl.style.display = 'grid';
     scEl.style.gridTemplateColumns = '1fr 1fr 1fr';
     if(c._isSales){
-      // Sales-Based: 판매량 / 판매율 / 판매점수
+      // Sales-Based: 판매량(또는 스타일수) / 판매율 / 판매점수
       const qty   = c.qty||0;
       const rate  = c.rate||0;
       const sScore= Math.round((c.saleScore||0)*100);
+      const qtyLabel = c.qtyLabel || '판매수량'; // Discovery는 실제 데이터가 '스타일수'라 라벨을 다르게 넘김
       scEl.innerHTML = [
-        {label:'판매수량', val: qty>0 ? qty.toLocaleString()+'개' : '<span style="font-size:10px;color:var(--teal)">신규</span>', color:'var(--gold)'},
+        {label:qtyLabel, val: qty>0 ? qty.toLocaleString()+'개' : '<span style="font-size:10px;color:var(--teal)">신규</span>', color:'var(--gold)'},
         {label:'판매율',   val: rate>0 ? (rate*100).toFixed(1)+'%' : '<span style="font-size:10px;color:var(--teal)">신규</span>',  color:'var(--gold)'},
         {label:'판매점수', val: sScore||'—', color:'var(--text)'},
       ].map(s=>`<div style="background:var(--bg3);border-radius:8px;padding:10px;text-align:center">
