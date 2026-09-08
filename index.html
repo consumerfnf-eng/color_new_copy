@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_CATFILTER_02PAGE_v62 (2026-09-07) -->
+<!-- BUILD_VERSION: DISC_SEASON_DIST_BAR_v63 (2026-09-07) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -9187,32 +9187,26 @@ function _discBuildSeasonDist(){
 
 // SVG 도넛 차트 — 실제 빈도순 컬러 세그먼트(각 조각이 진짜 hex 색, 크기는 빈도 비율)
 function _discRenderSeasonDistDonut(label, total, note, topColors, hexTotal){
-  const SIZE = 96, R = 34, CX = SIZE/2, CY = SIZE/2, STROKE = 16;
-  const CIRC = 2 * Math.PI * R;
+  const BAR_W = 320, BAR_H = 28;
 
-  if(!total) return `<div style="display:flex;flex-direction:column;align-items:center;gap:6px;min-width:104px">
-      <div style="font-family:var(--mono);font-size:9px;color:var(--text3);text-align:center">${label}</div>
-      <div style="width:${SIZE}px;height:${SIZE}px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center">
-        <span style="font-family:var(--mono);font-size:7px;color:var(--text4)">데이터<br>없음</span>
+  if(!total) return `<div style="display:flex;flex-direction:column;gap:6px;width:100%;max-width:${BAR_W}px">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text3)">${label}</div>
+      <div style="width:100%;height:${BAR_H}px;border-radius:6px;background:var(--bg3);display:flex;align-items:center;justify-content:center">
+        <span style="font-family:var(--mono);font-size:8px;color:var(--text4)">데이터 없음</span>
       </div>
     </div>`;
 
   const colors = topColors || [];
   const topSum = colors.reduce((s,c)=>s+c.count, 0);
   const otherCount = Math.max(hexTotal - topSum, 0);
-  // 상위 7색 + 나머지는 회색 "기타"로
+  // 상위 7색 + 나머지는 회색 "기타"로, 빈도 비율만큼 폭을 나눠 이어붙임
   const segs = [...colors.map(c=>({ pct: c.count/hexTotal*100, color:c.hex, hex:c.hex, count:c.count }))];
   if(otherCount>0) segs.push({ pct: otherCount/hexTotal*100, color:'var(--border2)', hex:null, count:otherCount });
 
-  let acc = 0;
-  const arcs = segs.filter(s=>s.pct>0).map(s=>{
-    const dash = (s.pct/100) * CIRC;
-    const gap = CIRC - dash;
-    const offset = -1 * (acc/100) * CIRC; // 시계방향 진행, 12시부터 시작
-    acc += s.pct;
-    const label = s.hex ? `${s.hex} · ${Math.round(s.pct)}%` : `기타 · ${Math.round(s.pct)}%`;
-    return `<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${s.color}" stroke-width="${STROKE}"
-      stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${offset}" transform="rotate(-90 ${CX} ${CY})"><title>${label}</title></circle>`;
+  const bar = segs.filter(s=>s.pct>0).map((s,i)=>{
+    const segLabel = s.hex ? `${s.hex} · ${Math.round(s.pct)}%` : `기타 · ${Math.round(s.pct)}%`;
+    const radius = i===0 ? '6px 0 0 6px' : (i===segs.length-1 ? '0 6px 6px 0' : '0');
+    return `<div style="width:${s.pct}%;height:100%;background:${s.color};border-radius:${radius};min-width:2px" title="${segLabel}"></div>`;
   }).join('');
 
   const chips = colors.filter(c => (c.count/hexTotal*100) >= 0.5).slice(0,6).map(c=>{
@@ -9223,16 +9217,16 @@ function _discRenderSeasonDistDonut(label, total, note, topColors, hexTotal){
     </div>`;
   }).join('');
 
-  return `<div onclick="_discOpenSeasonDetail('${label}')" style="display:flex;flex-direction:column;align-items:center;gap:6px;min-width:104px;cursor:pointer" title="클릭하면 이 구간 컬러 전체 목록을 볼 수 있어요">
-    <div style="font-family:var(--mono);font-size:9px;color:var(--text2);text-align:center;font-weight:700">${label} <span style="color:var(--text4);font-weight:400">▸</span></div>
-    <svg width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
-      <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="var(--bg3)" stroke-width="${STROKE}"></circle>
-      ${arcs}
-      <text x="${CX}" y="${CY-2}" text-anchor="middle" font-family="var(--mono)" font-size="15" font-weight="700" fill="var(--text)">${total}</text>
-      <text x="${CX}" y="${CY+11}" text-anchor="middle" font-family="var(--mono)" font-size="7" fill="var(--text4)">colors</text>
-    </svg>
-    <div style="font-family:var(--mono);font-size:7px;color:var(--text4);text-align:center">${note||(total+'색')}</div>
-    ${chips ? `<div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:center;max-width:110px">${chips}</div>` : ''}
+  return `<div onclick="_discOpenSeasonDetail('${label}')" style="display:flex;flex-direction:column;gap:6px;width:100%;max-width:${BAR_W}px;cursor:pointer" title="클릭하면 이 구간 컬러 전체 목록을 볼 수 있어요">
+    <div style="display:flex;align-items:baseline;justify-content:space-between">
+      <span style="font-family:var(--mono);font-size:10px;color:var(--text2);font-weight:700">${label} <span style="color:var(--text4);font-weight:400">▸</span></span>
+      <span style="font-family:var(--mono);font-size:9px;color:var(--text4)">${total} colors</span>
+    </div>
+    <div style="width:100%;height:${BAR_H}px;border-radius:6px;overflow:hidden;display:flex;border:1px solid var(--border)">
+      ${bar}
+    </div>
+    <div style="font-family:var(--mono);font-size:7px;color:var(--text4)">${note||(total+'색')}</div>
+    ${chips ? `<div style="display:flex;gap:4px;flex-wrap:wrap">${chips}</div>` : ''}
   </div>`;
 }
 
@@ -9286,14 +9280,14 @@ function _discRenderSeasonDist(){
     body.innerHTML = '<div class="spp-empty">02 Market Analysis에 월별(YYYY-MM) season 데이터가 없습니다. 시트의 season 컬럼이 2025-12, 2026-01 같은 월 단위 값인지 확인해주세요.</div>';
     return;
   }
-  const legend = `<div style="font-family:var(--mono);font-size:8px;color:var(--text3);margin-bottom:14px">각 조각 = 실제 컬러 1개(빈도 비율만큼 크기) · 회색 = 상위 7색 외 나머지 · 도넛 클릭하면 전체 목록 보기</div>`;
+  const legend = `<div style="font-family:var(--mono);font-size:8px;color:var(--text3);margin-bottom:14px">각 구간 막대 = 실제 컬러가 빈도 비율만큼 이어붙은 것 · 회색 = 상위 7색 외 나머지 · 막대 클릭하면 전체 목록 보기</div>`;
   byGroup.forEach(g=>{ window._discSeasonDistData[g.label] = g; });
-  const donuts = byGroup.map(g=>{
+  const bars = byGroup.map(g=>{
     const note = g.monthsWithData.length ? `${g.monthsWithData.map(m=>m+'월').join('·')} 기준` : '데이터 없음';
     return _discRenderSeasonDistDonut(g.label, g.total, g.total ? note : null, g.topColors, g.hexTotal);
   }).join('');
-  body.innerHTML = legend + `<div style="display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap">${donuts}</div>
-    <div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:14px">02 Market Analysis(GLOBAL+KOREA) 기준 · 있는 달만 집계 (빈 달은 제외, 0으로 채우지 않음) · 도넛 아래 칩은 그 구간 빈도 상위 실제 컬러</div>`;
+  body.innerHTML = legend + `<div style="display:flex;flex-direction:column;gap:20px">${bars}</div>
+    <div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:14px">02 Market Analysis(GLOBAL+KOREA) 기준 · 있는 달만 집계 (빈 달은 제외, 0으로 채우지 않음) · 막대 아래 칩은 그 구간 빈도 상위 실제 컬러</div>`;
 }
 
 // ── DISCOVERY 전용 팔레트 선발 함수 ────────────────────────────
