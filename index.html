@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_SEASON_DIST_NEARMERGE_v53 (2026-09-07) -->
+<!-- BUILD_VERSION: DISC_SEASON_DIST_HIDE_ZEROPCT_v54 (2026-09-07) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -9204,7 +9204,7 @@ function _discRenderSeasonDistDonut(label, total, note, topColors, hexTotal){
       stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${offset}" transform="rotate(-90 ${CX} ${CY})"><title>${label}</title></circle>`;
   }).join('');
 
-  const chips = colors.slice(0,6).map(c=>{
+  const chips = colors.filter(c => (c.count/hexTotal*100) >= 0.5).slice(0,6).map(c=>{
     const pct = Math.round(c.count/hexTotal*100);
     return `<div style="display:flex;flex-direction:column;align-items:center;gap:1px">
       <div style="width:16px;height:16px;border-radius:4px;background:${c.hex};border:1px solid rgba(255,255,255,0.15)" title="${c.hex} · ${pct}%"></div>
@@ -9240,7 +9240,7 @@ function _discOpenSeasonDetail(groupLabel){
     modal.onclick = (e)=>{ if(e.target===modal) modal.style.display='none'; };
     document.body.appendChild(modal);
   }
-  const rows = g.allColors.map(c=>{
+  const rows = g.allColors.filter(c => (c.count/g.hexTotal*100) >= 0.5).map(c=>{
     const pct = Math.round(c.count/g.hexTotal*100);
     const pt = (typeof pantoneApprox==='function' ? (pantoneApprox(c.hex)||'') : '');
     const mergedNote = (c.members && c.members.length>1) ? ` · 유사색 ${c.members.length}개 병합` : '';
@@ -9254,12 +9254,13 @@ function _discOpenSeasonDetail(groupLabel){
       <div style="font-family:var(--mono);font-size:8px;color:var(--text4)">×${c.count}</div>
     </div>`;
   }).join('');
+  const hiddenCount = g.allColors.length - g.allColors.filter(c => (c.count/g.hexTotal*100) >= 0.5).length;
   document.getElementById('disc-season-detail-card').innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
       <span style="font-family:var(--sans);font-size:15px;font-weight:700;color:var(--text)">${groupLabel} — 전체 컬러</span>
       <span onclick="document.getElementById('disc-season-detail-modal').style.display='none'" style="cursor:pointer;color:var(--text4);font-size:16px;padding:2px 6px">×</span>
     </div>
-    <div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-bottom:12px">${g.monthsWithData.map(m=>m+'월').join('·')} 기준 · 총 ${g.hexTotal}건 · 컬러 ${g.allColors.length}종 · 빈도순</div>
+    <div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-bottom:12px">${g.monthsWithData.map(m=>m+'월').join('·')} 기준 · 총 ${g.hexTotal}건 · 컬러 ${g.allColors.length}종 · 빈도순${hiddenCount>0?` · 0% 반올림되는 ${hiddenCount}종 제외`:''}</div>
     <div>${rows}</div>
   `;
   modal.style.display = 'flex';
