@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_CATCUR_MINFREQ2_v59 (2026-09-07) -->
+<!-- BUILD_VERSION: DISC_ITEM_CATEGORY_FILTER_v60 (2026-09-07) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -5137,8 +5137,10 @@ async function loadCompFromCsvText(csv, filterSeason) {
     console.log('country 값 샘플:', sample);
   }
   const idxBrand   = header.findIndex(h => h === 'brand');
-  const idxGroup   = header.findIndex(h => ['brand_group','group','category'].includes(h));
+  const idxGroup   = header.findIndex(h => ['brand_group','group'].includes(h));
   const idxCourt   = header.findIndex(h => h === 'court');
+  // 품목 카테고리(outerwear/top/bottom/dress) — brand_group과는 별개 컬럼
+  const idxItemCategory = header.findIndex(h => ['category','item_category','product_category'].includes(h));
   // hex_codes 컬럼 — "|"로 구분된 멀티컬러 지원
   const idxHex = (() => {
     let i = header.findIndex(h => h === 'hex_codes'); if(i>=0) return i;
@@ -5180,21 +5182,22 @@ async function loadCompFromCsvText(csv, filterSeason) {
 
     const season = idxSeason >= 0 ? _normalizeSeasonValue(p[idxSeason] || '') : '';
     const rawSeason = idxSeason >= 0 ? (p[idxSeason] || '').trim() : ''; // 월별 원본 값(2025-12 등) 보존 — Season Color Distribution용
+    const itemCategory = idxItemCategory >= 0 ? (p[idxItemCategory] || '').trim().toLowerCase() : ''; // outerwear/top/bottom/dress
 
     if (country === 'KR') {
-      hexes.forEach(hx => krRows.push({hex:hx, name:brand, brand, group, court, freq:1, source:'sheets-kr', season, rawSeason}));
+      hexes.forEach(hx => krRows.push({hex:hx, name:brand, brand, group, court, freq:1, source:'sheets-kr', season, rawSeason, itemCategory}));
     } else if (country === 'EU') {
-      hexes.forEach(hx => euRows.push({hex:hx, name:brand, brand, group, court, freq:1, source:'sheets-eu', season, rawSeason}));
+      hexes.forEach(hx => euRows.push({hex:hx, name:brand, brand, group, court, freq:1, source:'sheets-eu', season, rawSeason, itemCategory}));
     } else if (country === 'CN') {
       hexes.forEach(hx => {
         hexCounter[hx] = (hexCounter[hx]||0)+1;
         if (!hexBrands[hx]) hexBrands[hx] = new Set();
         if (brand) hexBrands[hx].add(brand);
-        cnRows.push({hex:hx, brand, season, freq:1});
+        cnRows.push({hex:hx, brand, season, freq:1, itemCategory});
       });
     } else {
       // GL 또는 미분류
-      hexes.forEach(hx => glRows.push({hex:hx, name:brand, brand, group:group||'Other', court, freq:1, source:'sheets-gl', season, rawSeason}));
+      hexes.forEach(hx => glRows.push({hex:hx, name:brand, brand, group:group||'Other', court, freq:1, source:'sheets-gl', season, rawSeason, itemCategory}));
     }
   });
 
@@ -7624,6 +7627,7 @@ function _fillCatColors() {
         // Discovery: brandList에 속하는 브랜드만 포함
         const _bMatch = _discBrandList.some(b=> typeof brandMatches==='function' ? brandMatches(c.brand, b) : (c.brand.toLowerCase()===b.toLowerCase()));
         if(!_bMatch) return;
+        if(typeof _passesCategoryFilter==='function' && !_passesCategoryFilter(c)) return;
       } else {
         const ls = typeof getLifestyle === 'function' ? getLifestyle(c.brand, c.group || '', c.source, c.court) : (c.group || '');
         if (ls !== targetLS) return;
@@ -9136,7 +9140,7 @@ function _discBuildSeasonDist(){
   // GL+KR 마켓 데이터(= KOREA 블록과 동일 소스) 중 월 정보(rawSeason)가 있는 행만
   const rows = compAll.filter(co =>
     co.hex && ((co.source||'').includes('gl') || (co.source||'').includes('kr')) &&
-    _passesSel(co) && _discMonthOf(co.rawSeason)
+    _passesSel(co) && (typeof _passesCategoryFilter!=='function' || _passesCategoryFilter(co)) && _discMonthOf(co.rawSeason)
   );
 
   // 월별 집계 (+ 실제 색상 hex도 함께 보관 — 대표 컬러 칩 표시용)
@@ -9333,11 +9337,14 @@ function _selectDiscoveryPalette(classified){
     if(!_sel || _sel.size===0) return true;
     return _brandsOf(co).some(b=>_sel.has(_bkn(b)));
   }
+  function _passesSelAndCategory(co){
+    return _passesSel(co) && (typeof _passesCategoryFilter!=='function' || _passesCategoryFilter(co));
+  }
 
   // ── GLOBAL: compData(country=GL) + 트렌드 PDF(뉴스레터·WGSN·Peclers, comp 소스 제외) ──
   const compAll = (typeof compData !== 'undefined' && compData) ? compData : [];
   const globalMarket = compAll
-    .filter(co => co.hex && (co.source||'').includes('gl') && _passesSel(co))
+    .filter(co => co.hex && (co.source||'').includes('gl') && _passesSelAndCategory(co))
     .map(co => ({ ...co, hex:(co.hex||'').toUpperCase(), freq:co.freq||1, total:0 }));
   const trendPdfOnly = (typeof getTrendSourceColors === 'function' ? getTrendSourceColors() : [])
     .filter(co => co.hex && (co.sources||[]).some(s=>s!=='comp'))
@@ -9348,7 +9355,7 @@ function _selectDiscoveryPalette(classified){
   const koreaPool = [
     ...globalPool,
     ...compAll
-      .filter(co => co.hex && (co.source||'').includes('kr') && _passesSel(co))
+      .filter(co => co.hex && (co.source||'').includes('kr') && _passesSelAndCategory(co))
       .map(co => ({ ...co, hex:(co.hex||'').toUpperCase(), freq:co.freq||1, total:0 }))
   ];
 
@@ -9360,6 +9367,7 @@ function _selectDiscoveryPalette(classified){
     const bList = Array.isArray(c.brands) ? c.brands : (c.brand ? [c.brand] : []);
     if(!bList.length) return;
     if(_sel && _sel.size>0 && !bList.some(b=>_sel.has(_bkn(b)))) return;
+    if(typeof _passesCategoryFilter==='function' && !_passesCategoryFilter(c)) return;
     chinaPool.push({ hex:(c.hex||'').toUpperCase(), name:bList[0], brand:bList[0], brands:bList, freq:c.freq||1, total:0 });
   });
 
@@ -14858,13 +14866,19 @@ function handleUnifiedCompFile(input){
       i = colExact('name'); if(i>=0) return i;
       return header.findIndex(h=>h.includes('brand') && !h.includes('group'));
     })();
-    // 카테고리/그룹 컬럼: brand_group → group → category/lifestyle
+    // 카테고리/그룹 컬럼: brand_group → group → lifestyle (품목 카테고리는 별도)
     const idxGroup = (()=>{
       let i = colExact('brand_group'); if(i>=0) return i;
       i = colExact('group'); if(i>=0) return i;
-      i = colExact('category'); if(i>=0) return i;
       i = colExact('lifestyle'); if(i>=0) return i;
-      return header.findIndex(h=>h.includes('group')||h.includes('category')||h.includes('lifestyle'));
+      return header.findIndex(h=>h.includes('group')||h.includes('lifestyle'));
+    })();
+    // 품목 카테고리(outerwear/top/bottom/dress) — brand_group과는 별개 컬럼
+    const idxItemCategory = (()=>{
+      let i = colExact('category'); if(i>=0) return i;
+      i = colExact('item_category'); if(i>=0) return i;
+      i = colExact('product_category'); if(i>=0) return i;
+      return header.findIndex(h=>h.includes('category'));
     })();
     const idxHex    = header.findIndex(h=>h.includes('hex'));
     const idxSeason = colIdx('season');
@@ -14888,6 +14902,7 @@ function handleUnifiedCompFile(input){
       const court   = idxCourt>=0 ? (p[idxCourt]||'').trim().toUpperCase() : '';
       const season  = idxSeason>=0 ? _normalizeSeasonValue(p[idxSeason]||'') : '';
       const rawSeason = idxSeason>=0 ? (p[idxSeason]||'').trim() : ''; // 월별 원본 값 보존 — Season Color Distribution용
+      const itemCategory = idxItemCategory>=0 ? (p[idxItemCategory]||'').trim().toLowerCase() : ''; // outerwear/top/bottom/dress
       const rawHex  = idxHex>=0 ? (p[idxHex]||'').trim() : '';
 
       // season 필터 — 활성 시즌이 있고 CSV 행에 시즌값이 있으면 일치하는 것만
@@ -14899,20 +14914,20 @@ function handleUnifiedCompFile(input){
       if(hexes.length === 0) return;
 
       if(country === 'KR'){
-        hexes.forEach(hx => krRows.push({hex:hx, name:brand, brand, group, court, freq:1, source:'csv-kr', season, rawSeason}));
+        hexes.forEach(hx => krRows.push({hex:hx, name:brand, brand, group, court, freq:1, source:'csv-kr', season, rawSeason, itemCategory}));
       } else if(country === 'EU'){
-        hexes.forEach(hx => euRows.push({hex:hx, name:brand, brand, group, court, freq:1, source:'sheets-eu', season, rawSeason}));
+        hexes.forEach(hx => euRows.push({hex:hx, name:brand, brand, group, court, freq:1, source:'sheets-eu', season, rawSeason, itemCategory}));
       } else if(country === 'CN'){
         hexes.forEach(hx=>{
           hexCounter[hx]=(hexCounter[hx]||0)+1;
           if(!hexBrands[hx]) hexBrands[hx]=new Set();
           if(brand) hexBrands[hx].add(brand);
-          cnRows.push({hex:hx, brand, season, freq:1});
+          cnRows.push({hex:hx, brand, season, freq:1, itemCategory});
         });
       } else {
         // GL 또는 미분류
         const g=(group||'').trim()||'Other';
-        hexes.forEach(hx => glRows.push({hex:hx, name:brand, brand, group:g, court, freq:1, source:'csv-gl', season, rawSeason}));
+        hexes.forEach(hx => glRows.push({hex:hx, name:brand, brand, group:g, court, freq:1, source:'csv-gl', season, rawSeason, itemCategory}));
       }
     });
 
@@ -17261,6 +17276,36 @@ window._defaultBrandSel = {
 // (버전이 다르면 localStorage에 저장된 예전 체크 목록을 무시하고 새 기본값으로 1회 재설정)
 window._defaultBrandSelVersion = window._defaultBrandSelVersion || { DISCOVERY: 2 };
 
+// ── 품목 카테고리(Outerwear/Top/Bottom/Dress) 필터 — DISCOVERY 02 Market Analysis 전용 ──
+window._marketCategoryFilter = window._marketCategoryFilter || {}; // 브랜드별로 기억 (예: {DISCOVERY:'outerwear'})
+window._curCategoryFilter = function(){
+  var fb = (typeof _activeBrand !== 'undefined' && _activeBrand) ? _activeBrand : 'MLB';
+  return window._marketCategoryFilter[fb] || 'ALL';
+};
+window.setMarketCategoryFilter = function(cat){
+  var fb = (typeof _activeBrand !== 'undefined' && _activeBrand) ? _activeBrand : 'MLB';
+  window._marketCategoryFilter[fb] = cat || 'ALL';
+  try{ localStorage.setItem('fnf_catFilter_'+fb, window._marketCategoryFilter[fb]); }catch(e){}
+  if(typeof renderMarketCsvBrands==='function') renderMarketCsvBrands();
+  if(typeof renderCompBrandPage==='function') renderCompBrandPage();
+  if(typeof _renderDiscoveryPalette==='function' && fb==='DISCOVERY') _renderDiscoveryPalette();
+};
+// 페이지 로드 시 저장된 카테고리 필터 복원
+(function(){
+  try{
+    ['DISCOVERY','MLB','SERGIO','DUVETICA'].forEach(function(fb){
+      var saved = localStorage.getItem('fnf_catFilter_'+fb);
+      if(saved) window._marketCategoryFilter[fb] = saved;
+    });
+  }catch(e){}
+})();
+// co.itemCategory가 현재 카테고리 필터를 통과하는지 확인 (ALL이면 전체 통과)
+function _passesCategoryFilter(co){
+  var cur = window._curCategoryFilter();
+  if(!cur || cur === 'ALL') return true;
+  return (co.itemCategory||'').toLowerCase() === cur.toLowerCase();
+}
+
 window._curMarketSel = function(){
   var fb = (typeof _activeBrand !== 'undefined' && _activeBrand) ? _activeBrand : 'MLB';
   if(!window._marketBrandSelMap[fb]) window._marketBrandSelMap[fb] = new Set();
@@ -17374,9 +17419,27 @@ window.renderMarketCsvBrands = function(brands, season) {
   // 실제 화면에 보이는 브랜드 체크박스 중 체크된 것만 센다
   var visibleCheckedCount = list.filter(function(b){ return sel.has(window._brandKeyNorm(b)); }).length;
 
+  // ── DISCOVERY 전용 품목 카테고리 필터 (Outerwear/Top/Bottom/Dress) ──
+  var categoryFilterHtml = '';
+  if(_activeBrand === 'DISCOVERY'){
+    var curCat = window._curCategoryFilter();
+    var CATS = [['ALL','전체'],['outerwear','Outerwear'],['top','Top'],['bottom','Bottom'],['dress','Dress']];
+    categoryFilterHtml = '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px">'
+      + '<span style="font-family:var(--mono);font-size:9px;color:var(--text4)">품목 카테고리</span>'
+      + CATS.map(function(c){
+          var isActive = curCat.toUpperCase() === c[0].toUpperCase();
+          var bg = isActive ? '#A07840' : 'var(--bg3)';
+          var col = isActive ? '#fff' : 'var(--text2)';
+          var brd = isActive ? '#A07840' : 'var(--border2)';
+          return '<button onclick="window.setMarketCategoryFilter(\'' + c[0] + '\')" style="font-family:var(--mono);font-size:9px;font-weight:' + (isActive?'700':'400') + ';background:' + bg + ';border:1px solid ' + brd + ';border-radius:4px;color:' + col + ';padding:3px 10px;cursor:pointer">' + c[1] + '</button>';
+        }).join('')
+      + '</div>';
+  }
+
   box.style.display = 'block';
   box.innerHTML =
-      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">'
+      categoryFilterHtml
+    + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">'
     +   '<span style="color:var(--text2);font-weight:700">CSV 브랜드 ' + list.length + '개' + seasonTxt + '</span>'
     +   '<span style="color:var(--text4)">— 분석할 브랜드 체크 (다중, ' + (_activeBrand||'MLB') + ' 선택 기억됨)</span>'
     +   '<span id="mbsel-count" style="color:var(--accent);font-weight:700">· 체크 ' + visibleCheckedCount + '개</span>'
