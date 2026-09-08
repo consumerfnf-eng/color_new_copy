@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_COLORWAY_LAYOUT_FIX_v72 (2026-09-07) -->
+<!-- BUILD_VERSION: DISC_COLORWAY_NOSHOE_DOWN_RESET_v73 (2026-09-07) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7536,12 +7536,12 @@ function toggleCatEditMode() {
 // Category Curation 팔레트를 옷 실루엣에 입혀서 배색을 한눈에 확인
 // ══════════════════════════════════════════════════════════════
 
-// 카테고리별 실루엣 구성 (top: 메인 파트 / bottom: 서브1 / shoe: 서브2)
-// resort는 파카/니트를 배색(variant)마다 번갈아 사용 — 포멀한 룩(코트·정장류)은 전 카테고리 금지
+// 카테고리별 실루엣 구성 (top: 메인 파트 / bottom: 서브1) — 신발 없음
+// 포멀한 룩(코트·정장류)은 전 카테고리 금지. 카테고리마다 다운(패딩) 아이템도 배색 후보로 포함.
 const CW_CAT_CONFIG = {
-  commute:  { topTypes:['windbreaker'],   bottomType:'pants',    shoeType:'sneaker' },
-  wellness: { topTypes:['sportstop'],     bottomType:'leggings', shoeType:'sneaker' },
-  resort:   { topTypes:['knit','parka'],  bottomType:'pants',    shoeType:'sneaker' },
+  commute:  { topTypes:['windbreaker','down'], bottomType:'pants' },
+  wellness: { topTypes:['sportstop','down'],   bottomType:'leggings' },
+  resort:   { topTypes:['knit','parka','down'],bottomType:'pants' },
 };
 
 function _cwIsLightHex(hex){
@@ -7572,6 +7572,15 @@ function _cwShapeTop(type, color){
       <line x1="60" y1="32" x2="60" y2="95" stroke="${stroke}" stroke-width="1.2"/>
       <path d="M24,95 L96,95 M28,60 L20,66 M92,60 L100,66" stroke="${stroke}" stroke-width="1.2" fill="none"/>`;
   }
+  if(type === 'down'){
+    // 패딩(다운) 자켓 — 볼륨감 있는 몸통 + 누빔(퀼팅) 가로선
+    return `<path d="M28,30 L47,16 L73,16 L92,30 L98,95 L22,95 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" ${dash}/>
+      <line x1="60" y1="30" x2="60" y2="95" stroke="${stroke}" stroke-width="1.2"/>
+      <line x1="24" y1="46" x2="96" y2="46" stroke="${stroke}" stroke-width="1"/>
+      <line x1="23" y1="60" x2="97" y2="60" stroke="${stroke}" stroke-width="1"/>
+      <line x1="22" y1="74" x2="98" y2="74" stroke="${stroke}" stroke-width="1"/>
+      <line x1="22" y1="88" x2="98" y2="88" stroke="${stroke}" stroke-width="1"/>`;
+  }
   // windbreaker (default)
   return `<path d="M35,15 L50,10 L70,10 L85,15 L101,36 L90,46 L85,36 L85,95 L35,95 L35,36 L30,46 L19,36 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" ${dash}/>
     <line x1="60" y1="15" x2="60" y2="95" stroke="${stroke}" stroke-width="1.3"/>`;
@@ -7588,33 +7597,26 @@ function _cwShapeBottom(type, color){
   return `<path d="M40,100 L80,100 L83,174 L67,174 L62,128 L57,174 L41,174 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" ${dash}/>`;
 }
 
-function _cwShapeShoe(type, color){
-  const fill = color || _CW_NONE_FILL;
-  const stroke = color ? 'rgba(0,0,0,0.18)' : _CW_NONE_STROKE;
-  const dash = color ? '' : 'stroke-dasharray="3,3"';
-  return `<path d="M35,190 L45,181 L70,181 L91,188 Q97,192 90,197 L38,197 Q31,197 35,190 Z" fill="${fill}" stroke="${stroke}" stroke-width="1.5" ${dash}/>`;
-}
-
 function _cwBuildOutfitSVG(catKey, variant){
   const cfg = CW_CAT_CONFIG[catKey] || CW_CAT_CONFIG.commute;
-  const topType = cfg.topTypes[variant.idx % cfg.topTypes.length];
-  return `<svg viewBox="0 0 120 210" width="100%" style="max-width:120px;overflow:visible">
+  const topType = variant.topType || cfg.topTypes[variant.idx % cfg.topTypes.length];
+  return `<svg viewBox="0 0 120 180" width="100%" style="max-width:120px;overflow:visible">
     <g onclick="_cwEditPart('${catKey}',${variant.idx},'main')" style="cursor:pointer">${_cwShapeTop(topType, variant.main)}</g>
     <g onclick="_cwEditPart('${catKey}',${variant.idx},'sub1')" style="cursor:pointer">${_cwShapeBottom(cfg.bottomType, variant.sub1)}</g>
-    <g onclick="_cwEditPart('${catKey}',${variant.idx},'sub2')" style="cursor:pointer">${_cwShapeShoe(cfg.shoeType, variant.sub2)}</g>
   </svg>`;
 }
 
-// 팔레트(최대 6색)에서 3벌의 배색 조합을 자동 생성 (겹치지 않게 순환)
-function _cwInitVariants(palette){
+// 팔레트(최대 6색)에서 3벌의 배색 조합을 자동 생성 (겹치지 않게 순환) — 옷 종류도 카테고리의 topTypes를 순환
+function _cwInitVariants(catKey, palette){
+  const cfg = CW_CAT_CONFIG[catKey] || CW_CAT_CONFIG.commute;
   const colors = palette.map(c=>c.hex).filter(Boolean);
   if(!colors.length) return [];
   const pick = i => colors[i % colors.length];
   return [0,1,2].map(i => ({
     idx:i,
+    topType: cfg.topTypes[i % cfg.topTypes.length],
     main: pick(i*2)||null,
     sub1: pick(i*2+1)||null,
-    sub2: pick(i*2+2)||null,
   }));
 }
 
@@ -7645,7 +7647,7 @@ function renderColorwayPage(){
     if(!state){
       const cached = (window._catColorsCache && window._catColorsCache[cat.key]) || {point:[],sub:[]};
       const palette = [...(cached.point||[]), ...(cached.sub||[])].filter(c=>c && c.hex);
-      state = window._colorwayState[cat.key] = { palette, variants: _cwInitVariants(palette) };
+      state = window._colorwayState[cat.key] = { palette, variants: _cwInitVariants(cat.key, palette) };
     }
     if(!state.palette.length){
       return `<div style="border:1px solid var(--border);border-radius:12px;padding:16px;background:var(--bg2)">
@@ -7657,7 +7659,10 @@ function renderColorwayPage(){
         ${_cwBuildOutfitSVG(cat.key, v)}
       </div>`).join('');
     return `<div style="border:1px solid var(--border);border-radius:12px;padding:16px;background:var(--bg2)">
-      <div style="font-family:var(--sans);font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px">${cat.emoji||''} ${cat.name}</div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:2px">
+        <div style="font-family:var(--sans);font-size:14px;font-weight:700;color:var(--text)">${cat.emoji||''} ${cat.name}</div>
+        <button onclick="_cwResetCategory('${cat.key}')" style="font-family:var(--mono);font-size:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text3);padding:3px 8px;cursor:pointer" title="자동 생성 배색으로 되돌리기">↺ 복구</button>
+      </div>
       <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:14px">${cat.subLabel||''}</div>
       <div style="display:flex;gap:8px;justify-content:space-around">${outfits}</div>
       <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:14px;padding-top:10px;border-top:1px solid var(--border)">
@@ -7681,7 +7686,7 @@ function _cwEditPart(catKey, variantIdx, part){
   const swatches = state.palette.map(c=>
     `<div onclick="_cwSetPart('${catKey}',${variantIdx},'${part}','${c.hex}')" style="width:26px;height:26px;border-radius:6px;background:${c.hex};cursor:pointer;border:1px solid rgba(255,255,255,0.15)" title="${c.hex}"></div>`
   ).join('');
-  pop.innerHTML = `<div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:8px">색 선택 (${part==='main'?'메인':part==='sub1'?'서브1':'서브2'})</div>
+  pop.innerHTML = `<div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:8px">색 선택 (${part==='main'?'메인':'서브'})</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;max-width:190px">
       ${swatches}
       <div onclick="_cwSetPart('${catKey}',${variantIdx},'${part}',null)" style="width:26px;height:26px;border-radius:6px;border:1px dashed var(--border2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;color:var(--text4)" title="색 없음">×</div>
@@ -7707,6 +7712,13 @@ function _cwSetPart(catKey, variantIdx, part, hexOrNull){
   state.variants[variantIdx][part] = hexOrNull;
   const pop = document.getElementById('cw-edit-popover');
   if(pop) pop.style.display = 'none';
+  renderColorwayPage();
+}
+// 이 카테고리를 자동 생성 배색(초기 상태)으로 되돌림 — 수동 편집 전부 취소
+function _cwResetCategory(catKey){
+  const state = window._colorwayState[catKey];
+  if(!state) return;
+  state.variants = _cwInitVariants(catKey, state.palette);
   renderColorwayPage();
 }
 
