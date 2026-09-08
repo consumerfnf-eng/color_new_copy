@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_ITEM_CATEGORY_FILTER_v60 (2026-09-07) -->
+<!-- BUILD_VERSION: DISC_CATFILTER_SELECT_APPLY_v61 (2026-09-07) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -17277,25 +17277,43 @@ window._defaultBrandSel = {
 window._defaultBrandSelVersion = window._defaultBrandSelVersion || { DISCOVERY: 2 };
 
 // ── 품목 카테고리(Outerwear/Top/Bottom/Dress) 필터 — DISCOVERY 02 Market Analysis 전용 ──
-window._marketCategoryFilter = window._marketCategoryFilter || {}; // 브랜드별로 기억 (예: {DISCOVERY:'outerwear'})
+window._marketCategoryFilter = window._marketCategoryFilter || {}; // 실제 "적용된" 값 (브랜드별)
+window._marketCategoryPending = window._marketCategoryPending || {}; // 버튼으로 "선택만" 해둔 값 (적용 전)
 window._curCategoryFilter = function(){
   var fb = (typeof _activeBrand !== 'undefined' && _activeBrand) ? _activeBrand : 'MLB';
   return window._marketCategoryFilter[fb] || 'ALL';
 };
-window.setMarketCategoryFilter = function(cat){
+window._curCategoryPending = function(){
   var fb = (typeof _activeBrand !== 'undefined' && _activeBrand) ? _activeBrand : 'MLB';
-  window._marketCategoryFilter[fb] = cat || 'ALL';
+  if(window._marketCategoryPending[fb] === undefined) window._marketCategoryPending[fb] = window._curCategoryFilter();
+  return window._marketCategoryPending[fb];
+};
+// 버튼 클릭 — 선택 상태만 바꾸고(하이라이트), 아직 실제 필터링은 적용 안 함
+window.selectMarketCategoryButton = function(cat){
+  var fb = (typeof _activeBrand !== 'undefined' && _activeBrand) ? _activeBrand : 'MLB';
+  window._marketCategoryPending[fb] = cat || 'ALL';
+  if(typeof renderMarketCsvBrands==='function') renderMarketCsvBrands();
+};
+// "선택 적용" 버튼 — 실제로 필터를 반영하고 관련 화면 전부 재계산
+window.applyMarketCategoryFilter = function(){
+  var fb = (typeof _activeBrand !== 'undefined' && _activeBrand) ? _activeBrand : 'MLB';
+  window._marketCategoryFilter[fb] = window._curCategoryPending();
   try{ localStorage.setItem('fnf_catFilter_'+fb, window._marketCategoryFilter[fb]); }catch(e){}
   if(typeof renderMarketCsvBrands==='function') renderMarketCsvBrands();
   if(typeof renderCompBrandPage==='function') renderCompBrandPage();
   if(typeof _renderDiscoveryPalette==='function' && fb==='DISCOVERY') _renderDiscoveryPalette();
+};
+// 하위 호환용 별칭 (기존에 이 이름으로 걸어둔 onclick이 있어도 동작하도록)
+window.setMarketCategoryFilter = function(cat){
+  window.selectMarketCategoryButton(cat);
+  window.applyMarketCategoryFilter();
 };
 // 페이지 로드 시 저장된 카테고리 필터 복원
 (function(){
   try{
     ['DISCOVERY','MLB','SERGIO','DUVETICA'].forEach(function(fb){
       var saved = localStorage.getItem('fnf_catFilter_'+fb);
-      if(saved) window._marketCategoryFilter[fb] = saved;
+      if(saved){ window._marketCategoryFilter[fb] = saved; window._marketCategoryPending[fb] = saved; }
     });
   }catch(e){}
 })();
@@ -17422,17 +17440,21 @@ window.renderMarketCsvBrands = function(brands, season) {
   // ── DISCOVERY 전용 품목 카테고리 필터 (Outerwear/Top/Bottom/Dress) ──
   var categoryFilterHtml = '';
   if(_activeBrand === 'DISCOVERY'){
-    var curCat = window._curCategoryFilter();
+    var pendingCat = window._curCategoryPending();
+    var appliedCat = window._curCategoryFilter();
+    var isDirty = pendingCat.toUpperCase() !== appliedCat.toUpperCase();
     var CATS = [['ALL','전체'],['outerwear','Outerwear'],['top','Top'],['bottom','Bottom'],['dress','Dress']];
     categoryFilterHtml = '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px">'
       + '<span style="font-family:var(--mono);font-size:9px;color:var(--text4)">품목 카테고리</span>'
       + CATS.map(function(c){
-          var isActive = curCat.toUpperCase() === c[0].toUpperCase();
+          var isActive = pendingCat.toUpperCase() === c[0].toUpperCase();
           var bg = isActive ? '#A07840' : 'var(--bg3)';
           var col = isActive ? '#fff' : 'var(--text2)';
           var brd = isActive ? '#A07840' : 'var(--border2)';
-          return '<button onclick="window.setMarketCategoryFilter(\'' + c[0] + '\')" style="font-family:var(--mono);font-size:9px;font-weight:' + (isActive?'700':'400') + ';background:' + bg + ';border:1px solid ' + brd + ';border-radius:4px;color:' + col + ';padding:3px 10px;cursor:pointer">' + c[1] + '</button>';
+          return '<button onclick="window.selectMarketCategoryButton(\'' + c[0] + '\')" style="font-family:var(--mono);font-size:9px;font-weight:' + (isActive?'700':'400') + ';background:' + bg + ';border:1px solid ' + brd + ';border-radius:4px;color:' + col + ';padding:3px 10px;cursor:pointer">' + c[1] + '</button>';
         }).join('')
+      + '<button onclick="window.applyMarketCategoryFilter()" style="font-family:var(--mono);font-size:9px;font-weight:700;background:' + (isDirty?'#2E7D4F':'var(--bg3)') + ';border:1px solid ' + (isDirty?'#2E7D4F':'var(--border2)') + ';border-radius:4px;color:' + (isDirty?'#fff':'var(--text4)') + ';padding:3px 12px;cursor:pointer;margin-left:4px">' + (isDirty?'✓ 선택 적용':'적용됨') + '</button>'
+      + (isDirty ? '<span style="font-family:var(--mono);font-size:8px;color:var(--text4)">현재 적용: ' + (appliedCat==='ALL'?'전체':appliedCat) + '</span>' : '')
       + '</div>';
   }
 
