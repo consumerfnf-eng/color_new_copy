@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_COLORWAY_OVERLAP_STACK_v100 (2026-09-08) -->
+<!-- BUILD_VERSION: DISC_COLORWAY_STACK_OFFSET_v101 (2026-09-08) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7706,7 +7706,7 @@ function _cwImagePart(catKey, typeKey, imgIdx, color, onclickAttr, boxW, boxH){
 // 상의/하의 슬롯 고정 박스 크기 (모든 이미지가 이 크기 안에서 비율 유지하며 균일하게 표시됨) — 크기 확대
 const CW_TOP_BOX = { w: 110, h: 110 };
 const CW_BOTTOM_BOX = { w: 110, h: 110 };
-const CW_STACK_OFFSET = 10; // 겹쳐 쌓을 때 살짝 어긋나게 밀리는 픽셀 값
+const CW_STACK_OFFSET = 38; // 겹쳐 쌓을 때 오른쪽으로 밀리는 픽셀 값 (약 1cm @96dpi)
 
 // 옷 한 벌(상의+하의) 렌더 — 겹치기 스택에서 한 레이어로 쓰임
 function _cwBuildOutfitSVG(catKey, variant){
@@ -7721,8 +7721,8 @@ function _cwBuildOutfitSVG(catKey, variant){
     + '</div>';
 }
 
-// 같은 스타일(같은 imgIdx)을 쓰는 배색 묶음(2~3벌)을 살짝 어긋나게 겹쳐서 한 덩어리로 보여줌.
-// 맨 앞(마지막 배열 요소)이 진하게 보이고, 뒤에 깔린 것들은 살짝만 보여도 무방(요청사항).
+// 같은 스타일(같은 imgIdx)을 쓰는 배색 묶음(최대 3~4벌)을 오른쪽으로 약 1cm씩 밀려서 겹쳐 보여줌.
+// 세로 위치는 그대로 두고 가로로만 밀림 — 맨 앞(마지막 배열 요소)이 진하게 보이고, 뒤에 깔린 것들은 살짝만 보여도 무방.
 function _cwBuildOverlapStack(catKey, block){
   if(!block.length) return '';
   if(block.length === 1) return _cwBuildOutfitSVG(catKey, block[0]);
@@ -7732,11 +7732,11 @@ function _cwBuildOverlapStack(catKey, block){
   const layers = block.map((v, li) => {
     const offset = li * CW_STACK_OFFSET; // 뒤쪽(앞 인덱스)일수록 덜 밀림, 마지막이 가장 앞+많이 밀림
     const z = li + 1;
-    return '<div style="position:absolute;left:' + offset + 'px;top:' + offset + 'px;z-index:' + z + '">'
+    return '<div style="position:absolute;left:' + offset + 'px;top:0;z-index:' + z + '">'
       + _cwBuildOutfitSVG(catKey, v)
       + '</div>';
   }).join('');
-  return '<div style="position:relative;width:' + (CW_TOP_BOX.w+extra) + 'px;height:' + (totalH+extra) + 'px">' + layers + '</div>';
+  return '<div style="position:relative;width:' + (CW_TOP_BOX.w+extra) + 'px;height:' + totalH + 'px">' + layers + '</div>';
 }
 
 // 팔레트(최대 ~10색)와 카테고리별 실제 비율(_cwGetCategoryGroupCounts)로 배색을 생성.
@@ -7762,7 +7762,7 @@ function _cwInitVariants(catKey, palette){
   const npSeq = _cwWeightedRoundRobin(nonPoint, npWeights, Math.max(TOTAL*2, nonPoint.length*2, 8));
   const nonPointRR = i => npSeq.length ? npSeq[i % npSeq.length] : null;
   const pointRR = i => pointColors[i % pointColors.length];
-  const IMG_BLOCK = 2; // 같은 스타일을 2벌씩 묶어서 색만 다르게 나란히 배치
+  const IMG_BLOCK = 3; // 같은 스타일을 3벌씩 묶어서 색만 다르게 겹쳐서 배치
   const variants = [];
   let globalIdx = 0, npCursor = 0, pointIdx = 0;
   groupCounts.forEach(g=>{
