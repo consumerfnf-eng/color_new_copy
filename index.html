@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_SEASON_QUARTERLY_v98 (2026-09-08) -->
+<!-- BUILD_VERSION: DISC_SEASON_PREFALL_FALL_WINTER_v99 (2026-09-08) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -9519,13 +9519,12 @@ function _discClassify(hex){
   return 'sub';
 }
 
-// ── Season Color Distribution — 02 Market 데이터(월별 rawSeason)를 캘린더 분기(SPRING/SUMMER/FALL/WINTER) 기준으로 집계 ──
-// SPRING=3·4·5월 / SUMMER=6·7·8월 / FALL=9·10·11월 / WINTER=12·1·2월
+// ── Season Color Distribution — 02 Market 데이터(월별 rawSeason)를 PRE-FALL/FALL/WINTER 구간으로 집계 ──
+// 27FW(가을·겨울) 시즌이라 SPRING/SUMMER는 불필요 — PRE-FALL=9월 / FALL=10·11월 / WINTER=12·1·2월
 const DISC_SEASON_GROUPS = [
-  { key:'spring', label:'SPRING', months:[3,4,5]   },
-  { key:'summer', label:'SUMMER', months:[6,7,8]   },
-  { key:'fall',   label:'FALL',   months:[9,10,11] },
-  { key:'winter', label:'WINTER', months:[12,1,2]  },
+  { key:'prefall', label:'PRE-FALL', months:[9]      },
+  { key:'fall',    label:'FALL',     months:[10,11]  },
+  { key:'winter',  label:'WINTER',   months:[12,1,2] },
 ];
 function _discMonthOf(rawSeason){
   const m = (rawSeason||'').match(/^(\d{4})-(\d{2})$/);
