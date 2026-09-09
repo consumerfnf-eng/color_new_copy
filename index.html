@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_CATCURATION_BRANDCAP_v116 (2026-09-08) -->
+<!-- BUILD_VERSION: DISC_COLORWAY_CHIPS_TOP_BLANK_v117 (2026-09-08) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7772,8 +7772,8 @@ function _cwInitVariants(catKey, palette){
         topType: g.type,
         bottomType: blockBottomType[blockNo],
         imgIdx: blockNo, // 그룹 내 순번 기준 — 카테고리마다 항상 레귤러 패딩(down_1)부터 시작해서 순서대로 노출
-        main: mainC ? mainC.hex : null,
-        sub1: sub1C ? sub1C.hex : null,
+        main: null, // ★ 초기 상태는 색 없이(흰색) 둠 — 클릭해서 직접 색을 입히기 전까지 무채색 유지
+        sub1: null,
       });
       globalIdx++;
     }
@@ -7871,11 +7871,11 @@ function renderColorwayPage(){
           <button onclick="_cwResetCategory('${cat.key}')" style="font-family:var(--mono);font-size:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text3);padding:3px 8px;cursor:pointer" title="자동 생성 배색으로 되돌리기">↺ 복구</button>
         </div>
       </div>
-      <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:14px">대표 컬러코드: ${repLabel}</div>
-      ${groupSections}
-      <div style="display:flex;gap:4px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--border)">
-        ${state.palette.map(c=>`<div style="width:16px;height:16px;border-radius:4px;background:${c.hex};border:1px solid rgba(255,255,255,0.15)" title="${c.hex}"></div>`).join('')}
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:10px">대표 컬러코드: ${repLabel}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+        ${state.palette.map(c=>`<div style="width:26px;height:26px;border-radius:6px;background:${c.hex};border:1px solid rgba(255,255,255,0.15);box-shadow:0 1px 3px rgba(0,0,0,0.15)" title="${c.hex}"></div>`).join('')}
       </div>
+      ${groupSections}
     </div>`;
   }).join('');
 
