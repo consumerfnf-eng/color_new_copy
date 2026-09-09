@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_SALES_WHITEBEIGE_TO_BASIC_v121 (2026-09-08) -->
+<!-- BUILD_VERSION: DISC_COLORWAY_NOCODE_v122 (2026-09-08) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7861,8 +7861,6 @@ function renderColorwayPage(){
         <div style="display:flex;gap:4px;flex-wrap:nowrap">${outfits}</div>
       </div>`;
     }).join('');
-    const repHex = state.palette[0] ? state.palette[0].hex : '#999';
-    const repLabel = (typeof pantoneApprox==='function' ? (pantoneApprox(repHex)||'').replace(/ TCX$/i,'') : '') || repHex;
     return `<div style="border:1px solid var(--border);border-radius:12px;padding:18px;background:var(--bg2);flex:1 1 540px;min-width:540px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
         <div style="font-family:var(--sans);font-size:15px;font-weight:700;color:var(--text)">${cat.emoji||''} ${(cat.name||'').toUpperCase()}</div>
@@ -7871,8 +7869,7 @@ function renderColorwayPage(){
           <button onclick="_cwResetCategory('${cat.key}')" style="font-family:var(--mono);font-size:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text3);padding:3px 8px;cursor:pointer" title="자동 생성 배색으로 되돌리기">↺ 복구</button>
         </div>
       </div>
-      <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:10px">대표 컬러코드: ${repLabel}</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;margin-top:10px;padding-bottom:14px;border-bottom:1px solid var(--border)">
         ${state.palette.map(c=>`<div style="width:26px;height:26px;border-radius:6px;background:${c.hex};border:1px solid rgba(255,255,255,0.15);box-shadow:0 1px 3px rgba(0,0,0,0.15)" title="${c.hex}"></div>`).join('')}
       </div>
       ${groupSections}
