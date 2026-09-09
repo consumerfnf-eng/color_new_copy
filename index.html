@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_COLORWAY_REALDATA_STYLEBLOCK_v97 (2026-09-08) -->
+<!-- BUILD_VERSION: DISC_SEASON_QUARTERLY_v98 (2026-09-08) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -4708,7 +4708,7 @@ async function loadMLBSignalFromCsvText(csv, filterSeason) {
       // season 필터
       if (ci.season >= 0 && filterSeason) {
         const rowSeason = (cols[ci.season] || '').trim().toUpperCase();
-        if (rowSeason && rowSeason !== filterSeason.toUpperCase()) return;
+        if (rowSeason && !_seasonBucketMatches(rowSeason, filterSeason.toUpperCase())) return;
       }
 
       const sysCode = (ci.colorSysCode >= 0 ? cols[ci.colorSysCode] || '' : '').replace(/"/g,'').trim();
@@ -5109,11 +5109,27 @@ async function fetchSheetsCsv(url, retry=0) {
   return null;
 }
 
+// ── 신/구 시즌 라벨 호환 브릿지 ──
+// _normalizeSeasonValue가 "25' WINTER" 같은 새 캘린더 분기 라벨을 내놓는데,
+// 시즌 선택 필터(27FW/28SS/28FW)는 옛 FW/SS 코드 그대로라서 그냥 비교하면 항상 어긋남.
+// FALL·WINTER → *FW 필터와, SPRING·SUMMER → *SS 필터와 매칭되게 다리를 놓음(연도 숫자는 비교 안 함).
+function _seasonBucketMatches(normalized, filterUpper){
+  if (!filterUpper) return true;
+  if (normalized === filterUpper) return true;
+  const m = (normalized||'').match(/^(\d{2})' (SPRING|SUMMER|FALL|WINTER)$/);
+  if (!m) return false;
+  const isFW = (m[2] === 'FALL' || m[2] === 'WINTER');
+  if (isFW && /FW$/.test(filterUpper)) return true;
+  if (!isFW && /SS$/.test(filterUpper)) return true;
+  return false;
+}
 // ── season 값 정규화 ──
-// 시트에 "2025-12", "2026-01" 같은 YYYY-MM 형식으로 들어오는 값은 날짜 기준으로 분기:
-//  - 2026-03까지(포함) → 27FW
-//  - 2026-04 ~ 2026-09 → 28SS
-//  - 2026-10부터 → 28FW
+// 시트에 "2025-12", "2026-01" 같은 YYYY-MM 형식으로 들어오는 값은 캘린더 분기 기준으로 분류:
+//  - 3·4·5월 → SPRING
+//  - 6·7·8월 → SUMMER
+//  - 9·10·11월 → FALL
+//  - 12·1·2월 → WINTER (12월은 그 해, 1·2월은 전년도 기준으로 라벨 — 예: 2025-12·2026-01·2026-02 전부 "25' WINTER")
+// 결과 형식: "25' WINTER", "26' SPRING" 등
 function _normalizeSeasonValue(raw){
   const s = (raw || '').trim();
   if (!s) return s;
@@ -5121,12 +5137,13 @@ function _normalizeSeasonValue(raw){
   if (m) {
     const year = parseInt(m[1], 10);
     const month = parseInt(m[2], 10);
-    const ym = year*12 + month; // 연-월을 하나의 숫자로 비교
-    const CUTOFF_28SS = 2026*12 + 4;  // 2026-04부터 28SS
-    const CUTOFF_28FW = 2026*12 + 10; // 2026-10부터 28FW
-    if (ym < CUTOFF_28SS) return '27FW';
-    if (ym < CUTOFF_28FW) return '28SS';
-    return '28FW';
+    let season, seasonYear;
+    if (month>=3 && month<=5)      { season='SPRING'; seasonYear=year; }
+    else if (month>=6 && month<=8) { season='SUMMER'; seasonYear=year; }
+    else if (month>=9 && month<=11){ season='FALL';   seasonYear=year; }
+    else                            { season='WINTER'; seasonYear=(month===12)?year:year-1; }
+    const yy = String(seasonYear).slice(-2);
+    return yy + "' " + season;
   }
   return s.toUpperCase();
 }
@@ -5204,7 +5221,7 @@ async function loadCompFromCsvText(csv, filterSeason) {
     // season 필터 (2025-12 / 2026-01 같은 YYYY-MM 값은 27FW로 정규화 후 비교)
     if (idxSeason >= 0 && filterSeason) {
       const rowSeason = _normalizeSeasonValue(p[idxSeason] || '');
-      if (rowSeason && rowSeason !== filterSeason.toUpperCase()) return;
+      if (rowSeason && !_seasonBucketMatches(rowSeason, filterSeason.toUpperCase())) return;
     }
 
     const country  = (idxCountry >= 0 ? p[idxCountry] : '').trim().toUpperCase();
@@ -5354,7 +5371,7 @@ async function loadPeclersFromCsvText(csv, filterSeason) {
     // season 필터 — 시즌 값이 비었거나 불일치면 제외 (엄격)
     if (seasonIdx >= 0 && filterSeason) {
       const rowSeason = (cols[seasonIdx] || '').trim().toUpperCase();
-      if (rowSeason !== filterSeason.toUpperCase()) return;   // 빈 시즌도 제외 → 매 시즌 누출 방지
+      if (!_seasonBucketMatches(rowSeason, filterSeason.toUpperCase())) return;   // 빈 시즌도 제외 → 매 시즌 누출 방지
     }
 
     const name    = nameIdx    >= 0 ? (cols[nameIdx]    || '') : '';
@@ -9502,12 +9519,13 @@ function _discClassify(hex){
   return 'sub';
 }
 
-// ── Season Color Distribution — 02 Market 데이터(월별 rawSeason)를 FALL/PRE-WINTER/WINTER 구간으로 집계 ──
-// 27FW 구성월: 8·9(FALL) · 10·11(PRE-WINTER) · 12·1(WINTER)
+// ── Season Color Distribution — 02 Market 데이터(월별 rawSeason)를 캘린더 분기(SPRING/SUMMER/FALL/WINTER) 기준으로 집계 ──
+// SPRING=3·4·5월 / SUMMER=6·7·8월 / FALL=9·10·11월 / WINTER=12·1·2월
 const DISC_SEASON_GROUPS = [
-  { key:'fall',       label:'FALL',        months:[8,9]   },
-  { key:'prewinter',  label:'PRE-WINTER',  months:[10,11] },
-  { key:'winter',     label:'WINTER',      months:[12,1]  },
+  { key:'spring', label:'SPRING', months:[3,4,5]   },
+  { key:'summer', label:'SUMMER', months:[6,7,8]   },
+  { key:'fall',   label:'FALL',   months:[9,10,11] },
+  { key:'winter', label:'WINTER', months:[12,1,2]  },
 ];
 function _discMonthOf(rawSeason){
   const m = (rawSeason||'').match(/^(\d{4})-(\d{2})$/);
@@ -15335,8 +15353,8 @@ function handleUnifiedCompFile(input){
       const rawHex  = idxHex>=0 ? (p[idxHex]||'').trim() : '';
 
       // season 필터 — 활성 시즌이 있고 CSV 행에 시즌값이 있으면 일치하는 것만
-      // (YYYY-MM 값은 _normalizeSeasonValue에서 날짜 기준 27FW/28SS로 분기됨: 2026-03 전=27FW, 이후=28SS)
-      if(_filterSeason && idxSeason>=0 && season && season.toUpperCase() !== _filterSeason) return;
+      // (YYYY-MM 값은 _normalizeSeasonValue에서 캘린더 분기(SPRING/SUMMER/FALL/WINTER)로 분류됨)
+      if(_filterSeason && idxSeason>=0 && season && !_seasonBucketMatches(season.toUpperCase(), _filterSeason)) return;
 
       // 한 칸에 여러 HEX("#FF0000 | #FFFFFF" 등)가 있으면 각각 별도 Colors로 분리·카운트
       const hexes = (rawHex.match(/#[0-9a-fA-F]{6}/g)||[]).map(h=>h.toUpperCase());
