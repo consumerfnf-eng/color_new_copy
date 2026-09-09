@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_COLORWAY_FIT_PANTSWAP_v110 (2026-09-08) -->
+<!-- BUILD_VERSION: DISC_COLORWAY_WIDESTACK_TIGHTBLOCK_v111 (2026-09-08) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7672,7 +7672,7 @@ function _cwImagePart(catKey, typeKey, imgIdx, color, onclickAttr, boxW, boxH){
 // 상의/하의 슬롯 고정 박스 크기 (모든 이미지가 이 크기 안에서 비율 유지하며 균일하게 표시됨) — 크기 더 확대
 const CW_TOP_BOX = { w: 140, h: 140 };
 const CW_BOTTOM_BOX = { w: 140, h: 140 };
-const CW_STACK_OFFSET = 20; // 겹쳐 쌓을 때 오른쪽으로 밀리는 픽셀 값 (줄여서 카드 밖으로 안 나가게 함)
+const CW_STACK_OFFSET = 38; // 같은 스타일 안에서 겹쳐 쌓을 때 오른쪽으로 밀리는 픽셀 값 (넓게)
 
 // 옷 한 벌(상의+하의) 렌더 — 겹치기 스택에서 한 레이어로 쓰임. showBottom=false면 하의 자리를 비워둠(같은 높이 유지).
 function _cwBuildOutfitSVG(catKey, variant, showBottom){
@@ -7839,7 +7839,7 @@ function renderColorwayPage(){
 
   const cardsHtml = catStates.map(({cat, state})=>{
     if(!state.palette.length){
-      return `<div style="border:1px solid var(--border);border-radius:12px;padding:16px;background:var(--bg2);flex:1 1 420px;min-width:420px">
+      return `<div style="border:1px solid var(--border);border-radius:12px;padding:16px;background:var(--bg2);flex:1 1 540px;min-width:540px">
         <div style="font-family:var(--sans);font-size:14px;font-weight:700;color:var(--text);margin-bottom:10px">${cat.emoji||''} ${cat.name}</div>
         <div class="spp-empty" style="font-size:10px">02 Market Analysis 데이터 필요 (색 없음)</div>
       </div>`;
@@ -7872,7 +7872,7 @@ function renderColorwayPage(){
     }).join('');
     const repHex = state.palette[0] ? state.palette[0].hex : '#999';
     const repLabel = (typeof pantoneApprox==='function' ? (pantoneApprox(repHex)||'').replace(/ TCX$/i,'') : '') || repHex;
-    return `<div style="border:1px solid var(--border);border-radius:12px;padding:18px;background:var(--bg2);flex:1 1 420px;min-width:420px">
+    return `<div style="border:1px solid var(--border);border-radius:12px;padding:18px;background:var(--bg2);flex:1 1 540px;min-width:540px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
         <div style="font-family:var(--sans);font-size:15px;font-weight:700;color:var(--text)">${cat.emoji||''} ${(cat.name||'').toUpperCase()}</div>
         <div style="display:flex;align-items:center;gap:8px">
