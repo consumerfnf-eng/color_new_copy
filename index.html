@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_COLORWAY_NODASH_v118 (2026-09-08) -->
+<!-- BUILD_VERSION: DISC_COMMUTE_FILA_BOOST_v119 (2026-09-08) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7516,7 +7516,8 @@ const DISCOVERY_CAT_DEFS = [
     key: 'commute', emoji: '🧭', name: 'Casual Commute', subLabel: 'Sports & Outdoor',
     brands: 'On Running · New Balance · Satisfy · Salomon',
     lsKey: 'Outdoor/Sports', colorIdx: 2, weight: 0.5,
-    brandList: ['On Running','On','New Balance','Satisfy','Salomon','Lululemon','Aritzia']
+    brandList: ['On Running','On','New Balance','Satisfy','Salomon','FILA'],
+    boostBrands: ['New Balance','FILA'] // 이 브랜드들은 최종 6개 중 더 많은 자리를 차지하도록 비중 강화
   },
   {
     key: 'wellness', emoji: '🌿', name: 'Active Wellness', subLabel: 'Athleisure',
@@ -8099,11 +8100,14 @@ function _fillCatColors() {
       const picked = [];
       const pickedHex = new Set();
       const brandCount = {}; // 브랜드별로 몇 개 뽑혔는지 추적
-      const MAX_PER_BRAND = 2; // ★ 한 브랜드가 6개 중 대부분을 차지하지 못하게 브랜드당 최대 2개로 제한
+      const DEFAULT_MAX_PER_BRAND = 2; // 한 브랜드가 6개 중 대부분을 차지하지 못하게 기본은 브랜드당 최대 2개로 제한
+      // ★ boostBrands로 지정된 브랜드(예: New Balance·FILA)는 비중을 더 줘서 최대 3개까지 허용
+      const _boostSet = new Set((_discCatDef && _discCatDef.boostBrands || []).map(b=>b.toLowerCase().trim()));
       const brandKeyOf = c => (c.brand||'').toLowerCase().trim();
-      const canTakeBrand = c => (brandCount[brandKeyOf(c)] || 0) < MAX_PER_BRAND;
+      const maxForBrand = c => _boostSet.has(brandKeyOf(c)) ? 3 : DEFAULT_MAX_PER_BRAND;
+      const canTakeBrand = c => (brandCount[brandKeyOf(c)] || 0) < maxForBrand(c);
       const markTaken = c => { const k = brandKeyOf(c); brandCount[k] = (brandCount[k]||0) + 1; };
-      // 1차: 색거리 70 이상(뚜렷이 다른 색) + 브랜드당 최대 2개
+      // 1차: 색거리 70 이상(뚜렷이 다른 색) + 브랜드당 제한(부스트 브랜드는 3개까지)
       for (const c of combined) {
         if (picked.length >= 6) break;
         if (!canTakeBrand(c)) continue;
