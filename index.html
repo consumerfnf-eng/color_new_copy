@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_COLORWAY_FORCE_DOWN_SPLIT_v107 (2026-09-08) -->
+<!-- BUILD_VERSION: DISC_COLORWAY_FIXEDRATIO_NOSCROLL_v108 (2026-09-08) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7618,45 +7618,11 @@ const CW_GROUP_COUNTS = [
   { type:'tee',         count:3 },
 ];
 
-// ── 카테고리별 실제 02 Market Analysis 데이터(outerwear/top 건수) 기준으로 다운·바람막이·티 비율을 재계산 ──
-// itemCategory는 outerwear/top/bottom/dress 정도로만 구분돼서 다운·바람막이 세부 구분이 없음 →
-// outerwear 안에서는 실제 도식화 314벌 분석에서 나온 다운:바람막이 실측 비율(116:74)로 다시 나눠서 배분.
-// 데이터가 너무 적으면(3건 미만) 기본 비율(8:5:3)로 폴백.
+// ── 그룹 비율(다운·바람막이·티) — 항상 고정 8:5:3 사용 ──
+// (한때 02 Market Analysis 실데이터 기반으로 재계산했으나, 실판매 데이터가 있을 때 그룹별 벌 수가
+//  들쭉날쭉해지고 예측하기 어려워진다는 피드백으로 다시 고정 비율로 되돌림)
 function _cwGetCategoryGroupCounts(catKey){
-  const TOTAL = 16;
-  if(typeof compData === 'undefined' || !compData || !compData.length) return CW_GROUP_COUNTS;
-  const catDef = DISCOVERY_CAT_DEFS.find(d=>d.key===catKey);
-  if(!catDef) return CW_GROUP_COUNTS;
-  let outerwearCnt = 0, topCnt = 0;
-  compData.forEach(c=>{
-    if(!c || !c.brand) return;
-    const bMatch = catDef.brandList.some(b=> typeof brandMatches==='function' ? brandMatches(c.brand, b) : (c.brand.toLowerCase()===b.toLowerCase()));
-    if(!bMatch) return;
-    const ic = (c.itemCategory||'').toLowerCase();
-    if(ic === 'outerwear') outerwearCnt++;
-    else if(ic === 'top') topCnt++;
-  });
-  if(outerwearCnt + topCnt < 3) return CW_GROUP_COUNTS; // 데이터 부족 → 기본 비율 폴백
-  const DOWN_SHARE = 116/190, WIND_SHARE = 74/190; // 실제 도식화 분석 기준 outerwear 내 다운:바람막이 비율
-  const rawDown = outerwearCnt * DOWN_SHARE;
-  const rawWind = outerwearCnt * WIND_SHARE;
-  const rawTee = topCnt;
-  const rawTotal = rawDown + rawWind + rawTee;
-  if(rawTotal <= 0) return CW_GROUP_COUNTS;
-  let down = Math.round(rawDown / rawTotal * TOTAL);
-  let wind = Math.round(rawWind / rawTotal * TOTAL);
-  let tee = TOTAL - down - wind;
-  if(tee < 0){ tee = 0; wind = Math.max(0, TOTAL - down); }
-  if(down < 1 && rawDown > 0) down = 1;
-  if(wind < 1 && rawWind > 0) wind = 1;
-  if(tee < 1 && rawTee > 0) tee = 1;
-  down += (TOTAL - (down+wind+tee)); // 합이 정확히 16이 되도록 다운에서 보정
-  if(down < 0) down = 0;
-  return [
-    { type:'down', count:down },
-    { type:'windbreaker', count:wind },
-    { type:'tee', count:tee },
-  ];
+  return CW_GROUP_COUNTS;
 }
 
 // ── 스무스 가중 라운드로빈: weight가 큰 색이 더 자주 나오되, 한 곳에 몰리지 않고 고르게 흩뿌려짐 ──
@@ -7869,7 +7835,7 @@ function renderColorwayPage(){
 
   const cardsHtml = catStates.map(({cat, state})=>{
     if(!state.palette.length){
-      return `<div style="border:1px solid var(--border);border-radius:12px;padding:16px;background:var(--bg2);flex:1 1 340px;min-width:340px">
+      return `<div style="border:1px solid var(--border);border-radius:12px;padding:16px;background:var(--bg2);flex:1 1 600px;min-width:600px">
         <div style="font-family:var(--sans);font-size:14px;font-weight:700;color:var(--text);margin-bottom:10px">${cat.emoji||''} ${cat.name}</div>
         <div class="spp-empty" style="font-size:10px">02 Market Analysis 데이터 필요 (색 없음)</div>
       </div>`;
@@ -7888,12 +7854,12 @@ function renderColorwayPage(){
           ${_cwBuildOverlapStack(cat.key, blocks[key])}
         </div>`).join('');
       return `<div style="margin-bottom:14px">
-        <div style="display:flex;gap:14px;flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px">${outfits}</div>
+        <div style="display:flex;gap:14px;flex-wrap:nowrap">${outfits}</div>
       </div>`;
     }).join('');
     const repHex = state.palette[0] ? state.palette[0].hex : '#999';
     const repLabel = (typeof pantoneApprox==='function' ? (pantoneApprox(repHex)||'').replace(/ TCX$/i,'') : '') || repHex;
-    return `<div style="border:1px solid var(--border);border-radius:12px;padding:18px;background:var(--bg2);flex:1 1 340px;min-width:340px">
+    return `<div style="border:1px solid var(--border);border-radius:12px;padding:18px;background:var(--bg2);flex:1 1 600px;min-width:600px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
         <div style="font-family:var(--sans);font-size:15px;font-weight:700;color:var(--text)">${cat.emoji||''} ${(cat.name||'').toUpperCase()}</div>
         <div style="display:flex;align-items:center;gap:8px">
