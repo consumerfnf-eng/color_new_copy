@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_SALES_WHITE_TO_BASIC_v96 (2026-09-08) -->
+<!-- BUILD_VERSION: DISC_COLORWAY_REALDATA_STYLEBLOCK_v97 (2026-09-08) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7594,12 +7594,71 @@ function _cwGetTypeImages(catKey, typeKey){
 }
 
 // ── 카테고리 카드 안에서 같은 하의(팬츠 고정) 위에 상의 스타일별로 배색 개수를 다르게 보여줌 ──
-// 실제 도식화 비율(다운47%·바람막이30%·티23%)에 가깝게, 카드당 다운 8벌·바람막이 5벌·티 3벌 = 총 16벌
+// 기본값(데이터 부족 시 폴백): 실제 도식화 비율(다운47%·바람막이30%·티23%)에 가깝게 다운 8·바람막이 5·티 3 = 총 16벌
 const CW_GROUP_COUNTS = [
   { type:'down',        count:8 },
   { type:'windbreaker', count:5 },
   { type:'tee',         count:3 },
 ];
+
+// ── 카테고리별 실제 02 Market Analysis 데이터(outerwear/top 건수) 기준으로 다운·바람막이·티 비율을 재계산 ──
+// itemCategory는 outerwear/top/bottom/dress 정도로만 구분돼서 다운·바람막이 세부 구분이 없음 →
+// outerwear 안에서는 실제 도식화 314벌 분석에서 나온 다운:바람막이 실측 비율(116:74)로 다시 나눠서 배분.
+// 데이터가 너무 적으면(3건 미만) 기본 비율(8:5:3)로 폴백.
+function _cwGetCategoryGroupCounts(catKey){
+  const TOTAL = 16;
+  if(typeof compData === 'undefined' || !compData || !compData.length) return CW_GROUP_COUNTS;
+  const catDef = DISCOVERY_CAT_DEFS.find(d=>d.key===catKey);
+  if(!catDef) return CW_GROUP_COUNTS;
+  let outerwearCnt = 0, topCnt = 0;
+  compData.forEach(c=>{
+    if(!c || !c.brand) return;
+    const bMatch = catDef.brandList.some(b=> typeof brandMatches==='function' ? brandMatches(c.brand, b) : (c.brand.toLowerCase()===b.toLowerCase()));
+    if(!bMatch) return;
+    const ic = (c.itemCategory||'').toLowerCase();
+    if(ic === 'outerwear') outerwearCnt++;
+    else if(ic === 'top') topCnt++;
+  });
+  if(outerwearCnt + topCnt < 3) return CW_GROUP_COUNTS; // 데이터 부족 → 기본 비율 폴백
+  const DOWN_SHARE = 116/190, WIND_SHARE = 74/190; // 실제 도식화 분석 기준 outerwear 내 다운:바람막이 비율
+  const rawDown = outerwearCnt * DOWN_SHARE;
+  const rawWind = outerwearCnt * WIND_SHARE;
+  const rawTee = topCnt;
+  const rawTotal = rawDown + rawWind + rawTee;
+  if(rawTotal <= 0) return CW_GROUP_COUNTS;
+  let down = Math.round(rawDown / rawTotal * TOTAL);
+  let wind = Math.round(rawWind / rawTotal * TOTAL);
+  let tee = TOTAL - down - wind;
+  if(tee < 0){ tee = 0; wind = Math.max(0, TOTAL - down); }
+  if(down < 1 && rawDown > 0) down = 1;
+  if(wind < 1 && rawWind > 0) wind = 1;
+  if(tee < 1 && rawTee > 0) tee = 1;
+  down += (TOTAL - (down+wind+tee)); // 합이 정확히 16이 되도록 다운에서 보정
+  if(down < 0) down = 0;
+  return [
+    { type:'down', count:down },
+    { type:'windbreaker', count:wind },
+    { type:'tee', count:tee },
+  ];
+}
+
+// ── 스무스 가중 라운드로빈: weight가 큰 색이 더 자주 나오되, 한 곳에 몰리지 않고 고르게 흩뿌려짐 ──
+// (실제 판매/빈도 count가 높은 색일수록 컬러웨이에도 더 자주 반영되게 하기 위함)
+function _cwWeightedRoundRobin(items, weights, total){
+  const n = items.length;
+  if(!n) return [];
+  const current = new Array(n).fill(0);
+  const totalWeight = weights.reduce((s,w)=>s+w,0) || n;
+  const result = [];
+  for(let t=0; t<total; t++){
+    for(let i=0;i<n;i++) current[i] += weights[i];
+    let maxI = 0;
+    for(let i=1;i<n;i++) if(current[i] > current[maxI]) maxI = i;
+    result.push(items[maxI]);
+    current[maxI] -= totalWeight;
+  }
+  return result;
+}
 
 const _CW_NONE_FILL = 'transparent';
 const _CW_NONE_STROKE = 'rgba(150,150,150,0.4)';
@@ -7634,46 +7693,50 @@ const CW_BOTTOM_BOX = { w: 78, h: 78 };
 function _cwBuildOutfitSVG(catKey, variant){
   const bottomType = variant.bottomType || 'pants';
   const topType = variant.topType || 'down';
+  const imgIdx = (typeof variant.imgIdx === 'number') ? variant.imgIdx : variant.idx;
   const topOnclick = 'onclick="_cwEditPart(\'' + catKey + '\',' + variant.idx + ',\'main\')"';
   const botOnclick = 'onclick="_cwEditPart(\'' + catKey + '\',' + variant.idx + ',\'sub1\')"';
   return '<div style="display:flex;flex-direction:column;align-items:center;gap:2px">'
-    + _cwImagePart(catKey, topType, variant.idx, variant.main, topOnclick, CW_TOP_BOX.w, CW_TOP_BOX.h)
-    + _cwImagePart(catKey, bottomType, variant.idx, variant.sub1, botOnclick, CW_BOTTOM_BOX.w, CW_BOTTOM_BOX.h)
+    + _cwImagePart(catKey, topType, imgIdx, variant.main, topOnclick, CW_TOP_BOX.w, CW_TOP_BOX.h)
+    + _cwImagePart(catKey, bottomType, imgIdx, variant.sub1, botOnclick, CW_BOTTOM_BOX.w, CW_BOTTOM_BOX.h)
     + '</div>';
 }
 
-// 팔레트(최대 ~10색)를 순환시켜 그룹별(다운 8·바람막이 5·티 3) 배색을 생성.
-// 하의는 팬츠로 고정(스타일 초점은 상의 종류 변화에 있음), main/sub1 색은 팔레트를 계속 순환해서 채움.
+// 팔레트(최대 ~10색)와 카테고리별 실제 비율(_cwGetCategoryGroupCounts)로 배색을 생성.
+// 하의는 팬츠로 고정(스타일 초점은 상의 종류 변화에 있음).
 // ★ 포인트(POINT) 컬러끼리는 같은 옷에서 짝짓지 않음 — main이 포인트면 sub1은 반드시 SUB/BASIC에서만 고름.
-// ★ BASIC/SUB는 라운드로빈으로 전부 골고루 순환(한쪽만 계속 나오지 않게), KEY(포인트)는 정해둔 슬롯 몇 개에만 드문드문 등장.
-//   (예전엔 색상을 4번씩 "묶어서" 반복시켜서, 팔레트에 색이 많으면 뒤쪽 색은 아예 한 번도 안 뽑히는 문제가 있었음)
+// ★ SUB/BASIC은 실제 빈도(count)에 비례한 가중 라운드로빈으로 순환 — 자주 나온 색일수록 컬러웨이에도 자주 반영.
+// ★ 같은 도식화 스타일을 2벌씩 묶어서(색만 다르게) 나란히 배치 — 스타일 자체는 그룹 안에서 2벌마다 바뀜.
 function _cwInitVariants(catKey, palette){
   const all = palette.filter(c=>c && c.hex);
   if(!all.length) return [];
   const nonPoint = all.filter(c=>c._origin !== 'point');
   const pointColors = all.filter(c=>c._origin === 'point');
-  const TOTAL = CW_GROUP_COUNTS.reduce((s,g)=>s+g.count, 0); // 16
-  // 포인트는 팔레트에 있어도 슬롯 최대 2개까지만 배정(전체의 극히 일부만 드문드문 등장)
+  const groupCounts = _cwGetCategoryGroupCounts(catKey);
+  const TOTAL = groupCounts.reduce((s,g)=>s+g.count, 0);
   const pointSlotCount = pointColors.length ? Math.min(2, TOTAL) : 0;
   const pointSlots = new Set();
   if(pointSlotCount > 0){
-    const step = Math.floor(TOTAL / (pointSlotCount + 1));
+    const step = Math.floor(TOTAL / (pointSlotCount + 1)) || 1;
     for(let k=1; k<=pointSlotCount; k++) pointSlots.add(step * k);
   }
-  const nonPointRR = i => nonPoint.length ? nonPoint[i % nonPoint.length] : null;
+  // 실제 빈도(count, 1~5로 클램프)에 비례한 가중 시퀀스를 미리 만들어서 순환
+  const npWeights = nonPoint.map(c=>Math.max(1, Math.min(5, c.count||1)));
+  const npSeq = _cwWeightedRoundRobin(nonPoint, npWeights, Math.max(TOTAL*2, nonPoint.length*2, 8));
+  const nonPointRR = i => npSeq.length ? npSeq[i % npSeq.length] : null;
   const pointRR = i => pointColors[i % pointColors.length];
+  const IMG_BLOCK = 2; // 같은 스타일을 2벌씩 묶어서 색만 다르게 나란히 배치
   const variants = [];
   let globalIdx = 0, npCursor = 0, pointIdx = 0;
-  CW_GROUP_COUNTS.forEach(g=>{
+  groupCounts.forEach(g=>{
     for(let i=0; i<g.count; i++){
       let mainC;
       if(pointSlots.has(globalIdx) && pointColors.length){
         mainC = pointRR(pointIdx); pointIdx++;
       } else {
         mainC = nonPointRR(npCursor); npCursor++;
-        if(!mainC) mainC = pointRR(pointIdx); // non-point가 아예 없을 때 대비
+        if(!mainC) mainC = pointRR(pointIdx);
       }
-      // sub1은 main과 다른 색이 되도록, non-point 순환 커서를 계속 이어서 사용
       let sub1C = nonPointRR(npCursor); npCursor++;
       if(!sub1C) sub1C = all[globalIdx % all.length];
       variants.push({
@@ -7681,6 +7744,7 @@ function _cwInitVariants(catKey, palette){
         group: g.type,
         topType: g.type,
         bottomType: 'pants',
+        imgIdx: Math.floor(i / IMG_BLOCK), // 그룹 내 순번 기준 2개 단위로 스타일(이미지) 전환
         main: mainC ? mainC.hex : null,
         sub1: sub1C ? sub1C.hex : null,
       });
