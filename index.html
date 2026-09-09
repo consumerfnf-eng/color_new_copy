@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_COLORWAY_CHIPS_TOP_BLANK_v117 (2026-09-08) -->
+<!-- BUILD_VERSION: DISC_COLORWAY_NODASH_v118 (2026-09-08) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7651,10 +7651,9 @@ function _cwImagePart(catKey, typeKey, imgIdx, color, onclickAttr, boxW, boxH){
   const w = boxW || 76;
   const h = boxH || 76;
   const bg = color || _CW_NONE_FILL;
-  const borderStyle = color ? '' : ('border:1px dashed ' + _CW_NONE_STROKE + ';');
   const maskCss = '-webkit-mask-image:url(' + imgData.src + ');-webkit-mask-size:contain;-webkit-mask-repeat:no-repeat;-webkit-mask-position:center;'
     + 'mask-image:url(' + imgData.src + ');mask-size:contain;mask-repeat:no-repeat;mask-position:center;';
-  return '<div ' + onclickAttr + ' style="position:relative;width:' + w + 'px;height:' + h + 'px;cursor:pointer;display:flex;align-items:center;justify-content:center;' + borderStyle + '">'
+  return '<div ' + onclickAttr + ' style="position:relative;width:' + w + 'px;height:' + h + 'px;cursor:pointer;display:flex;align-items:center;justify-content:center;">'
     + '<div style="position:absolute;inset:0;background:' + bg + ';' + maskCss + '"></div>'
     + '<img src="' + imgData.src + '" style="position:absolute;inset:0;width:100%;height:100%;mix-blend-mode:multiply;object-fit:contain;pointer-events:none" />'
     + '</div>';
