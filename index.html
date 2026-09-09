@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_COLORWAY_TIGHTFIT_ONEBOTTOM_v109 (2026-09-08) -->
+<!-- BUILD_VERSION: DISC_COLORWAY_FIT_PANTSWAP_v110 (2026-09-08) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7672,7 +7672,7 @@ function _cwImagePart(catKey, typeKey, imgIdx, color, onclickAttr, boxW, boxH){
 // 상의/하의 슬롯 고정 박스 크기 (모든 이미지가 이 크기 안에서 비율 유지하며 균일하게 표시됨) — 크기 더 확대
 const CW_TOP_BOX = { w: 140, h: 140 };
 const CW_BOTTOM_BOX = { w: 140, h: 140 };
-const CW_STACK_OFFSET = 38; // 겹쳐 쌓을 때 오른쪽으로 밀리는 픽셀 값 (약 1cm @96dpi)
+const CW_STACK_OFFSET = 20; // 겹쳐 쌓을 때 오른쪽으로 밀리는 픽셀 값 (줄여서 카드 밖으로 안 나가게 함)
 
 // 옷 한 벌(상의+하의) 렌더 — 겹치기 스택에서 한 레이어로 쓰임. showBottom=false면 하의 자리를 비워둠(같은 높이 유지).
 function _cwBuildOutfitSVG(catKey, variant, showBottom){
@@ -7854,9 +7854,18 @@ function renderColorwayPage(){
         if(!blocks[key]){ blocks[key]=[]; order.push(key); }
         blocks[key].push(v);
       });
-      const outfits = order.map((key, blockPos) => `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0">
-          ${_cwBuildOverlapStack(cat.key, blocks[key], blockPos === 0)}
-        </div>`).join('');
+      // ★ 화면에 보여줄 하의(팬츠) 색은 첫 블록 자신의 색이 아니라 마지막 블록의 색을 사용
+      //   (이전에 동그라미로 표시했던 하의 배색을 그대로 살려서 첫 자리에 옮겨오는 것)
+      const lastBlock = order.length ? blocks[order[order.length-1]] : null;
+      const outfits = order.map((key, blockPos) => {
+        let renderBlock = blocks[key];
+        if(blockPos === 0 && lastBlock && lastBlock !== renderBlock){
+          renderBlock = renderBlock.map((v, i) => ({ ...v, sub1: (lastBlock[i % lastBlock.length] || {}).sub1 }));
+        }
+        return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0">
+          ${_cwBuildOverlapStack(cat.key, renderBlock, blockPos === 0)}
+        </div>`;
+      }).join('');
       return `<div style="margin-bottom:14px">
         <div style="display:flex;gap:4px;flex-wrap:nowrap">${outfits}</div>
       </div>`;
