@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_COLORWAY_CATOFFSET_v104 (2026-09-08) -->
+<!-- BUILD_VERSION: DISC_COLORWAY_NOWRAP_ROW_v105 (2026-09-08) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7882,11 +7882,11 @@ function renderColorwayPage(){
         if(!blocks[key]){ blocks[key]=[]; order.push(key); }
         blocks[key].push(v);
       });
-      const outfits = order.map(key => `<div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+      const outfits = order.map(key => `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0">
           ${_cwBuildOverlapStack(cat.key, blocks[key])}
         </div>`).join('');
       return `<div style="margin-bottom:14px">
-        <div style="display:flex;gap:14px;flex-wrap:wrap">${outfits}</div>
+        <div style="display:flex;gap:14px;flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px">${outfits}</div>
       </div>`;
     }).join('');
     const repHex = state.palette[0] ? state.palette[0].hex : '#999';
