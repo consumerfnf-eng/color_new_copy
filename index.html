@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_COLORWAY_46BLOCK_BIGGER_v102 (2026-09-08) -->
+<!-- BUILD_VERSION: DISC_COLORWAY_CATOFFSET_v104 (2026-09-08) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7772,13 +7772,26 @@ function _cwInitVariants(catKey, palette){
   const npSeq = _cwWeightedRoundRobin(nonPoint, npWeights, Math.max(TOTAL*2, nonPoint.length*2, 8));
   const nonPointRR = i => npSeq.length ? npSeq[i % npSeq.length] : null;
   const pointRR = i => pointColors[i % pointColors.length];
+  // ★ 카테고리별 이미지 시작 인덱스 오프셋 — 다운처럼 이미지가 5개인데 한 카테고리엔 보통 2묶음만 생기다 보니
+  //   그냥 두면 앞쪽 2개(레귤러 퍼퍼·롱 후드 코트)만 계속 쓰이고 나머지(크롭 퍼퍼·벨티드 코트·퀄티드 봄버)는
+  //   전혀 노출이 안 되는 문제가 있었음 → 카테고리마다 시작 지점을 다르게 줘서 앱 전체에서 5개가 다 나오게 함
+  const _catIdx = DISCOVERY_CAT_DEFS.findIndex(d=>d.key===catKey);
+  const catImgOffset = _catIdx >= 0 ? _catIdx * 2 : 0;
   const variants = [];
-  let globalIdx = 0, npCursor = 0, pointIdx = 0;
+  let globalIdx = 0, npCursor = 0, pointIdx = 0, blockCounterGlobal = 0;
+  // 하의 타입 시퀀스 — 대부분 팬츠, 4묶음마다 한 번씩 스커트(실제 도식화 비율상 소수)를 섞어 넣어
+  // skirt_1 이미지도 실제로 화면에 등장하게 함 (전엔 팬츠로만 고정돼 있어서 스커트 도식화가 전혀 안 쓰였음)
+  const BOTTOM_TYPE_SEQ = ['pants','pants','pants','skirt'];
   groupCounts.forEach(g=>{
     const chunkSizes = _cwChunkSizes(g.count, 4, 6); // 4~6개 단위로 스타일 묶음 구성
-    // i(그룹 내 순번) → 어느 묶음(block)에 속하는지 미리 계산
+    // i(그룹 내 순번) → 어느 묶음(block)에 속하는지, 그 묶음의 하의 타입은 무엇인지 미리 계산
     const blockOfIdx = [];
-    chunkSizes.forEach((size, blockNo)=>{ for(let k=0;k<size;k++) blockOfIdx.push(blockNo); });
+    const blockBottomType = [];
+    chunkSizes.forEach((size, blockNo)=>{
+      blockBottomType[blockNo] = BOTTOM_TYPE_SEQ[blockCounterGlobal % BOTTOM_TYPE_SEQ.length];
+      blockCounterGlobal++;
+      for(let k=0;k<size;k++) blockOfIdx.push(blockNo);
+    });
     for(let i=0; i<g.count; i++){
       let mainC;
       if(pointSlots.has(globalIdx) && pointColors.length){
@@ -7789,12 +7802,13 @@ function _cwInitVariants(catKey, palette){
       }
       let sub1C = nonPointRR(npCursor); npCursor++;
       if(!sub1C) sub1C = all[globalIdx % all.length];
+      const blockNo = blockOfIdx[i];
       variants.push({
         idx: globalIdx,
         group: g.type,
         topType: g.type,
-        bottomType: 'pants',
-        imgIdx: blockOfIdx[i], // 그룹 내 순번 기준, 4~6개 단위 묶음마다 스타일(이미지) 전환
+        bottomType: blockBottomType[blockNo],
+        imgIdx: blockNo + catImgOffset, // 그룹 내 순번 + 카테고리 오프셋 → 앱 전체적으로 스타일 이미지가 골고루 노출됨
         main: mainC ? mainC.hex : null,
         sub1: sub1C ? sub1C.hex : null,
       });
