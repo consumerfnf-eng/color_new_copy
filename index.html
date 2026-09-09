@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_COMMUTE_ADDBRANDS_v115 (2026-09-08) -->
+<!-- BUILD_VERSION: DISC_CATCURATION_BRANDCAP_v116 (2026-09-08) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -8099,26 +8099,33 @@ function _fillCatColors() {
         });
       const picked = [];
       const pickedHex = new Set();
-      // 1차: 색거리 70 이상(뚜렷이 다른 색)만
+      const brandCount = {}; // 브랜드별로 몇 개 뽑혔는지 추적
+      const MAX_PER_BRAND = 2; // ★ 한 브랜드가 6개 중 대부분을 차지하지 못하게 브랜드당 최대 2개로 제한
+      const brandKeyOf = c => (c.brand||'').toLowerCase().trim();
+      const canTakeBrand = c => (brandCount[brandKeyOf(c)] || 0) < MAX_PER_BRAND;
+      const markTaken = c => { const k = brandKeyOf(c); brandCount[k] = (brandCount[k]||0) + 1; };
+      // 1차: 색거리 70 이상(뚜렷이 다른 색) + 브랜드당 최대 2개
       for (const c of combined) {
         if (picked.length >= 6) break;
+        if (!canTakeBrand(c)) continue;
         const tooClose = picked.some(p => rgbDist(p.hex, c.hex) < 70);
         if (tooClose) continue;
-        picked.push(c); pickedHex.add(c.hex);
+        picked.push(c); pickedHex.add(c.hex); markTaken(c);
       }
-      // 2차: 부족하면 40으로 완화
+      // 2차: 부족하면 40으로 완화 (브랜드 제한은 유지)
       for (const c of combined) {
         if (picked.length >= 6) break;
         if (pickedHex.has(c.hex)) continue;
+        if (!canTakeBrand(c)) continue;
         const tooClose = picked.some(p => rgbDist(p.hex, c.hex) < 40);
         if (tooClose) continue;
-        picked.push(c); pickedHex.add(c.hex);
+        picked.push(c); pickedHex.add(c.hex); markTaken(c);
       }
-      // 3차: 그래도 부족하면 제한 없이 보충 (최후의 수단)
+      // 3차: 그래도 부족하면 브랜드 제한도 풀고 제한 없이 보충 (최후의 수단)
       for (const c of combined) {
         if (picked.length >= 6) break;
         if (pickedHex.has(c.hex)) continue;
-        picked.push(c); pickedHex.add(c.hex);
+        picked.push(c); pickedHex.add(c.hex); markTaken(c);
       }
       // point 자격(고채도·중간명도)을 만족하는 것부터 최대 2개를 POINT로, 나머지를 SUB로 배정
       const qualifiesPoint = c => c._s >= SAT_POINT_MIN && c._l >= L_POINT_MIN && c._l <= L_POINT_MAX;
