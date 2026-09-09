@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_COLORWAY_STACK_OFFSET_v101 (2026-09-08) -->
+<!-- BUILD_VERSION: DISC_COLORWAY_46BLOCK_BIGGER_v102 (2026-09-08) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7703,9 +7703,9 @@ function _cwImagePart(catKey, typeKey, imgIdx, color, onclickAttr, boxW, boxH){
     + '</div>';
 }
 
-// 상의/하의 슬롯 고정 박스 크기 (모든 이미지가 이 크기 안에서 비율 유지하며 균일하게 표시됨) — 크기 확대
-const CW_TOP_BOX = { w: 110, h: 110 };
-const CW_BOTTOM_BOX = { w: 110, h: 110 };
+// 상의/하의 슬롯 고정 박스 크기 (모든 이미지가 이 크기 안에서 비율 유지하며 균일하게 표시됨) — 크기 더 확대
+const CW_TOP_BOX = { w: 140, h: 140 };
+const CW_BOTTOM_BOX = { w: 140, h: 140 };
 const CW_STACK_OFFSET = 38; // 겹쳐 쌓을 때 오른쪽으로 밀리는 픽셀 값 (약 1cm @96dpi)
 
 // 옷 한 벌(상의+하의) 렌더 — 겹치기 스택에서 한 레이어로 쓰임
@@ -7743,7 +7743,17 @@ function _cwBuildOverlapStack(catKey, block){
 // 하의는 팬츠로 고정(스타일 초점은 상의 종류 변화에 있음).
 // ★ 포인트(POINT) 컬러끼리는 같은 옷에서 짝짓지 않음 — main이 포인트면 sub1은 반드시 SUB/BASIC에서만 고름.
 // ★ SUB/BASIC은 실제 빈도(count)에 비례한 가중 라운드로빈으로 순환 — 자주 나온 색일수록 컬러웨이에도 자주 반영.
-// ★ 같은 도식화 스타일을 2벌씩 묶어서(색만 다르게) 나란히 배치 — 스타일 자체는 그룹 안에서 2벌마다 바뀜.
+// ★ 같은 도식화 스타일을 묶음(최소 4·최대 6벌)으로 겹쳐서 배치 — 그룹 총량을 4~6 사이로 최대한 균등 분할.
+function _cwChunkSizes(total, min, max){
+  if(total <= 0) return [];
+  if(total <= max) return [total]; // 그룹 총량이 max 이하면 통째로 한 묶음(최소치보다 적어도 어쩔 수 없음)
+  const numChunks = Math.ceil(total / max);
+  const base = Math.floor(total / numChunks);
+  const rem = total % numChunks;
+  const sizes = [];
+  for(let i=0; i<numChunks; i++) sizes.push(base + (i < rem ? 1 : 0));
+  return sizes; // 각 원소는 min~max 사이(균등 분배라 거의 항상 만족)
+}
 function _cwInitVariants(catKey, palette){
   const all = palette.filter(c=>c && c.hex);
   if(!all.length) return [];
@@ -7762,10 +7772,13 @@ function _cwInitVariants(catKey, palette){
   const npSeq = _cwWeightedRoundRobin(nonPoint, npWeights, Math.max(TOTAL*2, nonPoint.length*2, 8));
   const nonPointRR = i => npSeq.length ? npSeq[i % npSeq.length] : null;
   const pointRR = i => pointColors[i % pointColors.length];
-  const IMG_BLOCK = 3; // 같은 스타일을 3벌씩 묶어서 색만 다르게 겹쳐서 배치
   const variants = [];
   let globalIdx = 0, npCursor = 0, pointIdx = 0;
   groupCounts.forEach(g=>{
+    const chunkSizes = _cwChunkSizes(g.count, 4, 6); // 4~6개 단위로 스타일 묶음 구성
+    // i(그룹 내 순번) → 어느 묶음(block)에 속하는지 미리 계산
+    const blockOfIdx = [];
+    chunkSizes.forEach((size, blockNo)=>{ for(let k=0;k<size;k++) blockOfIdx.push(blockNo); });
     for(let i=0; i<g.count; i++){
       let mainC;
       if(pointSlots.has(globalIdx) && pointColors.length){
@@ -7781,7 +7794,7 @@ function _cwInitVariants(catKey, palette){
         group: g.type,
         topType: g.type,
         bottomType: 'pants',
-        imgIdx: Math.floor(i / IMG_BLOCK), // 그룹 내 순번 기준 2개 단위로 스타일(이미지) 전환
+        imgIdx: blockOfIdx[i], // 그룹 내 순번 기준, 4~6개 단위 묶음마다 스타일(이미지) 전환
         main: mainC ? mainC.hex : null,
         sub1: sub1C ? sub1C.hex : null,
       });
