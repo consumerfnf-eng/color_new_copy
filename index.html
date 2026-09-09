@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_SEASONDIST_MOVED_TO_MARKET_v112 (2026-09-08) -->
+<!-- BUILD_VERSION: DISC_CATCURATION_FREQ_PRIORITY_v113 (2026-09-08) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -8099,18 +8099,21 @@ function _fillCatColors() {
         });
       const picked = [];
       const pickedHex = new Set();
-      // 1차: 색거리 70 이상(뚜렷이 다른 색)만
+      // ★ 빈도(인기) 순위 우선 — 다양성 임계값을 완화(70→35, 40→20)해서 비슷한 색이어도
+      //   인기 많은 색이 먼저 뽑히게 함. combined는 이미 빈도 desc로 정렬돼 있어서
+      //   임계값을 낮추면 자연스럽게 "인기 순서대로" 뽑히는 효과가 커짐.
+      // 1차: 색거리 35 이상(진짜 겹치는 색만 제외)
       for (const c of combined) {
         if (picked.length >= 6) break;
-        const tooClose = picked.some(p => rgbDist(p.hex, c.hex) < 70);
+        const tooClose = picked.some(p => rgbDist(p.hex, c.hex) < 35);
         if (tooClose) continue;
         picked.push(c); pickedHex.add(c.hex);
       }
-      // 2차: 부족하면 40으로 완화
+      // 2차: 부족하면 20으로 완화
       for (const c of combined) {
         if (picked.length >= 6) break;
         if (pickedHex.has(c.hex)) continue;
-        const tooClose = picked.some(p => rgbDist(p.hex, c.hex) < 40);
+        const tooClose = picked.some(p => rgbDist(p.hex, c.hex) < 20);
         if (tooClose) continue;
         picked.push(c); pickedHex.add(c.hex);
       }
