@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_SEASON_PREFALL_FALL_WINTER_v99 (2026-09-08) -->
+<!-- BUILD_VERSION: DISC_COLORWAY_OVERLAP_STACK_v100 (2026-09-08) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -1715,8 +1715,8 @@ function enterBrandFromHome(brand) {
     </div>
     <div class="step-nav">
       <button class="btn btn-sec" onclick="switchTabByName('competitor')" style="font-size:12px;padding:8px 20px;background:#FFFFFF;color:#1A1714;border:1px solid rgba(0,0,0,0.2);">&#8592; 02 Market Analysis</button>
-      <div class="step-nav-info">STEP <strong>03</strong> / 03 &nbsp;&middot;&nbsp; Finalize Palette</div>
-      <div style="flex:1"></div>
+      <div class="step-nav-info">STEP <strong>03</strong> / 04 &nbsp;&middot;&nbsp; Finalize Palette → Colorway</div>
+      <button class="btn btn-primary" onclick="switchTabByName('colorway')" style="font-size:12px;padding:8px 20px;background:#A07840;color:#fff;border:none;font-weight:700;">04 Colorway &#8594;</button>
     </div>
   </div>
 
@@ -7703,10 +7703,12 @@ function _cwImagePart(catKey, typeKey, imgIdx, color, onclickAttr, boxW, boxH){
     + '</div>';
 }
 
-// 상의/하의 슬롯 고정 박스 크기 (모든 이미지가 이 크기 안에서 비율 유지하며 균일하게 표시됨)
-const CW_TOP_BOX = { w: 78, h: 78 };
-const CW_BOTTOM_BOX = { w: 78, h: 78 };
+// 상의/하의 슬롯 고정 박스 크기 (모든 이미지가 이 크기 안에서 비율 유지하며 균일하게 표시됨) — 크기 확대
+const CW_TOP_BOX = { w: 110, h: 110 };
+const CW_BOTTOM_BOX = { w: 110, h: 110 };
+const CW_STACK_OFFSET = 10; // 겹쳐 쌓을 때 살짝 어긋나게 밀리는 픽셀 값
 
+// 옷 한 벌(상의+하의) 렌더 — 겹치기 스택에서 한 레이어로 쓰임
 function _cwBuildOutfitSVG(catKey, variant){
   const bottomType = variant.bottomType || 'pants';
   const topType = variant.topType || 'down';
@@ -7717,6 +7719,24 @@ function _cwBuildOutfitSVG(catKey, variant){
     + _cwImagePart(catKey, topType, imgIdx, variant.main, topOnclick, CW_TOP_BOX.w, CW_TOP_BOX.h)
     + _cwImagePart(catKey, bottomType, imgIdx, variant.sub1, botOnclick, CW_BOTTOM_BOX.w, CW_BOTTOM_BOX.h)
     + '</div>';
+}
+
+// 같은 스타일(같은 imgIdx)을 쓰는 배색 묶음(2~3벌)을 살짝 어긋나게 겹쳐서 한 덩어리로 보여줌.
+// 맨 앞(마지막 배열 요소)이 진하게 보이고, 뒤에 깔린 것들은 살짝만 보여도 무방(요청사항).
+function _cwBuildOverlapStack(catKey, block){
+  if(!block.length) return '';
+  if(block.length === 1) return _cwBuildOutfitSVG(catKey, block[0]);
+  const n = block.length;
+  const totalH = CW_TOP_BOX.h + CW_BOTTOM_BOX.h + 2;
+  const extra = CW_STACK_OFFSET * (n-1);
+  const layers = block.map((v, li) => {
+    const offset = li * CW_STACK_OFFSET; // 뒤쪽(앞 인덱스)일수록 덜 밀림, 마지막이 가장 앞+많이 밀림
+    const z = li + 1;
+    return '<div style="position:absolute;left:' + offset + 'px;top:' + offset + 'px;z-index:' + z + '">'
+      + _cwBuildOutfitSVG(catKey, v)
+      + '</div>';
+  }).join('');
+  return '<div style="position:relative;width:' + (CW_TOP_BOX.w+extra) + 'px;height:' + (totalH+extra) + 'px">' + layers + '</div>';
 }
 
 // 팔레트(최대 ~10색)와 카테고리별 실제 비율(_cwGetCategoryGroupCounts)로 배색을 생성.
@@ -7827,11 +7847,19 @@ function renderColorwayPage(){
     }
     const groupSections = CW_GROUP_COUNTS.map(g=>{
       const items = state.variants.filter(v=>v.group===g.type);
-      const outfits = items.map(v => `<div style="display:flex;flex-direction:column;align-items:center;gap:4px">
-          ${_cwBuildOutfitSVG(cat.key, v)}
+      // imgIdx(같은 스타일)별로 묶어서 각 묶음을 겹쳐 쌓기(overlap stack)로 렌더
+      const blocks = {};
+      const order = [];
+      items.forEach(v=>{
+        const key = v.imgIdx;
+        if(!blocks[key]){ blocks[key]=[]; order.push(key); }
+        blocks[key].push(v);
+      });
+      const outfits = order.map(key => `<div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+          ${_cwBuildOverlapStack(cat.key, blocks[key])}
         </div>`).join('');
       return `<div style="margin-bottom:14px">
-        <div style="display:flex;gap:10px;flex-wrap:wrap">${outfits}</div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap">${outfits}</div>
       </div>`;
     }).join('');
     const repHex = state.palette[0] ? state.palette[0].hex : '#999';
