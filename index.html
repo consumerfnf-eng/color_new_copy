@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_COLORWAY_NOCODE_v122 (2026-09-08) -->
+<!-- BUILD_VERSION: DISC_TABREORDER_v123 (2026-09-10) — 탭 순서 Market→Trend 교체, Newsletter 제거, WGSN/Peclers 2단 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -590,8 +590,8 @@ function pickSeason(brand, season) {
   // 팔레트 제안 결과 초기화 (시즌이 달라지면 결과도 달라지므로)
   resultPalette = {asia:{point:[],sub:[],basic:[]}, europe:{point:[],sub:[],basic:[]}};
   if (typeof window.__userReps !== 'undefined') window.__userReps = {};
-  // 01 Trend Collection 탭으로 이동
-  if (typeof switchTabByName === 'function') switchTabByName('trend');
+  // 01 Market Analysis 탭으로 이동 (탭 순서 변경: Market 우선)
+  if (typeof switchTabByName === 'function') switchTabByName('competitor');
 
   // 해당 브랜드 시즌 버튼 활성 스타일
   ['27SS','27FW','28SS','28FW'].forEach(s => {
@@ -662,7 +662,7 @@ function pickSeason(brand, season) {
         st.style.color = 'var(--warn,#C08A2A)';
       } else {
         const c = sum.counts || {};
-        st.textContent = '✓ ' + season + ' · news ' + (c.newsletter||0) + ' / wgsn ' + (c.wgsn||0) + ' / mkt ' + (c.comp||0);
+        st.textContent = '✓ ' + season + ' · mkt ' + (c.comp||0) + ' / wgsn ' + (c.wgsn||0) + ' / pec ' + (c.peclers||0);
         st.style.color = '#5A7A30';
       }
     }
@@ -712,8 +712,8 @@ function enterBrandFromHome(brand) {
 
   <!-- ── 탭 네비 ── -->
   <nav class="tabs">
-    <button class="tab active" onclick="switchTab('trend',this)"><span class="tab-num">01</span>Trend Collection</button>
-    <button class="tab" onclick="switchTab('competitor',this)"><span class="tab-num">02</span>Market Analysis</button>
+    <button class="tab active" onclick="switchTab('competitor',this)"><span class="tab-num">01</span>Market Analysis</button>
+    <button class="tab" onclick="switchTab('trend',this)"><span class="tab-num">02</span>Trend Collection</button>
     <button class="tab" onclick="switchTab('palette',this)"><span class="tab-num">03</span>Palette Proposal</button>
     <button class="tab" onclick="switchTab('colorway',this)"><span class="tab-num">04</span>Colorway</button>
   </nav>
@@ -839,67 +839,12 @@ function enterBrandFromHome(brand) {
   <!-- ── 탭 컨텐츠 래퍼 ── -->
   <div class="tab-content-wrap">
 
-  <div id="tab-trend" class="tab-content active">
+  <div id="tab-trend" class="tab-content">
     <div class="tab-scroll">
+      <!-- 상단 2단: 좌 WGSN / 우 Peclers -->
       <div class="two-col">
 
-        <!-- 좌: 뉴스레터 -->
-        <div>
-
-          <!-- Newsletter / Report — CSV + Sheets -->
-          <div class="card" style="margin-bottom:12px">
-            <div class="card-hd">
-              <span class="card-title">Newsletter / Report</span>
-              <div style="display:flex;align-items:center;gap:6px">
-                <button onclick="reloadSource('newsletter')" id="btn-reload-newsletter"
-                  style="background:none;border:1px solid var(--border2);border-radius:3px;padding:2px 7px;
-                         font-size:8px;font-weight:600;color:var(--text3);cursor:pointer;font-family:var(--mono);
-                         letter-spacing:0.06em;transition:all .15s;"
-                  onmouseover="this.style.borderColor='#A07840';this.style.color='#A07840'"
-                  onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text3)'">↺ Reload</button>
-                <span id="news-cnt" style="font-family:var(--mono);font-size:10px;color:var(--text3)">0</span>
-              </div>
-            </div>
-
-            <!-- CSV 업로드 -->
-            <div class="upload-zone" onclick="document.getElementById('news-csv-input').click()" id="news-zone"
-              ondragover="event.preventDefault();this.classList.add('drag')"
-              ondragleave="this.classList.remove('drag')"
-              ondrop="this.classList.remove('drag');handleNewsletterCsvDrop(event)"
-              style="margin-bottom:10px">
-              <strong>Newsletter CSV</strong>
-              <p>Drag or click · hex, pantone, source_file columns</p>
-            </div>
-            <input type="file" id="news-csv-input" accept=".csv" style="display:none"
-              onchange="loadNewsletterCsv(this.files[0])">
-
-            <!-- Google Sheets 연동 -->
-            <div style="margin-bottom:10px">
-              <label style="font-family:var(--mono);font-size:9px;color:var(--text3);display:block;margin-bottom:4px;letter-spacing:0.06em;text-transform:uppercase">Google Sheets URL</label>
-              <div style="display:flex;gap:6px">
-                <input id="news-sheets-url" class="inp" type="text"
-                  placeholder="Sheets pub CSV URL"
-                  value="https://docs.google.com/spreadsheets/d/e/2PACX-1vQtEhlRjdyc8JWQ4itVhylZHKXPYTUnj6_2rF4pRysnTLVX-xAq0wiDciRKBAfmS5TLfFu2j6KTb0Nl/pub?output=csv"
-                  style="font-family:var(--mono);font-size:10px;flex:1"
-                  onchange="SHEETS_URLS.newsletter=this.value.trim()">
-                <button onclick="loadNewsletterFromSheets()" class="btn btn-ghost" style="font-size:10px;padding:6px 10px;white-space:nowrap">↓ Load Sheets</button>
-              </div>
-              <div id="newsletter-sheets-status" style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:4px;min-height:12px"></div>
-            </div>
-
-            <div id="newsletter-parse-status" style="font-family:var(--mono);font-size:9px;color:var(--text3);min-height:14px;margin-bottom:6px"></div>
-            <div id="newsletter-file-tabs" style="display:flex;flex-wrap:wrap;gap:4px;margin:8px 0 0;"></div>
-            <div id="newsletter-swatch-grid" style="display:flex;flex-wrap:wrap;gap:5px;margin:4px 0 4px;min-height:0"></div>
-            <div id="newsletter-list" style="display:none;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto;margin-bottom:8px"></div>
-            <div style="display:flex;gap:6px;margin-top:8px;align-items:center">
-              <button class="btn btn-ghost" onclick="toggleSourceListView('newsletter')" id="news-list-toggle" style="font-size:10px;padding:6px 8px" title="List View">☰</button>
-            </div>
-          </div>
-
-
-        </div>
-
-        <!-- 우: WGSN + Peclers + Parse Log + Collected Colors -->
+        <!-- 좌: WGSN -->
         <div>
           <!-- WGSN — CSV + Sheets -->
           <div class="card" style="margin-bottom:12px">
@@ -953,6 +898,10 @@ function enterBrandFromHome(brand) {
 
 
 
+        </div>
+
+        <!-- 우: Peclers -->
+        <div>
           <!-- Peclers -->
           <div class="card" style="margin-bottom:12px">
             <div class="card-hd">
@@ -999,10 +948,16 @@ function enterBrandFromHome(brand) {
             </div>
           </div>
 
-          <!-- Parse Log (hidden) — trend-log ID is kept for logTrend() -->
+        </div>
+
+      </div>
+
+      <!-- Parse Log (hidden) — trend-log ID is kept for logTrend() -->
           <div id="trend-log" style="display:none"></div>
           <div id="collect-all-btn" style="display:none"></div>
 
+
+      <!-- 하단 전체폭: Collected Trend Colors -->
           <div class="card">
             <div class="card-hd">
               <span class="card-title">Collected Trend Colors</span>
@@ -1070,14 +1025,11 @@ function enterBrandFromHome(brand) {
               <div id="manual-add-msg" style="font-family:var(--mono);font-size:10px;margin-top:6px;height:14px"></div>
             </div>
           </div>
-        </div>
-
-      </div>
     </div>
     <div class="step-nav">
-      <div style="flex:1"></div>
-      <div class="step-nav-info">STEP <strong>01</strong> / 03 &nbsp;&middot;&nbsp; Trend Collection Done · Proceed to next step</div>
-      <button class="btn btn-primary" onclick="switchTabByName('competitor')" style="font-size:12px;padding:8px 20px;background:#A07840;color:#fff;border:none;font-weight:700;">02 Market Analysis &#8594;</button>
+      <button class="btn btn-sec" onclick="switchTabByName('competitor')" style="font-size:12px;padding:8px 20px;background:#FFFFFF;color:#1A1714;border:1px solid rgba(0,0,0,0.2);">&#8592; 01 Market Analysis</button>
+      <div class="step-nav-info">STEP <strong>02</strong> / 03 &nbsp;&middot;&nbsp; Trend Collection Done · Proceed to next step</div>
+      <button class="btn btn-primary" onclick="switchTabByName('palette')" style="font-size:12px;padding:8px 20px;background:#A07840;color:#fff;border:none;font-weight:700;">03 Palette Proposal &#8594;</button>
     </div>
   </div>
 
@@ -1184,16 +1136,16 @@ function enterBrandFromHome(brand) {
       </div>
     </div>
     <div class="step-nav">
-      <button class="btn btn-sec" onclick="switchTabByName('trend')" style="font-size:12px;padding:8px 20px"style="font-size:12px;padding:8px 20px;background:#FFFFFF;color:#1A1714;border:1px solid rgba(0,0,0,0.2);">&#8592; 01 Trend Collection</button>
+      <button class="btn btn-sec" onclick="switchTabByName('trend')" style="font-size:12px;padding:8px 20px"style="font-size:12px;padding:8px 20px;background:#FFFFFF;color:#1A1714;border:1px solid rgba(0,0,0,0.2);">&#8592; 02 Trend Collection</button>
       <div class="step-nav-info">STEP <strong>02</strong> / 04 &nbsp;&middot;&nbsp; After scoring · Proceed to next step</div>
-      <button class="btn btn-primary" onclick="switchTabByName('competitor')" style="font-size:12px;padding:8px 20px;background:#A07840;color:#fff;border:none;font-weight:700;">03 Market Analysis &#8594;</button>
+      <button class="btn btn-primary" onclick="switchTabByName('competitor')" style="font-size:12px;padding:8px 20px;background:#A07840;color:#fff;border:none;font-weight:700;">01 Market Analysis &#8594;</button>
     </div>
   </div>
 
   <!-- ════════════════════════════════════════════════
        TAB 02 — Market Analysis
        ════════════════════════════════════════════════ -->
-  <div id="tab-competitor" class="tab-content">
+  <div id="tab-competitor" class="tab-content active">
     <div class="tab-scroll">
       <!-- Upload + 안내 -->
       <div class="card" style="margin-bottom:16px">
@@ -1281,8 +1233,8 @@ function enterBrandFromHome(brand) {
       </div>
     </div>
     <div class="step-nav">
-      <button class="btn btn-sec" onclick="switchTabByName('trend')" style="font-size:12px;padding:8px 20px"style="font-size:12px;padding:8px 20px;background:#FFFFFF;color:#1A1714;border:1px solid rgba(0,0,0,0.2);">&#8592; 01 Trend Collection</button>
-      <div class="step-nav-info">STEP <strong>02</strong> / 03 &nbsp;&middot;&nbsp; Market Analysis → Palette Proposal</div>
+      <div style="flex:1"></div>
+      <div class="step-nav-info">STEP <strong>01</strong> / 03 &nbsp;&middot;&nbsp; Market Analysis → Trend Collection</div>
       <div style="display:flex;align-items:center;gap:10px">
         <button class="btn btn-primary" id="collect-all-btn-comp"
           onclick="runCollectAllFromComp()"
@@ -1305,7 +1257,7 @@ function enterBrandFromHome(brand) {
 
         <!-- KR / EU / GLOBAL -->
         <div id="spp-market-wrap">
-          <div class="spp-empty">02 Market Analysis에서 데이터를 로드하면 GLOBAL / EU 컬러 팔레트가 생성됩니다.</div>
+          <div class="spp-empty">01 Market Analysis에서 데이터를 로드하면 GLOBAL / EU 컬러 팔레트가 생성됩니다.</div>
         </div>
 
         <!-- ★ Sales-Based (SERGIO TACCHINI 실판매 데이터 · MLB 스타일) -->
@@ -1344,7 +1296,7 @@ function enterBrandFromHome(brand) {
             <span class="spp-intersection-section-sub">GLOBAL ∩ EU — Cross-Market Colors</span>
           </div>
           <div id="spp-intersection-groups">
-            <div class="spp-empty">02 Market Analysis 데이터를 로드하면 GLOBAL/EU 공통 컬러가 표시됩니다.</div>
+            <div class="spp-empty">01 Market Analysis 데이터를 로드하면 GLOBAL/EU 공통 컬러가 표시됩니다.</div>
           </div>
         </div>
 
@@ -1355,7 +1307,7 @@ function enterBrandFromHome(brand) {
             <span class="spp-seasonal-section-sub">27FW · FALL / PRE-WINTER / WINTER Palette Distribution</span>
           </div>
           <div class="spp-seasonal-grid" id="spp-seasonal-grid">
-            <div class="spp-empty" style="grid-column:1/-1">02 Market Analysis 데이터를 로드하면 시즌별 컬러가 자동 분류됩니다.</div>
+            <div class="spp-empty" style="grid-column:1/-1">01 Market Analysis 데이터를 로드하면 시즌별 컬러가 자동 분류됩니다.</div>
           </div>
         </div>
 
@@ -1438,7 +1390,7 @@ function enterBrandFromHome(brand) {
               </div>
             </div>
             <div class="spp-ls-basic-common-grid" id="spp-ls-basic-common-grid">
-              <div class="spp-empty" style="grid-column:1/-1">02 Market Analysis 데이터를 로드하면 Basic 컬러가 표시됩니다.</div>
+              <div class="spp-empty" style="grid-column:1/-1">01 Market Analysis 데이터를 로드하면 Basic 컬러가 표시됩니다.</div>
             </div>
           </div>
         </div>
@@ -1533,7 +1485,7 @@ function enterBrandFromHome(brand) {
           </div>
         </div>
 
-        <!-- Season Color Distribution은 02 Market Analysis 페이지(ALL 셀렉터와 LUXURY 섹션 사이)로 이동됨 -->
+        <!-- Season Color Distribution은 01 Market Analysis 페이지(ALL 셀렉터와 LUXURY 섹션 사이)로 이동됨 -->
 
         <!-- ★ Sales-Based (DISCOVERY 실판매 데이터 · MLB/Sergio 스타일) -->
         <div id="disc-sales-section" class="spp-market-section" style="margin-top:20px">
@@ -1616,7 +1568,7 @@ function enterBrandFromHome(brand) {
             </div>
             <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:12px;line-height:1.5">China Market · Frequency Based<br>KEY 4 · SUB 4</div>
             <div id="cn-palette-wrap" style="--sw-shadow:none">
-              <div style="font-family:var(--mono);font-size:9px;color:var(--text4)">02 Market Analysis에서<br>China 마켓 CSV를 Upload하세요</div>
+              <div style="font-family:var(--mono);font-size:9px;color:var(--text4)">01 Market Analysis에서<br>China 마켓 CSV를 Upload하세요</div>
             </div>
           </div>
 
@@ -1695,7 +1647,7 @@ function enterBrandFromHome(brand) {
             <button id="cat-edit-btn" onclick="toggleCatEditMode()" class="btn btn-ghost" style="font-size:9px;padding:4px 10px;letter-spacing:0.05em">✏ EDIT</button>
           </div>
           <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:14px;padding:5px 8px;background:rgba(160,120,64,0.05);border:1px solid rgba(160,120,64,0.15);border-radius:4px;display:inline-block">
-            ⚠ 02 Market Analysis 추출 Colors만 사용 — 트렌드 PDF Colors 미포함
+            ⚠ 01 Market Analysis 추출 Colors만 사용 — 트렌드 PDF Colors 미포함
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" id="cat-curation-grid">
             <!-- JS로 동적 렌더 -->
@@ -1705,7 +1657,7 @@ function enterBrandFromHome(brand) {
       </div>
     </div>
     <div class="step-nav">
-      <button class="btn btn-sec" onclick="switchTabByName('competitor')" style="font-size:12px;padding:8px 20px;background:#FFFFFF;color:#1A1714;border:1px solid rgba(0,0,0,0.2);">&#8592; 02 Market Analysis</button>
+      <button class="btn btn-sec" onclick="switchTabByName('trend')" style="font-size:12px;padding:8px 20px;background:#FFFFFF;color:#1A1714;border:1px solid rgba(0,0,0,0.2);">&#8592; 02 Trend Collection</button>
       <div class="step-nav-info">STEP <strong>03</strong> / 04 &nbsp;&middot;&nbsp; Finalize Palette → Colorway</div>
       <button class="btn btn-primary" onclick="switchTabByName('colorway')" style="font-size:12px;padding:8px 20px;background:#A07840;color:#fff;border:none;font-weight:700;">04 Colorway &#8594;</button>
     </div>
@@ -2309,7 +2261,7 @@ if(typeof pdfjsLib!=='undefined'){
 // ════════════════════════════════════════════════════════
 let collectedColors=[];  // {hex,name,brand,group,freq,source}
 let compBrandMap = {};   // 경쟁사 브랜드별 Colors 맵 — renderCompBrandPage()에서 채워짐
-let newsletterColors=[];
+let newsletterColors=[];  // (Newsletter 소스 제거됨 — 잔여 분기 안전용 빈 배열, 항상 비어 있음)
 let wgsnColors=[];       // {id,name,hex,fileName,fileCount,fileNames}
 let peclersColors=[];    // {id,name,hex,fileName,fileCount,fileNames}
 let trendPdfCount={wgsn:0, pec:0};  // 투입된 PDF 파일 수
@@ -4623,7 +4575,6 @@ const MLB_SIGNAL = {}; // Google Sheets에서 Load
 
 // ── ★ Google Sheets URL 하드코딩 (자동 연동) ──────────────────────────
 const SHEETS_URLS = {
-  newsletter:  'https://docs.google.com/spreadsheets/d/e/2PACX-1vQtEhlRjdyc8JWQ4itVhylZHKXPYTUnj6_2rF4pRysnTLVX-xAq0wiDciRKBAfmS5TLfFu2j6KTb0Nl/pub?output=csv',
   mlbSales:    'https://docs.google.com/spreadsheets/d/e/2PACX-1vRa8QnPeUsPTOuMLP6kursBNA_ZDXGcQKDLQLUHK1_Tuo0XZY9osVoqXVzyM5DznEFq4WcUa4mWkmV0/pub?output=csv',
   wgsn:        'https://docs.google.com/spreadsheets/d/e/2PACX-1vTvuytr7yL0JKgq2hdWJuFx8Hqvlp-1RnadIQcm_45FvPFLuSTcSl1lWsJ_R8l5u7iwwTyPM-D7Sa3E/pub?output=csv',
   peclers:     'https://docs.google.com/spreadsheets/d/e/2PACX-1vQawOLYNsh_vqfwjCfzOlPUB8pA_B6cANd6BODbThs-qdhfGXjA2UvXEjcE04eJAea2s93MRg7yinVj/pub?output=csv',
@@ -4795,12 +4746,11 @@ async function loadSheetsData() {
 // ── ★ Google Sheets 자동 Load — 홈에서 MLB 선택 시에만 실행 ──
 // (autoLoadAllSheets는 triggerMLBSheetsLoad 에서 호출됨)
 
-// 소스별 개별 재로드 — newsletter / wgsn / peclers / mlbSales / competitor
+// 소스별 개별 재로드 — wgsn / peclers / mlbSales / competitor
 async function reloadSource(source) {
   const season = _activeSeason || '27FW';
   const btn = document.getElementById('btn-reload-' + source);
   const statusMap = {
-    newsletter: 'newsletter-parse-status',
     wgsn:       'wgsn-parse-status',
     peclers:    'peclers-parse-status',
     mlbSales:   'sheets-status',
@@ -4813,14 +4763,7 @@ async function reloadSource(source) {
 
   try {
     let ok = false;
-    if (source === 'newsletter') {
-      const csv = await fetchSheetsCsv(SHEETS_URLS.newsletter);
-      if (csv) {
-        const entries = parseTrendCsv(csv, 'newsletter', season);
-        if (entries.length) { _applyNewsletterEntries(entries, `Sheets [${season}]`); ok = true; }
-        else if (st) { st.textContent = `⚠ No data for ${season}`; st.style.color = 'var(--warn)'; }
-      }
-    } else if (source === 'wgsn') {
+    if (source === 'wgsn') {
       const csv = await fetchSheetsCsv(SHEETS_URLS.wgsn);
       if (csv) {
         const entries = parseTrendCsv(csv, 'wgsn', season);
@@ -4855,7 +4798,7 @@ async function reloadSource(source) {
   }
 }
 
-// 경쟁사(Market) 단독 재로드 — 02 Market Analysis 탭 버튼용
+// 경쟁사(Market) 단독 재로드 — 01 Market Analysis 탭 버튼용
 async function reloadMarketFromSheets() {
   const btn = document.getElementById('btn-reload-market');
   const st  = document.getElementById('market-reload-status');
@@ -4939,9 +4882,9 @@ function resetSeasonUI(){
   // 제안 패널 접기
   const propPanel=document.getElementById('season-proposal-panel');
   if(propPanel) propPanel.style.display='none';
-  // tab01 소스 패널(Newsletter/WGSN/Peclers) 상태·카운트·스와치 초기화
-  ['newsletter-parse-status','wgsn-parse-status','peclers-parse-status'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=''; });
-  ['news-cnt','wgsn-cnt-lbl','wgsn-cnt','pec-cnt'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent='0'; });
+  // 소스 패널(WGSN/Peclers) 상태·카운트·스와치 초기화
+  ['wgsn-parse-status','peclers-parse-status'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=''; });
+  ['wgsn-cnt-lbl','wgsn-cnt','pec-cnt'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent='0'; });
   const pecLbl=document.getElementById('pec-cnt-lbl'); if(pecLbl) pecLbl.textContent='0개';
   if(typeof renderTrendLists==='function'){ try{ renderTrendLists(); }catch(e){} }
   // 제목/부제목 갱신
@@ -4956,20 +4899,9 @@ async function autoLoadAllSheets(season) {
   // ★ 시즌 전환마다 이전 데이터 초기화 → 빈 시즌 클릭 시 옛 27FW 데이터가 남지 않음
   clearSeasonScopedData();
   const results = { comp: false, peclers: false, mlb: false, season: s };
-  const counts  = { newsletter: 0, wgsn: 0, mlb: 0, comp: 0, peclers: 0 };
+  const counts  = { wgsn: 0, mlb: 0, comp: 0, peclers: 0 };
 
   try {
-    // 0. Newsletter Sheets — season 필터
-    try {
-      const newsCsv = await fetchSheetsCsv(SHEETS_URLS.newsletter);
-      if (newsCsv) {
-        const entries = parseTrendCsv(newsCsv, 'newsletter', s);
-        counts.newsletter = entries.length;
-        if (entries.length) _applyNewsletterEntries(entries, `Google Sheets [${s}]`);
-        else console.warn(`Newsletter: ${s} 시즌 데이터 없음`);
-      }
-    } catch(e) { console.warn('Newsletter Sheets 로드 오류:', e); }
-
     // 0b. WGSN Sheets — season 필터
     try {
       const wgsnCsv = await fetchSheetsCsv(SHEETS_URLS.wgsn);
@@ -5021,7 +4953,7 @@ async function autoLoadAllSheets(season) {
     } catch(e) { console.warn('Peclers Load 오류:', e); }
 
   } finally {
-    const total = counts.newsletter + counts.wgsn + counts.mlb + counts.comp + counts.peclers;
+    const total = counts.wgsn + counts.mlb + counts.comp + counts.peclers;
     window._lastLoadSummary = { season: s, counts, total };
     showSheetsLoadBanner('done', results);
     // 빈 시즌 안내 (모든 소스 0건이면 명확히 표시)
@@ -5615,242 +5547,7 @@ const COLORO_TO_TCX = {
 };
 
 // ── 뉴스레터 전용 파싱: 파일 성격 자동 감지 후 최적 추출 경로 분기 ────────
-// [텍스트형] pdf.js 네이티브 텍스트 레이어 → TCX 코드 직접 추출
-// [이미지형] Tesseract OCR (sharpen + contrast 전처리) → k-means 폴백
-async function parseTrendPDFNewsletter(file){
-  const statusEl = document.getElementById('newsletter-parse-status');
-  const _setStatus = (msg, col) => {
-    if(statusEl){ statusEl.textContent=msg; if(col) statusEl.style.color=col; }
-    logTrend(msg,'info');
-  };
-  _setStatus(`${file.name} Parsing...`,'var(--gold)');
-  try{
-    const ab = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({data:ab}).promise;
-    const tcxSet = new Set();
-
-    // ══ STEP 1: 파일 성격 자동 감지 ══
-    let nativeTextTcxCount = 0;
-    let totalNativeChars = 0;
-    const probePages = Math.min(2, pdf.numPages);
-    for(let i=1; i<=probePages; i++){
-      const page = await pdf.getPage(i);
-      const tc = await page.getTextContent();
-      const raw = tc.items.map(t=>t.str).join(' ');
-      totalNativeChars += raw.replace(/\s/g,'').length;
-      const m = raw.match(/\d{2}[\s\-]\d{4}\s*TCX/gi);
-      nativeTextTcxCount += m ? m.length : 0;
-    }
-    const isTextBased = (nativeTextTcxCount >= 1 && totalNativeChars >= 100)
-                     || (totalNativeChars >= 500);
-    logTrend(`${file.name} — 유형: ${isTextBased?'텍스트':'이미지'}형 (텍스트 ${totalNativeChars}자, TCX ${nativeTextTcxCount}개)`, 'info');
-
-    // ══ STEP 2-A: 텍스트형 ══
-    if(isTextBased){
-      for(let i=1; i<=pdf.numPages; i++){
-        _setStatus(`${file.name} — ${i}/${pdf.numPages}p 텍스트 Parsing...`,'var(--gold)');
-        const page = await pdf.getPage(i);
-        const tc = await page.getTextContent();
-        const textB = tc.items.map(it=>it.str).join(' ');
-        let textA = '';
-        for(let j=0;j<tc.items.length;j++){
-          const cur=tc.items[j],nxt=tc.items[j+1];
-          textA+=cur.str;
-          if(nxt){const gap=(nxt.transform?.[4]||0)-((cur.transform?.[4]||0)+(cur.width||0));textA+=gap>1?' ':'';}
-        }
-        const full = textA+' '+textB;
-        (full.match(/\d{2}[\s\-]\d{4}\s*TCX/gi)||[]).forEach(h=>{
-          tcxSet.add(h.replace(/\s*TCX.*/i,'').replace(/\s/,'-').trim());
-        });
-        await new Promise(r=>setTimeout(r,0));
-      }
-
-    // ══ STEP 2-B: 이미지형 — OCR (sharpen+contrast 전처리) ══
-    } else {
-      let ocrSuccess = false;
-
-      for(let i=1; i<=pdf.numPages; i++){
-        _setStatus(`${file.name} — ${i}/${pdf.numPages}p OCR 중...`,'var(--gold)');
-        const page = await pdf.getPage(i);
-
-        // scale 2.5 (메모리 한도 32MP)
-        const MAX_PX = 32000000;
-        let scale = 2.5;
-        const vpTest = page.getViewport({scale});
-        if(vpTest.width*vpTest.height > MAX_PX){
-          scale = Math.max(1.5, Math.sqrt(MAX_PX/(vpTest.width*vpTest.height))*2.5);
-        }
-        const vp = page.getViewport({scale});
-        const canvas = document.createElement('canvas');
-        canvas.width=vp.width; canvas.height=vp.height;
-        await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
-
-        // ── 전처리: sharpen + contrast (Python 검증: 5개 완벽 추출) ──
-        // 1단계: 캔버스 픽셀 직접 조작으로 언샤프 마스킹 + 대비 강화
-        const offW = canvas.width, offH = canvas.height;
-        const enh = document.createElement('canvas');
-        enh.width=offW; enh.height=offH;
-        const enhCtx = enh.getContext('2d');
-        // contrast(1.6) + 선명도 향상
-        enhCtx.filter = 'contrast(1.6) saturate(0.8)';
-        enhCtx.drawImage(canvas, 0, 0);
-        enhCtx.filter = 'none';
-        canvas.remove();
-
-        // 청크 3000px + 500px 오버랩
-        const CHUNK_H = 3000, OVERLAP = 500;
-        let chunkIdx = 0;
-
-        for(let y=0; y<offH; y+=(CHUNK_H-OVERLAP)){
-          const chunkH = Math.min(CHUNK_H, offH-y);
-          if(chunkH <= 0) break;
-          chunkIdx++;
-          const off = document.createElement('canvas');
-          off.width=offW; off.height=chunkH;
-          off.getContext('2d').drawImage(enh, 0, -y);
-
-          try{
-            const {data:{text}} = await Tesseract.recognize(off, 'eng', {logger:()=>{}});
-            const flat = text.replace(/\n/g,' ');
-
-            const tcxLines = text.split('\n').filter(l=>/TCX/i.test(l)||/\d{2}[-\s]\d{4}/.test(l));
-            if(tcxLines.length) logTrend(`p${i} 청크${chunkIdx}: ${tcxLines.slice(0,2).join(' | ')}`, 'info');
-
-            const before = tcxSet.size;
-            // 패턴1: "19-4057 TCX"
-            (flat.match(/\d{2}-\d{4}\s*TCX/gi)||[]).forEach(h=>tcxSet.add(h.replace(/\s*TCX.*/i,'').trim()));
-            // 패턴2: "19 4057 TCX"
-            (flat.match(/\d{2}\s\d{4}\s*TCX/gi)||[]).forEach(h=>tcxSet.add(h.replace(/(\d{2})\s(\d{4}).*/,'$1-$2')));
-            // 패턴3: "Pantone 19-4057"
-            (flat.match(/Pantone\s+\d{2}-\d{4}/gi)||[]).forEach(h=>tcxSet.add(h.replace(/Pantone\s+/i,'')));
-
-            if(tcxSet.size > before){
-              logTrend(`  → 신규: ${[...tcxSet].slice(before).join(', ')}`, 'ok');
-              ocrSuccess = true;
-            }
-          }catch(e){
-            logTrend(`OCR 실패 (청크${chunkIdx}): ${e.message}`, 'err');
-          }
-          off.remove();
-          await new Promise(r=>setTimeout(r,0));
-        }
-        enh.remove();
-      }
-
-      // ══ STEP 2-C: OCR 결과 없으면 k-means 폴백 ══
-      // OCR 에러 없이 실행됐어도 TCX를 못 찾으면 k-means 실행
-      if(tcxSet.size === 0){
-        logTrend('OCR 결과 없음 → k-means 폴백', 'info');
-        const allPixels = [];
-        const MAX_PX2 = 16000000;
-
-        for(let i=1; i<=pdf.numPages; i++){
-          _setStatus(`${file.name} — ${i}/${pdf.numPages}p k-means 픽셀 수집...`,'var(--gold)');
-          const page = await pdf.getPage(i);
-          let scale = 1.5;
-          const vpTest = page.getViewport({scale});
-          if(vpTest.width*vpTest.height>MAX_PX2) scale=Math.max(1.0,Math.sqrt(MAX_PX2/(vpTest.width*vpTest.height))*1.5);
-          const vp = page.getViewport({scale});
-          const canvas = document.createElement('canvas');
-          canvas.width=vp.width; canvas.height=vp.height;
-          const ctx = canvas.getContext('2d');
-          await page.render({canvasContext:ctx,viewport:vp}).promise;
-          const px = ctx.getImageData(0,0,canvas.width,canvas.height).data;
-          const W=canvas.width, H=canvas.height;
-          for(let y=0;y<H;y+=150) for(let x=0;x<W;x+=150){
-            const idx=(y*W+x)*4, r=px[idx],g=px[idx+1],b=px[idx+2];
-            if((r+g+b)/3<220 && Math.max(r,g,b)-Math.min(r,g,b)>20) allPixels.push([r,g,b]);
-          }
-          canvas.remove();
-          await new Promise(r=>setTimeout(r,0));
-        }
-
-        _setStatus('k-means 클러스터링 중...','var(--gold)');
-        if(allPixels.length === 0){
-          logTrend(file.name + ' — k-means 픽셀 없음 (밝은 배경만 존재), 스킵', 'info');
-          _setStatus(`✓ ${file.name} — 색상 픽셀 없음, 스킵`,'var(--text3)');
-          return;
-        }
-        const K=Math.min(15, allPixels.length), ITERS=15;
-        const step=Math.max(1,Math.floor(allPixels.length/K));
-        let centers=Array.from({length:K},(_,i)=>[...allPixels[Math.min(i*step,allPixels.length-1)]]);
-        for(let iter=0;iter<ITERS;iter++){
-          const sums=Array.from({length:K},()=>[0,0,0]);
-          const cnts=new Array(K).fill(0);
-          for(const [r,g,b] of allPixels){
-            let best=0,bestD=Infinity;
-            for(let k=0;k<K;k++){const dr=r-centers[k][0],dg=g-centers[k][1],db=b-centers[k][2];const d=dr*dr+dg*dg+db*db;if(d<bestD){bestD=d;best=k;}}
-            sums[best][0]+=r;sums[best][1]+=g;sums[best][2]+=b;cnts[best]++;
-          }
-          for(let k=0;k<K;k++) if(cnts[k]>0) centers[k]=[Math.round(sums[k][0]/cnts[k]),Math.round(sums[k][1]/cnts[k]),Math.round(sums[k][2]/cnts[k])];
-          await new Promise(r=>setTimeout(r,0));
-        }
-        const clSizes=new Array(K).fill(0);
-        for(const [r,g,b] of allPixels){
-          let best=0,bestD=Infinity;
-          for(let k=0;k<K;k++){const dr=r-centers[k][0],dg=g-centers[k][1],db=b-centers[k][2];const d=dr*dr+dg*dg+db*db;if(d<bestD){bestD=d;best=k;}}
-          clSizes[best]++;
-        }
-        const sorted=centers.map((c,i)=>({c,size:clSizes[i]})).sort((a,b)=>b.size-a.size);
-        if(typeof PANTONE_TCX_DB!=='undefined'&&typeof rgbDist==='function'){
-          // 클러스터 hex 배열 (크기 순)
-          const clusterHexes = sorted.map(({c})=>'#'+c.map(v=>v.toString(16).padStart(2,'0')).join(''));
-
-          // TCX DB All를 순회하며 각 코드의 "가장 가까운 클러스터 ΔE" 계산
-          // → ΔE 80 이내 코드를 거리 순으로 정렬 → 상위 10개만 추출
-          const candidates = [];
-          for(const [code,[dbHex]] of Object.entries(PANTONE_TCX_DB)){
-            let minD = Infinity;
-            for(const hex of clusterHexes){
-              const d = rgbDist(hex, dbHex);
-              if(d < minD) minD = d;
-            }
-            if(minD < 80) candidates.push({code, minD});
-          }
-          // 거리 순 정렬 후 상위 10개
-          candidates.sort((a,b)=>a.minD-b.minD);
-          for(const {code, minD} of candidates.slice(0,10)){
-            tcxSet.add(code);
-            logTrend(`  k-means → ${code} ΔE=${minD.toFixed(1)}`,'ok');
-          }
-        }
-      }
-    }
-
-    // ══ STEP 3: TCX → newsletterColors Save ══
-    // PANTONE_TCX_DB (배열형) + PANTONE_TCX_MAP/NAME (맵형) 둘 다 조회
-    logTrend(`tcxSet 최종: ${[...tcxSet].join(', ')}`, 'info');
-    let added=0;
-    for(const code of tcxSet){
-      // DB 조회: PANTONE_TCX_DB 우선, 없으면 PANTONE_TCX_MAP+NAME 사용
-      let hex='', name='';
-      if(typeof PANTONE_TCX_DB!=='undefined' && PANTONE_TCX_DB[code]){
-        const entry=PANTONE_TCX_DB[code];
-        hex=entry[0]; name=entry[1];
-      } else if(typeof PANTONE_TCX_MAP!=='undefined' && PANTONE_TCX_MAP[code]){
-        hex=PANTONE_TCX_MAP[code];
-        name=(typeof PANTONE_TCX_NAME!=='undefined' && PANTONE_TCX_NAME[code]) || code;
-      } else {
-        logTrend(`  ${code} → DB 없음 (두 DB 모두 미존재)`, 'err');
-        continue;
-      }
-      if(newsletterColors.find(e=>e.code===code)) continue;
-      newsletterColors.push({
-        id:UID(), hex, name, code,
-        label:code+' TCX', src:'tcx', system:'Pantone TCX',
-        tcxCode:code, pantone:code+' TCX',
-        fileName:file.name, fileNames:[file.name], fileCount:1,
-      });
-      logTrend(`  ${code} ${name} → Save Done`, 'ok');
-      added++;
-    }
-    _setStatus(`✓ ${file.name} — 파싱 Done, TCX ${added}개 추출`,'var(--teal)');
-  }catch(err){
-    logTrend(`✗ ${file.name}: ${err.message}`,'err');
-    // throw 하지 않음 — 한 파일 실패가 다음 파일 파싱을 막지 않도록
-  }
-}
-window.parseTrendPDFNewsletter = parseTrendPDFNewsletter;
+// (Newsletter PDF 파서 제거됨)
 
 
 async function parseTrendPDF(file, type){
@@ -6545,7 +6242,6 @@ function renderTrendLists(){
   const slv = window._sourceListVisible || {};
   if(!slv['wgsn']) { renderFileTabs('wgsn'); renderSourceSwatches('wgsn'); }
   if(!slv['peclers']) { renderFileTabs('peclers'); renderSourceSwatches('peclers'); }
-  if(!slv['newsletter']) { renderFileTabs('newsletter'); renderSourceSwatches('newsletter'); }
 }
 function renderTrendList(elId,arr,type){
   const el=document.getElementById(elId);
@@ -7039,8 +6735,8 @@ function renderPalCrossView(){
     };
   }
 
-    const srcMap={wgsn:'WGSN',peclers:'Peclers',newsletter:'Newsletter',comp:'Competitor',manual:'Manual'};
-  const srcColor={wgsn:'var(--blue)',peclers:'var(--purple)',newsletter:'var(--teal)',comp:'var(--gold)',manual:'var(--text3)'};
+    const srcMap={wgsn:'WGSN',peclers:'Peclers',comp:'Competitor',manual:'Manual'};
+  const srcColor={wgsn:'var(--blue)',peclers:'var(--purple)',comp:'var(--gold)',manual:'var(--text3)'};
 
   function makeChip(c, mode){
     const isInStar=false; // 별표 제거됨
@@ -7428,8 +7124,8 @@ function renderSplitScoreList(){
   });
 
   // ── 행 렌더 헬퍼 ──
-  const srcMap={wgsn:'WGSN',peclers:'Peclers',newsletter:'Newsletter',comp:'Competitor',manual:'Manual'};
-  const srcColor={wgsn:'var(--blue)',peclers:'var(--purple)',newsletter:'var(--teal)',comp:'var(--gold)',manual:'var(--text3)'};
+  const srcMap={wgsn:'WGSN',peclers:'Peclers',comp:'Competitor',manual:'Manual'};
+  const srcColor={wgsn:'var(--blue)',peclers:'var(--purple)',comp:'var(--gold)',manual:'var(--text3)'};
 
   function makeRow(c, mode){
     const isInStar = false; // (별표 제거됨)
@@ -7611,7 +7307,7 @@ const CW_GROUP_COUNTS = [
 ];
 
 // ── 그룹 비율(다운·바람막이·티) — 항상 고정 8:5:3 사용 ──
-// (한때 02 Market Analysis 실데이터 기반으로 재계산했으나, 실판매 데이터가 있을 때 그룹별 벌 수가
+// (한때 01 Market Analysis 실데이터 기반으로 재계산했으나, 실판매 데이터가 있을 때 그룹별 벌 수가
 //  들쭉날쭉해지고 예측하기 어려워진다는 피드백으로 다시 고정 비율로 되돌림)
 function _cwGetCategoryGroupCounts(catKey){
   return CW_GROUP_COUNTS;
@@ -7832,7 +7528,7 @@ function renderColorwayPage(){
     if(!state.palette.length){
       return `<div style="border:1px solid var(--border);border-radius:12px;padding:16px;background:var(--bg2);flex:1 1 540px;min-width:540px">
         <div style="font-family:var(--sans);font-size:14px;font-weight:700;color:var(--text);margin-bottom:10px">${cat.emoji||''} ${cat.name}</div>
-        <div class="spp-empty" style="font-size:10px">02 Market Analysis 데이터 필요 (색 없음)</div>
+        <div class="spp-empty" style="font-size:10px">01 Market Analysis 데이터 필요 (색 없음)</div>
       </div>`;
     }
     const groupSections = CW_GROUP_COUNTS.map(g=>{
@@ -8385,7 +8081,7 @@ function _fillCatColors() {
     const addedPoint = ov.point || [];
     const addedSub   = ov.sub   || [];
 
-    const msg = srcData ? '해당 카테고리 색 없음' : '02 Market Analysis 데이터 필요';
+    const msg = srcData ? '해당 카테고리 색 없음' : '01 Market Analysis 데이터 필요';
 
     // ── COLORS: POINT 2 + SUB 4 = 총 6개 통합 → 트렌드 제안 6개 ──
     const cEl = document.getElementById('cat-' + cat.key + '-colors');
@@ -9619,7 +9315,7 @@ function _discBuildSeasonDist(){
     });
     const allColorsFull = _mergeNearColors(hexCount);
     const hexTotal = allColorsFull.reduce((s,c)=>s+c.count, 0);
-    // 02 Market Analysis 브랜드 카드와 동일한 개수 제한(accent 16 + basic 8 = 24)을 맞춰 상위 24개까지만 표시
+    // 01 Market Analysis 브랜드 카드와 동일한 개수 제한(accent 16 + basic 8 = 24)을 맞춰 상위 24개까지만 표시
     const allColors = allColorsFull.slice(0, 24);
     const topColors = allColors.slice(0,7);
     return { ...g, monthsWithData, ...agg, topColors, allColors, allColorsFull, hexTotal };
@@ -9762,7 +9458,7 @@ function _discRenderSeasonDist(){
   const { byGroup } = _discBuildSeasonDist();
   const hasAny = byGroup.some(g=>g.total>0);
   if(!hasAny){
-    body.innerHTML = '<div class="spp-empty">02 Market Analysis에 월별(YYYY-MM) season 데이터가 없습니다. 시트의 season 컬럼이 2025-12, 2026-01 같은 월 단위 값인지 확인해주세요.</div>';
+    body.innerHTML = '<div class="spp-empty">01 Market Analysis에 월별(YYYY-MM) season 데이터가 없습니다. 시트의 season 컬럼이 2025-12, 2026-01 같은 월 단위 값인지 확인해주세요.</div>';
     return;
   }
   byGroup.forEach(g=>{ window._discSeasonDistData[g.label] = g; });
@@ -9771,7 +9467,7 @@ function _discRenderSeasonDist(){
     return _discRenderSeasonDistDonut(g.label, g.total, g.total ? note : null, g.allColors, g.hexTotal);
   }).join('');
   body.innerHTML = `<div style="display:flex;flex-direction:column;gap:20px">${bars}</div>
-    <div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:14px">02 Market Analysis(GLOBAL+KOREA) 기준 · 있는 달만 집계 (빈 달은 제외, 0으로 채우지 않음) · 막대 아래 칩은 그 구간 빈도 상위 실제 컬러</div>`;
+    <div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:14px">01 Market Analysis(GLOBAL+KOREA) 기준 · 있는 달만 집계 (빈 달은 제외, 0으로 채우지 않음) · 막대 아래 칩은 그 구간 빈도 상위 실제 컬러</div>`;
 }
 
 // ── DISCOVERY 전용 팔레트 선발 함수 ────────────────────────────
@@ -11936,8 +11632,8 @@ function openPalDetail(c){
   // 소스 정보 + 브랜드 세부 데이터
   const srcEl = document.getElementById('paldm-sources');
   if(srcEl){
-    const srcMap={'wgsn':'WGSN','peclers':'Peclers','newsletter':'Newsletter','comp':'Competitor','trend':'Trend','csv':'CSV','manual':'Manual','pdf':'PDF','article':'Article','image':'Image'};
-    const srcColor={'wgsn':'var(--blue)','peclers':'var(--purple)','newsletter':'var(--teal)','comp':'var(--gold)','trend':'var(--teal)','csv':'var(--text2)','manual':'var(--text2)','pdf':'var(--blue)','article':'var(--teal)','image':'var(--text2)'};
+    const srcMap={'wgsn':'WGSN','peclers':'Peclers','comp':'Competitor','trend':'Trend','csv':'CSV','manual':'Manual','pdf':'PDF','article':'Article','image':'Image'};
+    const srcColor={'wgsn':'var(--blue)','peclers':'var(--purple)','comp':'var(--gold)','trend':'var(--teal)','csv':'var(--text2)','manual':'var(--text2)','pdf':'var(--blue)','article':'var(--teal)','image':'var(--text2)'};
     // scoredColors + collectedColors에서 데이터 보강
     const _sc2 = (typeof scoredColors!=='undefined') ? scoredColors.find(x=>(x.hex||'').toUpperCase()===(c.hex||'').toUpperCase()) : null;
     const _cc2 = (typeof collectedColors!=='undefined') ? collectedColors.find(x=>(x.hex||'').toUpperCase()===(c.hex||'').toUpperCase()) : null;
@@ -11965,10 +11661,10 @@ function openPalDetail(c){
     const hasComp = allSrcs.includes('comp') || compBrands.length > 0;
     const hasNearBrands = _nearCompBrands.length > 0;
 
-    // ── Trend 소스 수집 (wgsn/newsletter/peclers/trend) ──────
-    const trendSrcs = allSrcs.filter(s=>['wgsn','newsletter','peclers','trend'].includes(s));
+    // ── Trend 소스 수집 (wgsn/peclers/trend) ──────
+    const trendSrcs = allSrcs.filter(s=>['wgsn','peclers','trend'].includes(s));
     // srcFreq에만 있는 트렌드 소스도 추가
-    ['wgsn','newsletter','peclers'].forEach(s=>{
+    ['wgsn','peclers'].forEach(s=>{
       if(srcFreq[s] && !trendSrcs.includes(s)) trendSrcs.push(s);
     });
 
@@ -11990,22 +11686,19 @@ function openPalDetail(c){
       </div>`;
     }
 
-    // ── Trend 뱃지 (wgsn/newsletter/peclers 출처별) ──────────
+    // ── Trend 뱃지 (wgsn/peclers 출처별) ──────────
     if(trendSrcs.length > 0){
       // 출처별 라벨 수집
       const trendLabels = [];
       if(trendSrcs.includes('wgsn')) trendLabels.push(`WGSN${srcFreq['wgsn']?' ×'+srcFreq['wgsn']:''}`);
-      if(trendSrcs.includes('newsletter')) trendLabels.push(`Newsletter${srcFreq['newsletter']?' ×'+srcFreq['newsletter']:''}`);
       if(trendSrcs.includes('peclers')) trendLabels.push(`Peclers${srcFreq['peclers']?' ×'+srcFreq['peclers']:''}`);
       if(trendSrcs.includes('trend') && trendLabels.length===0){
         // 'trend' fallback — wgsn/peclers 색상에서 온 것이므로 원본 소스 추론
         const _inWgsn = (typeof wgsnColors!=='undefined') && wgsnColors.some(x=>x.hex&&typeof rgbDist==='function'&&rgbDist(x.hex,c.hex)<22);
         const _inPec  = (typeof peclersColors!=='undefined') && peclersColors.some(x=>x.hex&&typeof rgbDist==='function'&&rgbDist(x.hex,c.hex)<22);
-        const _inNews = (typeof newsletterColors!=='undefined') && newsletterColors.some(x=>x.hex&&typeof rgbDist==='function'&&rgbDist(x.hex,c.hex)<22);
         if(_inWgsn) trendLabels.push('WGSN');
         if(_inPec)  trendLabels.push('Peclers');
-        if(_inNews) trendLabels.push('Newsletter');
-        if(!_inWgsn && !_inPec && !_inNews) trendLabels.push('Trend');
+        if(!_inWgsn && !_inPec) trendLabels.push('Trend');
       }
 
       html += `<div style="padding:6px 8px;background:var(--bg3);border-radius:6px">
@@ -12021,10 +11714,9 @@ function openPalDetail(c){
       const freqParts = [];
       if(srcFreq['comp']) freqParts.push(`Competitor ×${srcFreq['comp']}`);
       if(srcFreq['wgsn']) freqParts.push(`WGSN ×${srcFreq['wgsn']}`);
-      if(srcFreq['newsletter']) freqParts.push(`Newsletter ×${srcFreq['newsletter']}`);
       if(srcFreq['peclers']) freqParts.push(`Peclers ×${srcFreq['peclers']}`);
       Object.entries(srcFreq).forEach(([k,v])=>{
-        if(!['comp','wgsn','newsletter','peclers'].includes(k) && v)
+        if(!['comp','wgsn','peclers'].includes(k) && v)
           freqParts.push(`${srcMap[k]||k} ×${v}`);
       });
 
@@ -13327,17 +13019,12 @@ function addToCat(cat, hex){
      ════════════════════════════════════════════════ -->
 <script>
 
-// ── parseTrendPDF / parseTrendPDFNewsletter 크로스-블록 안전 참조 ──
+// ── parseTrendPDF 크로스-블록 안전 참조 ──
 // 이 블록에서 직접 참조 시 undefined가 될 수 있으므로 지연 래퍼 사용
 function _safeParseTrendPDF(file, type){
   const fn = window.parseTrendPDF || (typeof parseTrendPDF !== 'undefined' ? parseTrendPDF : null);
   if(!fn) return Promise.reject(new Error('parseTrendPDF 함수를 찾을 수 없습니다. 페이지를 새로고침 후 다시 시도하세요.'));
   return fn(file, type);
-}
-function _safeParseTrendPDFNewsletter(file){
-  const fn = window.parseTrendPDFNewsletter || (typeof parseTrendPDFNewsletter !== 'undefined' ? parseTrendPDFNewsletter : null);
-  if(!fn) return Promise.reject(new Error('parseTrendPDFNewsletter 함수를 찾을 수 없습니다. 페이지를 새로고침 후 다시 시도하세요.'));
-  return fn(file);
 }
 
 
@@ -13400,7 +13087,7 @@ function _safeHtml(el, val) { if(el) el.innerHTML = val; }
 
 
 // ── ST 스타일 소스별 파싱 ─────────────────────────────────
-const _pendingFiles = { wgsn:[], peclers:[], newsletter:[] };
+const _pendingFiles = { wgsn:[], peclers:[] };
 window._pendingFiles = _pendingFiles;
 
 // 파일 선택 → 배지 표시
@@ -13780,19 +13467,14 @@ async function parseSource(source) {
   if(btn){ btn.disabled=true; btn.textContent='Parsing...'; btn.classList.add('running'); }
 
   let totalFound = 0;
-  // 소스 그대로 전달 (newsletter도 직접 지원)
+  // 소스 그대로 전달
   const parseType = source;
 
   for(const f of files) {
     if(statusEl) { statusEl.textContent = `${f.name} Parsing...`; statusEl.style.color='var(--gold)'; }
     logTrend(`${f.name} Parsing...`, 'run');
     try {
-      // 뉴스레터는 parseTrendPDFNewsletter 우선, 없으면 parseTrendPDF fallback
-      if(source === 'newsletter') {
-        await _safeParseTrendPDFNewsletter(f);
-      } else {
-        await _safeParseTrendPDF(f, parseType);
-      }
+      await _safeParseTrendPDF(f, parseType);
       if(statusEl) { statusEl.textContent = `✓ ${f.name} — 파싱 Done`; statusEl.style.color='var(--teal)'; }
       logTrend(`✓ ${f.name} Done`, 'ok');
     } catch(e) {
@@ -14190,15 +13872,12 @@ async function runPdfParse(){
     // WGSN files (clicked + dropped)
     const wgsnInput=document.getElementById('wgsn-pdf');
     const pecInput=document.getElementById('pec-pdf');
-    const newsInput=document.getElementById('news-pdf');
     const dropped=window._droppedFiles||{};
     const wgsnFiles=[...Array.from(wgsnInput.files||[]),...(dropped.wgsn||[])];
     const pecFiles=[...Array.from(pecInput.files||[]),...(dropped.peclers||[])];
-    const newsFiles=[...Array.from(newsInput?.files||[]),...(dropped.newsletter||[])];
-    for(const f of newsFiles) await parseTrendPDF(f,'newsletter');
     for(const f of wgsnFiles) await parseTrendPDF(f,'wgsn');
     for(const f of pecFiles) await parseTrendPDF(f,'peclers');
-    if(!wgsnFiles.length&&!pecFiles.length&&!newsFiles.length){logTrend('PDF 파일을 먼저 등록하세요','err');return;}
+    if(!wgsnFiles.length&&!pecFiles.length){logTrend('PDF 파일을 먼저 등록하세요','err');return;}
     // ── wgsnColors + peclersColors → collectedColors 병합 ──
     if(typeof mergeCollected === 'function'){
       mergeCollected(wgsnColors.map(c=>({...c, source:'wgsn', brand:'WGSN', group:'ALL', freq:c.fileCount||1})));
@@ -14371,9 +14050,8 @@ function runCollectAll(){
 
   collectedColors = [];
 
-  // ── Step 1: PDF 소스 (뉴스레터/WGSN/Peclers) ──────────────────
+  // ── Step 1: PDF 소스 (WGSN/Peclers) ──────────────────
   const pdfSources = [
-    { arr: newsletterColors, source: 'newsletter', brand: '뉴스레터' },
     { arr: wgsnColors,       source: 'wgsn',       brand: 'WGSN'     },
     { arr: peclersColors,    source: 'peclers',    brand: 'Peclers'  },
   ];
@@ -14446,7 +14124,7 @@ function runCollectAll(){
 
   const compTotal = compData ? compData.length : 0;
   logTrend(`✓ Data Collection Complete — ${collectedColors.length} Colors Total`, 'ok');
-  logTrend(`  PDF: Newsletter ${newsletterColors.length} / WGSN ${wgsnColors.length} / Peclers ${peclersColors.length} → ${pdfCount} colors`, 'ok');
+  logTrend(`  PDF: WGSN ${wgsnColors.length} / Peclers ${peclersColors.length} → ${pdfCount} colors`, 'ok');
   logTrend(`  Competitor CSV: ${compTotal} → ${compNew} new, ${compMerged} Brands merged`, 'ok');
 
   if(btn){
@@ -14586,9 +14264,9 @@ function addManualColor(){
 }
 
 // ── Colors Add 팝오버 ──────────────────────────────────────────────
-let _popSource = 'newsletter';
+let _popSource = 'wgsn';
 function openColorPopover(el, source){
-  _popSource = source || 'newsletter';
+  _popSource = source || 'wgsn';
   const pop = document.getElementById('color-add-popover');
   const overlay = document.getElementById('color-add-overlay');
   // 위치 계산 — 버튼 근처
@@ -14685,8 +14363,7 @@ function confirmColorPopover(){
     fileCount:1, fileNames:['직접입력'],
   };
   // 소스 배열에 Add (스와치 그리드 반영)
-  if(_popSource==='newsletter') newsletterColors.push(colorEntry);
-  else if(_popSource==='wgsn') wgsnColors.push(colorEntry);
+  if(_popSource==='wgsn') wgsnColors.push(colorEntry);
   else if(_popSource==='peclers') peclersColors.push(colorEntry);
   // collectedColors에도 Add
   const exists = collectedColors.find(c => c.hex && c.hex.toUpperCase() === hex);
@@ -14697,7 +14374,7 @@ function confirmColorPopover(){
     collectedColors.push({...colorEntry, sources:[_popSource]});
   }
   // 스와치 그리드 & 카운트 갱신
-  const src = _popSource==='manual'?'newsletter':_popSource;
+  const src = _popSource==='manual'?'wgsn':_popSource;
   renderFileTabs(src);
   renderSourceSwatches(src);
   const cntEl = document.getElementById(src==='wgsn'?'wgsn-cnt-lbl':src==='peclers'?'pec-cnt-lbl':'news-cnt');
@@ -14829,11 +14506,10 @@ function setPreset(type){
 // ── 통합 스코어링 실행 ────────────────────────────
 async function runMlbScoring(){
   // collectedColors가 비어있으면 자동 merge
-  if(collectedColors.length === 0 && (wgsnColors.length > 0 || peclersColors.length > 0 || newsletterColors.length > 0)){
+  if(collectedColors.length === 0 && (wgsnColors.length > 0 || peclersColors.length > 0)){
     if(typeof mergeCollected === 'function'){
       mergeCollected(wgsnColors.map(c=>({...c,source:'wgsn',brand:'WGSN',group:'ALL',freq:c.fileCount||1})));
       mergeCollected(peclersColors.map(c=>({...c,source:'peclers',brand:'Peclers',group:'ALL',freq:c.fileCount||1})));
-      mergeCollected(newsletterColors.map(c=>({...c,source:'newsletter',brand:'Newsletter',group:'ALL',freq:c.fileCount||1})));
     } else {
       collectedColors = [
         ...wgsnColors.map(c=>({...c,source:'wgsn',brand:'WGSN',group:'ALL',freq:c.fileCount||1})),
@@ -17235,7 +16911,7 @@ function handleDrop(event, source) {
   document.getElementById('trend-pdf-cnt').textContent = cnt + '개';
   logTrend(`${source.toUpperCase()} PDF ${files.length}개 드롭 등록`, 'ok');
   // Store files for parsing
-  if (!window._droppedFiles) window._droppedFiles = { wgsn: [], peclers: [], newsletter: [] };
+  if (!window._droppedFiles) window._droppedFiles = { wgsn: [], peclers: [] };
   window._droppedFiles[source] = [...(window._droppedFiles[source] || []), ...files];
 }
 
@@ -17792,7 +17468,7 @@ window._defaultBrandSel = {
 // (버전이 다르면 localStorage에 저장된 예전 체크 목록을 무시하고 새 기본값으로 1회 재설정)
 window._defaultBrandSelVersion = window._defaultBrandSelVersion || { DISCOVERY: 2 };
 
-// ── 품목 카테고리(Outerwear/Top/Bottom/Dress) 필터 — DISCOVERY 02 Market Analysis 전용 ──
+// ── 품목 카테고리(Outerwear/Top/Bottom/Dress) 필터 — DISCOVERY 01 Market Analysis 전용 ──
 window._marketCategoryFilter = window._marketCategoryFilter || {}; // 실제 "적용된" 값 (브랜드별)
 window._marketCategoryPending = window._marketCategoryPending || {}; // 버튼으로 "선택만" 해둔 값 (적용 전)
 window._curCategoryFilter = function(){
@@ -17878,7 +17554,7 @@ function _persistMarketSel(){
 }
 
 // ── TREND BASED PALETTE 소스 ─────────────────────────────────
-// newsletter + WGSN + Peclers + 마켓(compData) 을 모두 합쳐 하나의 빈도 풀 생성.
+// WGSN + Peclers + 마켓(compData) 을 합쳐 하나의 빈도 풀 생성. (Newsletter 소스 제거됨)
 // 마켓은 체크한 브랜드만(체크 없으면 전체) 포함. 이후 classify3rows 가
 // 이 풀을 KEY/SUB/BASIC 색군으로 나누고 각 군 안에서 빈도순 정렬함.
 function getTrendSourceColors(){
@@ -17909,8 +17585,7 @@ function getTrendSourceColors(){
     }
   }
 
-  // 1) 트렌드 3소스 — 항상 포함 (Peclers 포함!)
-  if(typeof newsletterColors !== 'undefined') newsletterColors.forEach(function(c){ add(c, 'newsletter'); });
+  // 1) 트렌드 2소스 — WGSN + Peclers
   if(typeof wgsnColors     !== 'undefined') wgsnColors.forEach(function(c){ add(c, 'wgsn'); });
   if(typeof peclersColors  !== 'undefined') peclersColors.forEach(function(c){ add(c, 'peclers', c.freq); });
   // collectedColors 안의 PDF/Article 등 비-시트 트렌드 색도 포함 (시트/마켓성은 아래 compData에서 처리)
@@ -18353,7 +18028,7 @@ function openSeasonSwatchPopup(hex, name) {
 </script>
 <script>
 // ════════════════════════════════════════════════
-// NEWSLETTER & WGSN — CSV / Sheets 로드
+// WGSN — CSV / Sheets 로드
 // ════════════════════════════════════════════════
 
 // ── CSV 파싱 공통 헬퍼 ──
@@ -18365,7 +18040,7 @@ function parseTrendCsv(csv, source, filterSeason) {
   const sep = lines[0].includes('\t') ? '\t' : ',';
   const headers = lines[0].split(sep).map(h => h.trim().toLowerCase().replace(/[\uFEFF"']/g,''));
 
-  // 실제 컬럼명 기반 인덱스 (newsletter/wgsn: season,no,hex,pantone,source_file)
+  // 실제 컬럼명 기반 인덱스 (wgsn: season,no,hex,pantone,source_file)
   const hexIdx     = headers.findIndex(h => h === 'hex');
   const pantoneIdx = headers.findIndex(h => ['pantone','tcx','tcxcode','code','pantone_tcx'].includes(h));
   const nameIdx    = headers.findIndex(h => ['name','color_name','pantone_name'].includes(h));
@@ -18403,59 +18078,7 @@ function parseTrendCsv(csv, source, filterSeason) {
   return entries;
 }
 
-// ── Newsletter CSV ──
-function loadNewsletterCsv(file) {
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    const entries = parseTrendCsv(e.target.result, 'newsletter');
-    _applyNewsletterEntries(entries, file.name);
-  };
-  reader.readAsText(file, 'utf-8');
-}
-function handleNewsletterCsvDrop(e) {
-  e.preventDefault();
-  const file = e.dataTransfer.files[0];
-  if (file) loadNewsletterCsv(file);
-}
-function _applyNewsletterEntries(entries, label) {
-  if (!entries.length) { document.getElementById('newsletter-parse-status').textContent = 'No valid colors found'; return; }
-  if (typeof newsletterColors !== 'undefined') {
-    entries.forEach(en => {
-      if (!newsletterColors.find(x => x.hex === en.hex)) newsletterColors.push(en);
-    });
-  }
-  if (typeof collectedColors !== 'undefined') {
-    entries.forEach(en => {
-      if (!collectedColors.find(x => x.hex === en.hex && x.source === 'newsletter')) collectedColors.push(en);
-    });
-  }
-  const st = document.getElementById('newsletter-parse-status');
-  if (st) st.textContent = '✅ ' + label + ' — ' + entries.length + ' colors loaded';
-  const cnt = document.getElementById('news-cnt');
-  if (cnt && typeof newsletterColors !== 'undefined') cnt.textContent = newsletterColors.length;
-  if (typeof renderTrendLists === 'function') renderTrendLists();
-  if (typeof renderFileTabs === 'function') renderFileTabs('newsletter');
-}
-
-// ── Newsletter Sheets ──
-async function loadNewsletterFromSheets() {
-  const urlEl = document.getElementById('news-sheets-url');
-  const stEl  = document.getElementById('newsletter-sheets-status');
-  const url   = (urlEl ? urlEl.value.trim() : '') || SHEETS_URLS.newsletter;
-  if (!url) { if(stEl) stEl.textContent = '⚠ Please enter a Sheets URL'; return; }
-  SHEETS_URLS.newsletter = url;
-  if (stEl) stEl.textContent = '⟳ Loading…';
-  try {
-    const csv = await fetchSheetsCsv(url);
-    if (!csv) { if(stEl) stEl.textContent = '✗ Failed to load'; return; }
-    const entries = parseTrendCsv(csv, 'newsletter');
-    _applyNewsletterEntries(entries, 'Google Sheets');
-    if (stEl) stEl.style.color = 'var(--teal)';
-  } catch(e) {
-    if (stEl) { stEl.textContent = '✗ Error: ' + e.message; stEl.style.color = 'var(--red)'; }
-  }
-}
+// (Newsletter 소스 제거됨 — CSV/Sheets 로더 삭제)
 
 // ── WGSN CSV ──
 function loadWgsnCsv(file) {
@@ -19274,7 +18897,7 @@ function _sppIntersectionChipHtml(co){
 }
 function _sppRenderIntersection(){
   const wrap=document.getElementById('spp-intersection-groups'); if(!wrap) return;
-  if(!_sppMarketPalettes.kr&&!_sppMarketPalettes.eu&&!_sppMarketPalettes.global){ wrap.innerHTML='<div class="spp-empty">02 Market Analysis 데이터를 로드하면 GLOBAL/EU 공통 컬러가 표시됩니다.</div>'; return; }
+  if(!_sppMarketPalettes.kr&&!_sppMarketPalettes.eu&&!_sppMarketPalettes.global){ wrap.innerHTML='<div class="spp-empty">01 Market Analysis 데이터를 로드하면 GLOBAL/EU 공통 컬러가 표시됩니다.</div>'; return; }
   // 무채색/니어화이트 제외한 모든 마켓 색을 정의 순서상 첫 매칭 "계열(family)"에 배정 (한 색 = 한 계열)
   const allChips=_sppGetAllMarketChips().filter(c=>c.hex && !_sppIsNearWhiteOrAchromatic(c.hex));
   const bucket=SPP_INTERSECTION_CATS.map(()=>[]);
@@ -19338,7 +18961,7 @@ function _sppClassifySeasonalColors(){
 }
 function _sppRenderSeasonalColors(){
   const grid=document.getElementById('spp-seasonal-grid'); if(!grid) return;
-  if(!_sppMarketPalettes.global&&!_sppMarketPalettes.kr&&!_sppMarketPalettes.eu){ grid.innerHTML='<div class="spp-empty" style="grid-column:1/-1">02 Market Analysis 데이터를 로드하면 시즌별 컬러가 자동 분류됩니다.</div>'; return; }
+  if(!_sppMarketPalettes.global&&!_sppMarketPalettes.kr&&!_sppMarketPalettes.eu){ grid.innerHTML='<div class="spp-empty" style="grid-column:1/-1">01 Market Analysis 데이터를 로드하면 시즌별 컬러가 자동 분류됩니다.</div>'; return; }
   const seasons=_sppClassifySeasonalColors();
   grid.innerHTML=['fall','preWinter','winter'].map(sk=>{
     const meta=SPP_SEASON_META[sk], colors=seasons[sk]||[];
@@ -19511,7 +19134,7 @@ function sppOpenLsPickerModal(ls){
         <button onclick="document.getElementById('spp-ls-pick-modal').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text3);line-height:1">×</button>
       </div>
       <div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-bottom:16px">Click color to add · Already added colors appear faded</div>
-      ${marketSections || '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);text-align:center;padding:20px">02 Market Analysis 데이터를 먼저 로드하세요.</div>'}
+      ${marketSections || '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);text-align:center;padding:20px">01 Market Analysis 데이터를 먼저 로드하세요.</div>'}
     </div>`;
   document.body.appendChild(modal);
   modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
@@ -19853,7 +19476,7 @@ function _sppRenderBasicCommon(){
     _sppBasicCommon = JSON.parse(JSON.stringify(merged));
     _sppBasicCommonOriginal = JSON.parse(JSON.stringify(_sppBasicCommon));
   }
-  if(!_sppBasicCommon.length){ grid.innerHTML='<div class="spp-empty" style="grid-column:1/-1">02 Market Analysis 데이터를 로드하면 Basic 컬러가 표시됩니다.</div>'; return; }
+  if(!_sppBasicCommon.length){ grid.innerHTML='<div class="spp-empty" style="grid-column:1/-1">01 Market Analysis 데이터를 로드하면 Basic 컬러가 표시됩니다.</div>'; return; }
   const edit = _sppBasicEditMode;
   grid.innerHTML=_sppBasicCommon.map((co,i)=>{
     const code=co.pantone||(co.tcxCode?co.tcxCode+' TCX':'')||_sppPantoneApprox(co.hex)||'';
@@ -19938,7 +19561,7 @@ function sppOpenBasicPickerModal(){
         <button onclick="document.getElementById('spp-ls-pick-modal').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text3);line-height:1">×</button>
       </div>
       <div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-bottom:16px">Click color to add · Already added colors appear faded</div>
-      ${marketSections || '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);text-align:center;padding:20px">02 Market Analysis 데이터를 먼저 로드하세요.</div>'}
+      ${marketSections || '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);text-align:center;padding:20px">01 Market Analysis 데이터를 먼저 로드하세요.</div>'}
     </div>`;
   document.body.appendChild(modal);
   modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
@@ -20020,12 +19643,11 @@ function openSppSwatchPopover(regIdx){
     (co._trendMatches||[]).forEach(m=>(m.sources||[]).forEach(s=>_tsrc.add((s||'').toLowerCase())));
     const _tMap={wgsn:'WGSN',peclers:'Peclers',newsletter:'Newsletter',newsletter_csv:'Newsletter',pdf:'Trend PDF','pdf-img':'Trend PDF','trend-pdf':'Trend PDF',article:'Trend',trend:'Trend'};
     const _tSeen=new Set(); let _tLabels=[];
-    ['newsletter','newsletter_csv','wgsn','peclers','pdf','pdf-img','trend-pdf','article','trend'].forEach(k=>{
+    ['wgsn','peclers','pdf','pdf-img','trend-pdf','article','trend'].forEach(k=>{
       if(_tsrc.has(k)){ const lbl=_tMap[k]; if(!_tSeen.has(lbl)){ _tSeen.add(lbl); _tLabels.push(lbl); } }
     });
     if(co.trendMatch && !_tLabels.length){
       const _near=(pool)=>Array.isArray(pool)&&pool.some(x=>x.hex&&_sppRgbDist(x.hex,co.hex)<30);
-      if(_near(typeof newsletterColors!=='undefined'?newsletterColors:[])) _tLabels.push('Newsletter');
       if(_near(typeof wgsnColors!=='undefined'?wgsnColors:[])) _tLabels.push('WGSN');
       if(_near(typeof peclersColors!=='undefined'?peclersColors:[])) _tLabels.push('Peclers');
       if(!_tLabels.length) _tLabels.push('Trend');   // 그래도 못 찾으면 일반 'Trend'
