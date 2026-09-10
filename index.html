@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_TRENDMATCH_v129 (2026-09-10) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_TRENDMATCH_v130 (2026-09-10) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20468,6 +20468,7 @@ document.addEventListener('DOMContentLoaded',function(){
   var TM_DIST   = 30;                                   // 매칭 임계값 (엄격)
   var TM_CAPS   = { sub: 12, key: 8, basic: 12 };        // 그룹별 표시 상한
   var TM_MINDIST = { sub: 35, key: 48, basic: 35 };      // 그룹별 유사색 배제 거리 (03 pickByQuota 기준)
+  var TM_CLUSTER_DIST = 20;                             // 마켓 근접색 병합 거리 (촬영 편차 흡수)
   var TM_SECT_ID = 'disc-trend-matched';
   var _tmIndex = {};      // { 트렌드hex: 매칭 아이템 } — 상세 팝업 근거 표시용
 
@@ -20498,7 +20499,7 @@ document.addEventListener('DOMContentLoaded',function(){
       +   '<span style="padding:2px 10px;border-radius:20px;font-family:var(--mono);font-size:9px;font-weight:600;color:var(--gold);border:1px solid var(--gold)">Market Match</span>'
       +   swatches
       +   '<span style="font-family:var(--mono);font-size:9px;color:var(--text3)">'
-      +     it.mkHexes.join(' · ') + ' · ΔRGB ' + it.dist + ' · 마켓 빈도 ' + it.mkFreq
+      +     it.mkHexes.join(' · ') + ' · ΔRGB ' + _tmDistLabel(it) + ' · 마켓 빈도 ' + it.mkFreq
       +   '</span>'
       + '</div>';
     srcEl.insertBefore(box, srcEl.firstChild);
@@ -20565,7 +20566,43 @@ document.addEventListener('DOMContentLoaded',function(){
         out.push(byHex[h]);
       }
     });
-    return out.sort(function(a,b){ return b.freq - a.freq; });           // 빈도순
+    out.sort(function(a,b){ return b.freq - a.freq; });
+    return _tmCluster(out);                                              // 근접색 병합 후 빈도순 재정렬
+  }
+
+  // ── 근접 마켓 컬러 병합 ────────────────────────────────────────
+  //  같은 제품 색이 촬영 조건 때문에 hex 가 조금씩 갈리는 경우가 많다
+  //  (예: Vuori 블루 #0278C6 / #0278C2 / #037CC7 …).
+  //  hex 단위로 세면 빈도가 잘게 쪼개져 실제 인기와 순위가 어긋나므로,
+  //  단일 연결(single-linkage)로 묶어 빈도를 합산한 뒤 순위를 매긴다.
+  //  대표색은 클러스터에서 빈도가 가장 높은 멤버(실재하는 색)를 쓴다.
+  function _tmCluster(list){
+    if(typeof rgbDist !== 'function' || list.length < 2) return list;
+    var clusters = [];
+    list.forEach(function(co){                                           // list 는 이미 빈도 내림차순
+      for(var i = 0; i < clusters.length; i++){
+        var members = clusters[i].members;
+        for(var j = 0; j < members.length; j++){
+          if(rgbDist(members[j].hex, co.hex) < TM_CLUSTER_DIST){
+            clusters[i].members.push(co);
+            clusters[i].freq += co.freq;
+            (co.brands || []).forEach(function(b){
+              if(clusters[i].brands.indexOf(b) < 0) clusters[i].brands.push(b);
+            });
+            return;
+          }
+        }
+      }
+      clusters.push({
+        hex: co.hex,                                                     // 첫 멤버 = 최고 빈도 → 대표색
+        name: co.name,
+        freq: co.freq,
+        brands: (co.brands || []).slice(),
+        members: [co]
+      });
+    });
+    clusters.forEach(function(c){ c.memberHexes = c.members.map(function(m){ return m.hex; }); });
+    return clusters.sort(function(a,b){ return b.freq - a.freq; });      // 합산 빈도로 재정렬
   }
 
   // ── BASIC/KEY/SUB 분류 — 03 팔레트의 classifyDisc 와 동일 기준 ──
@@ -20620,18 +20657,21 @@ document.addEventListener('DOMContentLoaded',function(){
         var ex = usedTrend[best.hex];
         ex.mkFreq += mc.freq;
         if(ex.mkHexes.indexOf(mc.hex) < 0) ex.mkHexes.push(mc.hex);
+        (mc.memberHexes || [mc.hex]).forEach(function(h){ if(ex.mkHexes.indexOf(h) < 0) ex.mkHexes.push(h); });
         (mc.brands || []).forEach(function(b){ if(ex.brands.indexOf(b) < 0) ex.brands.push(b); });
+        _tmSetDistRange(ex);
         return;
       }
       var item = {
         trend: best,
         dist: Math.round(bd),
         mkHex: mc.hex,
-        mkHexes: [mc.hex],
+        mkHexes: (mc.memberHexes || [mc.hex]).slice(),                   // 클러스터 멤버 전부
         mkName: mc.name,
         mkFreq: mc.freq,
-        brands: mc.brands || []
+        brands: (mc.brands || []).slice()
       };
+      _tmSetDistRange(item);
       usedTrend[best.hex] = item;
       _tmIndex[best.hex] = item;                                        // 상세 팝업에서 근거 조회용
       buckets[_tmClassify(mc.hex)].push(item);
@@ -20644,6 +20684,20 @@ document.addEventListener('DOMContentLoaded',function(){
       totals.families[k] = _tmFamilyCount(buckets[k]);
     });
     return { buckets: buckets, totals: totals };
+  }
+
+  // 멤버 hex 전체와 트렌드 색의 거리 → 최소·최대·평균
+  function _tmSetDistRange(item){
+    if(typeof rgbDist !== 'function') return;
+    var ds = item.mkHexes.map(function(h){ return rgbDist(h, item.trend.hex); });
+    item.distMin = Math.round(Math.min.apply(null, ds));
+    item.distMax = Math.round(Math.max.apply(null, ds));
+    item.dist    = Math.round(ds.reduce(function(a,b){ return a+b; }, 0) / ds.length);
+  }
+  function _tmDistLabel(item){
+    return (item.distMin != null && item.distMax != null && item.distMin !== item.distMax)
+      ? (item.distMin + '~' + item.distMax + ' (평균 ' + item.dist + ')')
+      : String(item.dist);
   }
 
   // ── Hue 계열 판정 ──
@@ -20738,7 +20792,7 @@ document.addEventListener('DOMContentLoaded',function(){
       +     '<div class="chip-name">' + (t.name || t.hex) + '</div>'
       +     (cc ? '<div style="font-family:var(--mono);font-size:10px;font-weight:600;color:var(--accent);margin-top:2px">COLORO ' + cc.coloro + '</div>' : '')
       +     '<div class="chip-pantone">' + pt + '</div>'
-      +     '<div style="font-family:var(--mono);font-size:9px;color:var(--text3)">마켓 빈도 ' + it.mkFreq + ' · ΔRGB ' + it.dist + '</div>'
+      +     '<div style="font-family:var(--mono);font-size:9px;color:var(--text3)">마켓 빈도 ' + it.mkFreq + ' · ΔRGB ' + _tmDistLabel(it) + (it.mkHexes.length > 1 ? ' · ' + it.mkHexes.length + '색 병합' : '') + '</div>'
       +     (it.brands.length ? '<div style="font-family:var(--mono);font-size:8px;color:var(--text4)">' + it.brands.slice(0,3).join(' · ') + '</div>' : '')
       +   '</div>'
       + '</div>';
@@ -20799,7 +20853,7 @@ document.addEventListener('DOMContentLoaded',function(){
       + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-bottom:14px">'
       +   '마켓 ' + t.scanned + '색 · 트렌드 풀 ' + t.trendPool + '색 · 매칭 임계 ΔRGB ≤ ' + TM_DIST
       +   ' · 채택 ' + matchedTotal + '색 · 계열 다양성 + 유사색 배제 적용'
-      +   ' · KEY 판정 Chroma ≥ ' + Math.round(TM_KEY_CHROMA*100) + '%'
+      +   ' · KEY 판정 Chroma ≥ ' + Math.round(TM_KEY_CHROMA*100) + '% · 마켓 근접색 병합 ΔRGB < ' + TM_CLUSTER_DIST
       + '</div>'
       + (t.trendPool === 0
           ? '<div class="spp-empty">02 Trend Collection에서 WGSN 또는 Peclers 데이터를 먼저 로드하세요.</div>'
