@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_TRENDMATCH_v124 (2026-09-10) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_TRENDMATCH_v125 (2026-09-10) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20639,14 +20639,18 @@ document.addEventListener('DOMContentLoaded',function(){
   }
 
   function _tmSection(){
-    var sect = document.getElementById(TM_SECT_ID);
-    if(sect) return sect;
     var wrap = document.getElementById('disc-palette-wrap');
     if(!wrap) return null;
-    sect = document.createElement('div');
-    sect.id = TM_SECT_ID;
-    sect.style.marginTop = '28px';
-    wrap.appendChild(sect);
+    var sect = document.getElementById(TM_SECT_ID);
+    if(!sect){
+      sect = document.createElement('div');
+      sect.id = TM_SECT_ID;
+      sect.style.marginBottom = '32px';
+      sect.style.paddingBottom = '24px';
+      sect.style.borderBottom = '1px solid var(--border)';
+    }
+    // 03 페이지 최상단에 위치시킴 (KOREA 섹션보다 위)
+    if(wrap.firstElementChild !== sect) wrap.insertBefore(sect, wrap.firstChild);
     return sect;
   }
 
