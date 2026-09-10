@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_TRENDMATCH_v126 (2026-09-10) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_TRENDMATCH_v127 (2026-09-10) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20467,6 +20467,7 @@ document.addEventListener('DOMContentLoaded',function(){
   // ══════════════════════════════════════════════════════════════
   var TM_DIST   = 30;                                   // 매칭 임계값 (엄격)
   var TM_CAPS   = { sub: 12, key: 8, basic: 12 };        // 그룹별 표시 상한
+  var TM_MINDIST = { sub: 35, key: 48, basic: 35 };      // 그룹별 유사색 배제 거리 (03 pickByQuota 기준)
   var TM_SECT_ID = 'disc-trend-matched';
 
   // ── WGSN + Peclers 컬러 풀 (hex 기준 중복 병합, 출처 누적) ──
@@ -20556,7 +20557,7 @@ document.addEventListener('DOMContentLoaded',function(){
     var market = _tmMarketPool();
     var trend  = _tmTrendPool();
     var buckets = { sub: [], key: [], basic: [] };
-    var totals  = { scanned: market.length, matched: 0, trendPool: trend.length };
+    var totals  = { scanned: market.length, matched: 0, trendPool: trend.length, raw: {}, families: {} };
     if(!market.length || !trend.length || typeof rgbDist !== 'function') return { buckets: buckets, totals: totals };
 
     var usedTrend = {};
@@ -20588,8 +20589,78 @@ document.addEventListener('DOMContentLoaded',function(){
 
     ['sub','key','basic'].forEach(function(k){
       buckets[k].sort(function(a,b){ return b.mkFreq - a.mkFreq; });
+      totals.raw[k] = buckets[k].length;
+      buckets[k] = _tmPick(buckets[k], TM_CAPS[k], TM_MINDIST[k]);
+      totals.families[k] = _tmFamilyCount(buckets[k]);
     });
     return { buckets: buckets, totals: totals };
+  }
+
+  // ── Hue 계열 판정 ──
+  //  뉴트럴(무채·극단 명도) 먼저 분리하고, 나머지는 색상환으로 나눔.
+  //  붉은 영역(345~15°)은 밝으면 핑크, 어두우면 레드로 갈라서
+  //  더스티로즈·블러시 같은 색이 레드에 묻히지 않게 함.
+  function _tmFamily(hex){
+    if(typeof rgbToHsl !== 'function') return 'neutral';
+    var a = rgbToHsl(hex), h = a[0], s = a[1], l = a[2];
+    if(s < 0.12 || l < 0.12 || l > 0.93) return 'neutral';
+    if(h >= 300 && h < 345) return 'pink';
+    if(h >= 345 || h < 15)  return (l >= 0.62) ? 'pink' : 'red';
+    if(h < 45)  return 'orange';
+    if(h < 70)  return 'yellow';
+    if(h < 165) return 'green';
+    if(h < 200) return 'teal';
+    if(h < 255) return 'blue';
+    return 'purple';
+  }
+  function _tmFamilyCount(list){
+    var seen = {}, n = 0;
+    list.forEach(function(it){ var f = _tmFamily(it.trend.hex); if(!seen[f]){ seen[f] = 1; n++; } });
+    return n;
+  }
+
+  // ── 계열 라운드로빈 + 색거리 필터로 cap 개수만큼 선발 ──
+  //  1) 계열별로 나눈 뒤 빈도 높은 계열부터 한 개씩 돌아가며 뽑음 (계열 독식 방지)
+  //  2) 이미 뽑힌 색과 rgbDist 가 minDist 미만이면 건너뜀 (유사색 중복 방지)
+  //  3) 부족하면 minDist 를 절반으로 완화, 그래도 부족하면 빈도순으로 채움
+  function _tmPick(items, cap, minDist){
+    if(items.length <= cap) return items;
+    var fams = {}, order = [];
+    items.forEach(function(it){
+      var f = _tmFamily(it.trend.hex);
+      if(!fams[f]){ fams[f] = []; order.push(f); }   // items 가 이미 빈도순이라 등장 순서 = 계열 우선순위
+      fams[f].push(it);
+    });
+
+    var picked = [], usedHex = {};
+    function tryTake(it, dist){
+      if(usedHex[it.trend.hex]) return false;
+      if(picked.length >= cap) return false;
+      if(dist > 0){
+        for(var i = 0; i < picked.length; i++){
+          if(rgbDist(picked[i].trend.hex, it.trend.hex) < dist) return false;
+        }
+      }
+      picked.push(it); usedHex[it.trend.hex] = 1; return true;
+    }
+    // 1·2단계: 계열 라운드로빈 (색거리 기준 → 완화 기준)
+    [minDist, minDist * 0.5].forEach(function(dist){
+      var moved = true;
+      while(picked.length < cap && moved){
+        moved = false;
+        for(var oi = 0; oi < order.length; oi++){
+          if(picked.length >= cap) break;
+          var pool = fams[order[oi]];
+          for(var pi = 0; pi < pool.length; pi++){
+            if(usedHex[pool[pi].trend.hex]) continue;
+            if(tryTake(pool[pi], dist)){ moved = true; break; }
+          }
+        }
+      }
+    });
+    // 3단계: 그래도 부족하면 빈도순으로 채움
+    for(var i = 0; i < items.length && picked.length < cap; i++) tryTake(items[i], 0);
+    return picked;
   }
 
   // ── 칩 렌더 ──
@@ -20623,9 +20694,12 @@ document.addEventListener('DOMContentLoaded',function(){
       + '</div>';
   }
 
-  function _tmRow(label, color, items, cap){
-    var shown = items.slice(0, cap);
-    var cnt = items.length ? (shown.length + (items.length > cap ? ' / ' + items.length : '') + '개') : '';
+  function _tmRow(label, color, items, cap, rawCnt, famCnt){
+    var shown = items;                                   // 선발은 _tmPick 에서 이미 끝남
+    var cnt = shown.length
+      ? (shown.length + (rawCnt && rawCnt > shown.length ? ' / ' + rawCnt : '') + '개'
+         + (famCnt ? ' · ' + famCnt + '계열' : ''))
+      : '';
     var body = shown.length
       ? shown.map(_tmChip).join('')
       : '<div class="spp-empty" style="font-size:10px">매칭된 트렌드 컬러 없음</div>';
@@ -20674,15 +20748,15 @@ document.addEventListener('DOMContentLoaded',function(){
       + '</div>'
       + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-bottom:14px">'
       +   '마켓 ' + t.scanned + '색 · 트렌드 풀 ' + t.trendPool + '색 · 매칭 임계 ΔRGB ≤ ' + TM_DIST
-      +   ' · 채택 ' + matchedTotal + '색'
+      +   ' · 채택 ' + matchedTotal + '색 · 계열 다양성 + 유사색 배제 적용'
       + '</div>'
       + (t.trendPool === 0
           ? '<div class="spp-empty">02 Trend Collection에서 WGSN 또는 Peclers 데이터를 먼저 로드하세요.</div>'
           : (t.scanned === 0
               ? '<div class="spp-empty">01 Market Analysis 데이터를 먼저 로드하세요.</div>'
-              : _tmRow('SUB', 'var(--blue)', b.sub, TM_CAPS.sub)
-              + _tmRow('KEY', '#A090F0',     b.key, TM_CAPS.key)
-              + _tmRow('BASIC', 'var(--text3)', b.basic, TM_CAPS.basic)));
+              : _tmRow('SUB', 'var(--blue)', b.sub, TM_CAPS.sub, t.raw.sub, t.families.sub)
+              + _tmRow('KEY', '#A090F0',     b.key, TM_CAPS.key, t.raw.key, t.families.key)
+              + _tmRow('BASIC', 'var(--text3)', b.basic, TM_CAPS.basic, t.raw.basic, t.families.basic)));
   }
   window._discRenderTrendMatched = _tmRender;
 
