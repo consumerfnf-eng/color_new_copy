@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_TRENDMATCH_v128 (2026-09-10) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_TRENDMATCH_v129 (2026-09-10) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20469,6 +20469,40 @@ document.addEventListener('DOMContentLoaded',function(){
   var TM_CAPS   = { sub: 12, key: 8, basic: 12 };        // 그룹별 표시 상한
   var TM_MINDIST = { sub: 35, key: 48, basic: 35 };      // 그룹별 유사색 배제 거리 (03 pickByQuota 기준)
   var TM_SECT_ID = 'disc-trend-matched';
+  var _tmIndex = {};      // { 트렌드hex: 매칭 아이템 } — 상세 팝업 근거 표시용
+
+  // 제안 칩 클릭 → 매칭 근거(마켓 컬러·브랜드)를 함께 실어서 상세 팝업 열기
+  window._tmOpenDetail = function(hex, name){
+    var it = _tmIndex[String(hex).toUpperCase()];
+    var payload = { hex: hex, name: name || hex };
+    if(it){
+      payload.compBrands = (it.brands || []).slice();   // ← 팝업 Competitor 블록이 이 값을 사용
+      payload.freq = it.mkFreq;
+    }
+    if(typeof window.openPalDetail === 'function') window.openPalDetail(payload);
+    if(it) _tmInjectEvidence(it);
+  };
+
+  // SOURCE 블록 맨 위에 "매칭된 마켓 컬러" 한 줄 끼워 넣기
+  function _tmInjectEvidence(it){
+    var srcEl = document.getElementById('paldm-sources');
+    if(!srcEl) return;
+    var swatches = it.mkHexes.map(function(h){
+      return '<span title="' + h + '" style="width:14px;height:14px;border-radius:3px;background:' + h
+           + ';border:1px solid var(--border2);display:inline-block;vertical-align:middle"></span>';
+    }).join(' ');
+    var box = document.createElement('div');
+    box.style.cssText = 'padding:6px 8px;background:var(--bg3);border-radius:6px;margin-bottom:8px';
+    box.innerHTML = ''
+      + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+      +   '<span style="padding:2px 10px;border-radius:20px;font-family:var(--mono);font-size:9px;font-weight:600;color:var(--gold);border:1px solid var(--gold)">Market Match</span>'
+      +   swatches
+      +   '<span style="font-family:var(--mono);font-size:9px;color:var(--text3)">'
+      +     it.mkHexes.join(' · ') + ' · ΔRGB ' + it.dist + ' · 마켓 빈도 ' + it.mkFreq
+      +   '</span>'
+      + '</div>';
+    srcEl.insertBefore(box, srcEl.firstChild);
+  }
 
   // ── WGSN + Peclers 컬러 풀 (hex 기준 중복 병합, 출처 누적) ──
   function _tmTrendPool(){
@@ -20573,6 +20607,7 @@ document.addEventListener('DOMContentLoaded',function(){
     if(!market.length || !trend.length || typeof rgbDist !== 'function') return { buckets: buckets, totals: totals };
 
     var usedTrend = {};
+    _tmIndex = {};
     market.forEach(function(mc){
       var best = null, bd = Infinity;
       for(var i = 0; i < trend.length; i++){
@@ -20581,9 +20616,11 @@ document.addEventListener('DOMContentLoaded',function(){
       }
       if(!best || bd > TM_DIST) return;                                  // 매칭 실패 → 제외
       totals.matched++;
-      if(usedTrend[best.hex]){                                           // 같은 트렌드 칩 중복 → 빈도만 합산
-        usedTrend[best.hex].mkFreq += mc.freq;
-        if(usedTrend[best.hex].mkHexes.indexOf(mc.hex) < 0) usedTrend[best.hex].mkHexes.push(mc.hex);
+      if(usedTrend[best.hex]){                                           // 같은 트렌드 칩 중복 → 빈도·브랜드 합산
+        var ex = usedTrend[best.hex];
+        ex.mkFreq += mc.freq;
+        if(ex.mkHexes.indexOf(mc.hex) < 0) ex.mkHexes.push(mc.hex);
+        (mc.brands || []).forEach(function(b){ if(ex.brands.indexOf(b) < 0) ex.brands.push(b); });
         return;
       }
       var item = {
@@ -20596,6 +20633,7 @@ document.addEventListener('DOMContentLoaded',function(){
         brands: mc.brands || []
       };
       usedTrend[best.hex] = item;
+      _tmIndex[best.hex] = item;                                        // 상세 팝업에서 근거 조회용
       buckets[_tmClassify(mc.hex)].push(item);
     });
 
@@ -20688,7 +20726,7 @@ document.addEventListener('DOMContentLoaded',function(){
     }).join(' ');
     var nameEsc = String(t.name || t.hex).replace(/'/g, "\\'").replace(/</g, '&lt;');
     return ''
-      + '<div class="chip" onclick="openPalDetail({hex:\'' + t.hex + '\',name:\'' + nameEsc + '\'})" style="cursor:pointer">'
+      + '<div class="chip" onclick="_tmOpenDetail(\'' + t.hex + '\',\'' + nameEsc + '\')" style="cursor:pointer">'
       +   '<div class="chip-swatch" style="background:' + t.hex + '">'
       +     '<div style="position:absolute;top:8px;right:8px;display:flex;gap:3px">' + srcBadges + '</div>'
       +     '<div style="position:absolute;left:8px;bottom:8px;display:flex;align-items:center;gap:4px">'
