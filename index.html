@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_TRENDMATCH_v125 (2026-09-10) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_TRENDMATCH_v126 (2026-09-10) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20413,6 +20413,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
   function sync(){
     try{ if(_inScope()) _apply(); else _revert(); }catch(err){ console.warn('[disc-layout] sync 오류:', err); }
+    try{ if(typeof _purgeNewsletter === 'function') _purgeNewsletter(); }catch(err){}
   }
   window._discSyncLayout = sync;
   window._discLayoutInScope = _inScope;
@@ -20661,6 +20662,7 @@ document.addEventListener('DOMContentLoaded',function(){
     if(!sect) return;
     sect.style.display = 'block';
 
+    try{ _purgeNewsletter(); }catch(e){}
     var r = _tmBuild(), b = r.buckets, t = r.totals;
     var matchedTotal = b.sub.length + b.key.length + b.basic.length;
 
@@ -20683,6 +20685,88 @@ document.addEventListener('DOMContentLoaded',function(){
               + _tmRow('BASIC', 'var(--text3)', b.basic, TM_CAPS.basic)));
   }
   window._discRenderTrendMatched = _tmRender;
+
+
+  // ══════════════════════════════════════════════════════════════
+  //  Newsletter 차단 (DISCOVERY 27FW 전용)
+  //  ────────────────────────────────────────────────────────────
+  //  Trend 화면에서 Newsletter 카드를 숨겨도, 시즌 자동 로드
+  //  (autoLoadAllSheets)가 Newsletter 시트를 계속 읽어 들여서
+  //  collectedColors / scoredColors 에 source:'newsletter' 가 남고
+  //  컬러 상세 팝업의 Trend 뱃지에 'Newsletter ×N' 으로 뜬다.
+  //  → 유입 자체를 막고, 이미 들어온 흔적도 지운다.
+  //  ※ 다른 브랜드·시즌에서는 원본 그대로 Newsletter 사용
+  // ══════════════════════════════════════════════════════════════
+  var NEWS_KEYS = ['newsletter', 'newsletter_csv'];
+  function _isNewsKey(k){ return NEWS_KEYS.indexOf(String(k||'').toLowerCase()) >= 0; }
+
+  // 1) 유입 차단 — 스코프 안에서는 Newsletter 항목을 아예 적용하지 않음
+  var _origApplyNews = window._applyNewsletterEntries;
+  if(typeof _origApplyNews === 'function'){
+    window._applyNewsletterEntries = function(){
+      if(_inScope()) return;                    // DISCOVERY 27FW → 무시
+      return _origApplyNews.apply(this, arguments);
+    };
+  }
+
+  // 2) 이미 들어온 Newsletter 흔적 제거
+  function _purgeNewsletter(){
+    if(!_inScope()) return;
+    try{
+      if(typeof newsletterColors !== 'undefined') newsletterColors.length = 0;
+    }catch(e){}
+
+    function scrub(list){
+      if(typeof list === 'undefined' || !Array.isArray(list)) return;
+      var keep = [];
+      list.forEach(function(c){
+        if(!c) return;
+        var srcs = Array.isArray(c.sources) ? c.sources.slice() : [];
+        var single = c.source;
+        var restSrcs = srcs.filter(function(s){ return !_isNewsKey(s); });
+
+        // 출처가 Newsletter 뿐이면 통째로 제외
+        var onlyNews = (srcs.length > 0 && restSrcs.length === 0)
+                    || (srcs.length === 0 && _isNewsKey(single));
+        if(onlyNews) return;
+
+        if(srcs.length !== restSrcs.length) c.sources = restSrcs;
+        if(_isNewsKey(single)) c.source = restSrcs[0] || c.source;
+        if(c.srcFreq){
+          NEWS_KEYS.forEach(function(k){ if(k in c.srcFreq) delete c.srcFreq[k]; });
+        }
+        keep.push(c);
+      });
+      if(keep.length !== list.length){
+        list.length = 0;
+        keep.forEach(function(c){ list.push(c); });
+      }
+    }
+
+    try{ scrub(typeof collectedColors !== 'undefined' ? collectedColors : null); }catch(e){}
+    try{ scrub(typeof scoredColors    !== 'undefined' ? scoredColors    : null); }catch(e){}
+  }
+  window._discPurgeNewsletter = _purgeNewsletter;
+
+  // 3) 시즌 일괄 로드 직후 · 팔레트 렌더 직전 · 상세 팝업 직전에 정리
+  var _origAutoLoad = window.autoLoadAllSheets;
+  if(typeof _origAutoLoad === 'function'){
+    window.autoLoadAllSheets = function(){
+      var r = _origAutoLoad.apply(this, arguments);
+      if(r && typeof r.then === 'function'){
+        return r.then(function(v){ try{ _purgeNewsletter(); }catch(e){} return v; });
+      }
+      try{ _purgeNewsletter(); }catch(e){}
+      return r;
+    };
+  }
+  var _origOpenDetail = window.openPalDetail;
+  if(typeof _origOpenDetail === 'function'){
+    window.openPalDetail = function(){
+      try{ _purgeNewsletter(); }catch(e){}
+      return _origOpenDetail.apply(this, arguments);
+    };
+  }
 
   // 03 팔레트가 다시 그려질 때마다 같이 갱신
   ['_renderDiscoveryPalette','discSetRegion'].forEach(function(fn){
