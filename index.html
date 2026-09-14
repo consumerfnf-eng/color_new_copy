@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_TRENDMATCH_v134 (2026-09-14) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_TRENDMATCH_v136 (2026-09-14) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20650,30 +20650,23 @@ document.addEventListener('DOMContentLoaded',function(){
   }
 
   // ── BASIC/KEY/SUB 분류 — 03 팔레트의 classifyDisc 와 동일 기준 ──
-  function _tmIsNeutral(s, l, h){
-    if (s < 0.04) return true;
-    if (l >= 0.82 && s < 0.12) return true;
-    if (l < 0.15) return true;
-    if (l < 0.32 && s < 0.18) return true;
-    if (l >= 0.88 && s < 0.35) return true;
-    if (h >= 205 && h <= 255 && l < 0.35 && s >= 0.15 && s < 0.60) return true;
+  // ── BASIC / KEY / SUB 분류 — 전부 Chroma(max-min) 기준으로 통일 ──
+  //  HSL 의 S 는 밝은 색에서 부풀려지고, 중간 명도 그레이에서는 반대로
+  //  BASIC 판정을 빠져나간다(예: GUST #626879 — 명도 43%·S 10.5% 인데 SUB 로 떨어짐).
+  //  Chroma 는 밝기와 무관하게 '색기가 얼마나 있는가'를 곧바로 나타낸다.
+  var TM_BASIC_CHROMA = 0.10;                           // 이보다 색기가 없으면 무채 계열
+  function _tmIsBasic(hex, l, h){
+    var c = _tmChroma(hex);
+    if(c < TM_BASIC_CHROMA)                       return true;   // 그레이·그레이지 전반
+    if(l < 0.15)                                  return true;   // 블랙 근처
+    if(l > 0.90 && c < 0.25)                      return true;   // 오프화이트·아이보리
+    if(h >= 205 && h <= 255 && l < 0.35 && c < 0.30) return true; // 네이비
     return false;
-  }
-  // Chroma = max(r,g,b) - min(r,g,b) — 실제 지각 채도에 가까움.
-  // HSL 의 S 는 밝은 색에서 값이 부풀려져(베이비핑크 S 73%, Chroma 17%)
-  // 파스텔이 KEY 로 잘못 올라가므로 KEY 판정에는 Chroma 를 쓴다.
-  var TM_KEY_CHROMA = 0.40;
-  var TM_KEY_L = [0.25, 0.75];
-  function _tmChroma(hex){
-    var r = parseInt(hex.slice(1,3),16)/255,
-        g = parseInt(hex.slice(3,5),16)/255,
-        b = parseInt(hex.slice(5,7),16)/255;
-    return Math.max(r,g,b) - Math.min(r,g,b);
   }
   function _tmClassify(hex){
     if(typeof rgbToHsl !== 'function') return 'sub';
-    var hsl = rgbToHsl(hex), h = hsl[0], s = hsl[1], l = hsl[2];
-    if(_tmIsNeutral(s, l, h)) return 'basic';                       // BASIC 판정은 기존 그대로
+    var hsl = rgbToHsl(hex), h = hsl[0], l = hsl[2];
+    if(_tmIsBasic(hex, l, h)) return 'basic';
     var c = _tmChroma(hex);
     if(c >= TM_KEY_CHROMA && l >= TM_KEY_L[0] && l <= TM_KEY_L[1]) return 'key';
     return 'sub';
@@ -20722,7 +20715,10 @@ document.addEventListener('DOMContentLoaded',function(){
       _tmSetDistRange(item);
       usedTrend[best.hex] = item;
       _tmIndex[best.hex] = item;                                        // 상세 팝업에서 근거 조회용
-      buckets[_tmClassify(mc.hex)].push(item);
+      // 분류는 '화면에 나가는 색' 기준이어야 한다.
+      // 마켓 컬러로 분류하면 ΔRGB 30 차이만큼 엇갈려서,
+      // 페일 뉴트럴이 SUB 로 올라가는 문제가 생긴다.
+      buckets[_tmClassify(best.hex)].push(item);
     });
 
     ['sub','key','basic'].forEach(function(k){
@@ -20730,6 +20726,9 @@ document.addEventListener('DOMContentLoaded',function(){
       totals.raw[k] = buckets[k].length;
       buckets[k] = _tmPick(buckets[k], TM_CAPS[k], TM_MINDIST[k]);
       totals.families[k] = _tmFamilyCount(buckets[k]);
+      // 선발은 계열 라운드로빈으로 하되, 출력 순서는 다시 빈도순으로 —
+      // 라운드로빈 순서 그대로 내보내면 106 → 1 → 77 처럼 들쭉날쭉해 읽기 어렵다
+      buckets[k].sort(function(a,b){ return b.mkFreq - a.mkFreq; });
     });
     return { buckets: buckets, totals: totals };
   }
@@ -20869,7 +20868,7 @@ document.addEventListener('DOMContentLoaded',function(){
       +     (isKey ? '<div style="position:absolute;top:8px;right:8px;background:rgba(160,120,64,0.9);color:#000;font-size:8px;font-weight:700;padding:2px 6px;border-radius:3px;font-family:var(--mono)">KEY</div>' : '')
       +   '</div>'
       +   '<div class="chip-body">'
-      +     '<div class="chip-name">' + (t.name || t.hex) + '</div>'
+      +     '<div class="chip-name" title="' + t.hex + ' · L ' + Math.round(rgbToHsl(t.hex)[2]*100) + '% · Chroma ' + Math.round(_tmChroma(t.hex)*100) + '%">' + (t.name || t.hex) + '</div>'
       +     coloroLine
       +     '<div class="chip-pantone">' + ptCode + '</div>'
       +     matchLine + brandLine
@@ -20933,7 +20932,7 @@ document.addEventListener('DOMContentLoaded',function(){
       + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-bottom:14px">'
       +   '마켓 ' + t.scanned + '색 · 트렌드 풀 ' + t.trendPool + '색 · 매칭 임계 ΔRGB ≤ ' + TM_DIST
       +   ' · 채택 ' + matchedTotal + '색 · 계열 다양성 + 유사색 배제 적용'
-      +   ' · KEY 판정 Chroma ≥ ' + Math.round(TM_KEY_CHROMA*100) + '% · 마켓 근접색 병합 Lab ΔE < ' + TM_CLUSTER_DE
+      +   ' · 분류 Chroma 기준 BASIC < ' + Math.round(TM_BASIC_CHROMA*100) + '% / KEY ≥ ' + Math.round(TM_KEY_CHROMA*100) + '% · 마켓 근접색 병합 Lab ΔE < ' + TM_CLUSTER_DE
       + '</div>'
       + (t.trendPool === 0
           ? '<div class="spp-empty">02 Trend Collection에서 WGSN 또는 Peclers 데이터를 먼저 로드하세요.</div>'
