@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_TRENDMATCH_v140 (2026-09-14) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_TRENDMATCH_v141 (2026-09-14) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20879,7 +20879,7 @@ document.addEventListener('DOMContentLoaded',function(){
     // COLORO_MAP 은 기준칩이 39개뿐이라 서로 다른 색이 같은 코드로 수렴한다.
     // Lab 거리가 충분히 가까울 때만, 근사값임을 '≈' 로 밝혀 표시한다.
     var coloroLine = (cc && typeof cc.dist === 'number' && cc.dist <= TM_COLORO_MAX_DE)
-      ? '<div style="font-family:var(--mono);font-size:10px;color:var(--accent);margin-top:2px" title="COLORO 기준칩 39개 대상 근사 매핑 · Lab ΔE ' + cc.dist + '">COLORO ≈ ' + cc.coloro + '</div>'
+      ? '<div style="font-family:var(--mono);font-size:10px;color:var(--accent);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="COLORO 기준칩 39개 대상 근사 매핑 · Lab ΔE ' + cc.dist + '">COLORO ≈ ' + cc.coloro + '</div>'
       : '';
     // 원본 코드의 형식을 판별해 라벨을 붙인다.
     // COLORO 근사 매핑에서 Pantone 을 역산하면 틀린 코드가 나가므로 쓰지 않는다.
@@ -20887,7 +20887,7 @@ document.addEventListener('DOMContentLoaded',function(){
     // KOREA 칩의 'Score N' 과 같은 분량으로 압축한다.
     // .chip 에는 고정 너비가 없어 본문이 길면 칩 자체가 늘어나 레이아웃이 어긋난다.
     // 범위·병합 색 목록 같은 상세 수치는 팝업의 Market Match 블록에서 본다.
-    var matchLine = '<div style="font-family:var(--mono);font-size:9px;color:var(--text3)" title="ΔRGB '
+    var matchLine = '<div style="font-family:var(--mono);font-size:9px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="ΔRGB '
       + _tmDistLabel(it) + (it.mkHexes.length > 1 ? ' · ' + it.mkHexes.length + '색 병합' : '') + '">'
       + '빈도 ' + it.mkFreq + ' · Δ' + it.dist
       + (it.mkHexes.length > 1 ? ' · ' + it.mkHexes.length + '색' : '') + '</div>';
@@ -20908,7 +20908,7 @@ document.addEventListener('DOMContentLoaded',function(){
     }).join(' ');
     var nameEsc = String(t.name || t.hex).replace(/'/g, "\\'").replace(/</g, '&lt;');
     return ''
-      + '<div class="chip' + (isKey ? ' key-chip' : '') + '" onclick="_tmOpenDetail(\'' + t.hex + '\',\'' + nameEsc + '\')" style="cursor:pointer">'
+      + '<div class="chip' + (isKey ? ' key-chip' : '') + '" onclick="_tmOpenDetail(\'' + t.hex + '\',\'' + nameEsc + '\')" style="cursor:pointer;width:150px;flex:0 0 150px">'
       +   '<div class="chip-swatch" style="background:' + t.hex + '">'
       +     '<div style="position:absolute;top:8px;left:8px;display:flex;gap:3px">' + srcBadge + '</div>'
       +     (isKey ? '<div style="position:absolute;top:8px;right:8px;background:rgba(160,120,64,0.9);color:#000;font-size:8px;font-weight:700;padding:2px 6px;border-radius:3px;font-family:var(--mono)">KEY</div>' : '')
@@ -20916,7 +20916,7 @@ document.addEventListener('DOMContentLoaded',function(){
       +   '<div class="chip-body">'
       +     '<div class="chip-name" title="' + t.hex + ' · L ' + Math.round(rgbToHsl(t.hex)[2]*100) + '% · Chroma ' + Math.round(_tmChroma(t.hex)*100) + '%">' + (t.name || t.hex) + '</div>'
       +     coloroLine
-      +     '<div class="chip-pantone">' + ptCode + '</div>'
+      +     '<div class="chip-pantone" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + ptCode + '</div>'
       +     matchLine + brandLine
       +   '</div>'
       + '</div>';
