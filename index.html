@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_TRENDMATCH_v137 (2026-09-14) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_TRENDMATCH_v138 (2026-09-14) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20498,7 +20498,8 @@ document.addEventListener('DOMContentLoaded',function(){
     var it = _tmIndex[String(hex).toUpperCase()];
     var payload = { hex: hex, name: name || hex };
     if(it){
-      payload.compBrands = (it.brands || []).slice();   // ← 팝업 Competitor 블록이 이 값을 사용
+      var _nb = _tmNearBrands(hex);
+      payload.compBrands = _nb.length ? _nb : (it.brands || []).slice();  // 칩과 동일 기준
       payload.freq = it.mkFreq;
     }
     if(typeof window.openPalDetail === 'function') window.openPalDetail(payload);
@@ -20839,6 +20840,27 @@ document.addEventListener('DOMContentLoaded',function(){
     return picked;
   }
 
+  // 팝업 Competitor 블록과 '똑같은' 기준으로 브랜드를 집계한다.
+  //  openPalDetail() 내부: compData 중 rgbDist(색, cd.hex) < 22 인 항목의 cd.brand 를 모으고,
+  //  체크된 마켓 브랜드로 필터링. (품목 필터는 팝업이 적용하지 않으므로 여기서도 적용하지 않음 —
+  //   적용하면 칩과 팝업 숫자가 또 어긋난다)
+  var TM_NEAR_BRAND_DIST = 22;
+  function _tmNearBrands(hex){
+    if(typeof compData === 'undefined' || !Array.isArray(compData) || typeof rgbDist !== 'function') return [];
+    var sel = (typeof window._curMarketSel === 'function') ? window._curMarketSel() : null;
+    var bkn = window._brandKeyNorm || function(x){ return (x||'').toLowerCase().replace(/[\s._\-]+/g,'').trim(); };
+    var out = [], seen = {};
+    for(var i = 0; i < compData.length; i++){
+      var cd = compData[i];
+      if(!cd || !cd.hex || !cd.brand) continue;
+      if(rgbDist(hex, cd.hex) >= TM_NEAR_BRAND_DIST) continue;
+      if(sel && sel.size > 0 && !sel.has(bkn(cd.brand))) continue;
+      if(seen[cd.brand]) continue;
+      seen[cd.brand] = 1; out.push(cd.brand);
+    }
+    return out;
+  }
+
   // ── 칩 렌더 — KOREA 섹션의 _discChip() 과 동일한 구조/스타일 ──
   //  .chip / .key-chip, swatch 우상단 KEY 뱃지, body 는
   //  이름 → COLORO → Pantone → (Score 자리에 매칭 정보) → 브랜드 순.
@@ -20861,9 +20883,11 @@ document.addEventListener('DOMContentLoaded',function(){
       + _tmDistLabel(it) + (it.mkHexes.length > 1 ? ' · ' + it.mkHexes.length + '색 병합' : '') + '">'
       + '빈도 ' + it.mkFreq + ' · Δ' + it.dist
       + (it.mkHexes.length > 1 ? ' · ' + it.mkHexes.length + '색' : '') + '</div>';
-    var brandLine = it.brands.length
-      ? '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'
-        + it.brands.slice(0,2).join(' · ') + '</div>'
+    var nb = _tmNearBrands(t.hex);
+    if(!nb.length) nb = it.brands.slice();                 // 근접 브랜드가 없으면 클러스터 브랜드로 대체
+    var brandLine = nb.length
+      ? '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + nb.join(' · ') + '">'
+        + (nb.length > 1 ? nb.length + '브랜드 · ' : '') + nb.slice(0,2).join(' · ') + '</div>'
       : '';
     var srcBadge = t.sources.map(function(sr){
       var col = (sr === 'WGSN') ? '#4488FF' : '#9966FF';
