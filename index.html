@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_TRENDMATCH_v138 (2026-09-14) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_TRENDMATCH_v139 (2026-09-14) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20498,8 +20498,10 @@ document.addEventListener('DOMContentLoaded',function(){
     var it = _tmIndex[String(hex).toUpperCase()];
     var payload = { hex: hex, name: name || hex };
     if(it){
-      var _nb = _tmNearBrands(hex);
-      payload.compBrands = _nb.length ? _nb : (it.brands || []).slice();  // 칩과 동일 기준
+      // 팝업은 자체 기준(rgbDist < 22)으로 '비슷한 색' 브랜드를 넓게 모은다.
+      // 칩의 좁은 목록을 억지로 넘기면 팝업이 자기 목록과 합쳐 버려 의미가 없으므로,
+      // 클러스터에 실제로 포함된 브랜드만 넘기고 나머지는 팝업 판단에 맡긴다.
+      payload.compBrands = (it.brands || []).slice();
       payload.freq = it.mkFreq;
     }
     if(typeof window.openPalDetail === 'function') window.openPalDetail(payload);
@@ -20840,24 +20842,30 @@ document.addEventListener('DOMContentLoaded',function(){
     return picked;
   }
 
-  // 팝업 Competitor 블록과 '똑같은' 기준으로 브랜드를 집계한다.
-  //  openPalDetail() 내부: compData 중 rgbDist(색, cd.hex) < 22 인 항목의 cd.brand 를 모으고,
-  //  체크된 마켓 브랜드로 필터링. (품목 필터는 팝업이 적용하지 않으므로 여기서도 적용하지 않음 —
-  //   적용하면 칩과 팝업 숫자가 또 어긋난다)
-  var TM_NEAR_BRAND_DIST = 22;
+  // ── 동일 톤 브랜드 집계 ──────────────────────────────────────
+  //  팝업 Competitor 블록은 rgbDist < 22 로 훨씬 넓게 잡는다. 그 기준을 그대로 쓰면
+  //  밝은 뉴트럴(#C8D5CF 등) 주변에 온갖 오프화이트·라이트그레이가 들어와
+  //  데이터에 있는 브랜드가 전부 잡힌다(실제로 14개 전원 관측). 뉴트럴에서는
+  //  브랜드 수가 신호가 아니라 노이즈가 되므로, 여기서는 Lab ΔE 로 좁게 판정한다.
+  //  → 칩과 팝업의 브랜드 수는 의도적으로 다르다. 팝업은 '비슷한 색' 참고용,
+  //    칩은 '같은 톤을 실제로 쓰는 브랜드'용.
+  var TM_NEAR_BRAND_DE = 5;
   function _tmNearBrands(hex){
-    if(typeof compData === 'undefined' || !Array.isArray(compData) || typeof rgbDist !== 'function') return [];
+    if(typeof compData === 'undefined' || !Array.isArray(compData)) return [];
     var sel = (typeof window._curMarketSel === 'function') ? window._curMarketSel() : null;
     var bkn = window._brandKeyNorm || function(x){ return (x||'').toLowerCase().replace(/[\s._\-]+/g,'').trim(); };
-    var out = [], seen = {};
+    var cnt = {}, out = [];
     for(var i = 0; i < compData.length; i++){
       var cd = compData[i];
       if(!cd || !cd.hex || !cd.brand) continue;
-      if(rgbDist(hex, cd.hex) >= TM_NEAR_BRAND_DIST) continue;
+      if(!/^#[0-9A-Fa-f]{6}$/.test(cd.hex)) continue;
+      if(_tmDeltaE(hex, String(cd.hex).toUpperCase()) >= TM_NEAR_BRAND_DE) continue;
       if(sel && sel.size > 0 && !sel.has(bkn(cd.brand))) continue;
-      if(seen[cd.brand]) continue;
-      seen[cd.brand] = 1; out.push(cd.brand);
+      if(!cnt[cd.brand]){ cnt[cd.brand] = 0; out.push(cd.brand); }
+      cnt[cd.brand] += (cd.freq || 1);
     }
+    out.sort(function(a,b){ return cnt[b] - cnt[a]; });      // 많이 쓴 브랜드부터
+    out._counts = cnt;
     return out;
   }
 
@@ -20885,8 +20893,11 @@ document.addEventListener('DOMContentLoaded',function(){
       + (it.mkHexes.length > 1 ? ' · ' + it.mkHexes.length + '색' : '') + '</div>';
     var nb = _tmNearBrands(t.hex);
     if(!nb.length) nb = it.brands.slice();                 // 근접 브랜드가 없으면 클러스터 브랜드로 대체
+    var _cnts = nb._counts || {};
+    var _tip = 'Lab ΔE ' + TM_NEAR_BRAND_DE + ' 이내 동일 톤을 쓰는 브랜드 — '
+      + nb.map(function(b){ return b + (_cnts[b] ? ' ×' + _cnts[b] : ''); }).join(' · ');
     var brandLine = nb.length
-      ? '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + nb.join(' · ') + '">'
+      ? '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + _tip + '">'
         + (nb.length > 1 ? nb.length + '브랜드 · ' : '') + nb.slice(0,2).join(' · ') + '</div>'
       : '';
     var srcBadge = t.sources.map(function(sr){
@@ -20980,7 +20991,7 @@ document.addEventListener('DOMContentLoaded',function(){
       + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-bottom:14px">'
       +   '마켓 ' + t.scanned + '색 · 트렌드 풀 ' + t.trendPool + '색 · 매칭 임계 ΔRGB ≤ ' + TM_DIST
       +   ' · 채택 ' + matchedTotal + '색 · 계열 다양성 + 유사색 배제 적용'
-      +   ' · 분류 Chroma 기준 BASIC < ' + Math.round(TM_BASIC_CHROMA*100) + '% / KEY ≥ ' + Math.round(TM_KEY_CHROMA*100) + '% · 마켓 근접색 병합 Lab ΔE < ' + TM_CLUSTER_DE
+      +   ' · 분류 Chroma 기준 BASIC < ' + Math.round(TM_BASIC_CHROMA*100) + '% / KEY ≥ ' + Math.round(TM_KEY_CHROMA*100) + '% · 마켓 근접색 병합 Lab ΔE < ' + TM_CLUSTER_DE + ' · 브랜드 집계 Lab ΔE < ' + TM_NEAR_BRAND_DE
       + '</div>'
       + (t.trendPool === 0
           ? '<div class="spp-empty">02 Trend Collection에서 WGSN 또는 Peclers 데이터를 먼저 로드하세요.</div>'
