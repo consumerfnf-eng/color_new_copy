@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_GAP_v145 (2026-09-14) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_GAP_v146 (2026-09-14) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21379,15 +21379,25 @@ document.addEventListener('DOMContentLoaded',function(){
       var nb = _tmNearBrands(g.item.trend.hex);
       if(!nb.length) nb = g.item.brands.slice();
       var counts = nb._counts || {};
-      var placed = false;
+      // 한 색이 여러 카테고리 브랜드에 걸쳐도 한 곳에만 넣는다.
+      // 기준은 '그 카테고리 브랜드가 이 톤을 쓴 횟수' — 가장 많이 쓴 쪽이 주인.
+      var best = null;
       maps.forEach(function(m){
         var mine = nb.filter(function(b){ return m.set[bkn(b)]; });
         if(!mine.length) return;
         var f = mine.reduce(function(n,b){ return n + (counts[b] || 1); }, 0);
-        m.list.push({ g: g, brands: mine, freq: f });
-        placed = true;
+        if(!best || f > best.freq) best = { map: m, brands: mine, freq: f, others: [] };
       });
-      if(!placed) etc.push({ g: g, brands: nb.slice(0,3), freq: g.item.mkFreq });
+      if(best){
+        // 다른 카테고리에도 걸쳐 있으면 이름만 기록해 칩에 표시
+        maps.forEach(function(m){
+          if(m === best.map) return;
+          if(nb.some(function(b){ return m.set[bkn(b)]; })) best.others.push(m.def.name);
+        });
+        best.map.list.push({ g: g, brands: best.brands, freq: best.freq, others: best.others });
+      } else {
+        etc.push({ g: g, brands: nb.slice(0,3), freq: g.item.mkFreq, others: [] });
+      }
     });
     maps.forEach(function(m){ m.list.sort(function(a,b){ return b.freq - a.freq; }); });
     etc.sort(function(a,b){ return b.freq - a.freq; });
@@ -21427,6 +21437,9 @@ document.addEventListener('DOMContentLoaded',function(){
       +     '<div class="chip-pantone" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + ptCode + '</div>'
       +     '<div style="font-family:var(--mono);font-size:9px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + (catEntry ? '이 카테고리 브랜드 기준 — ' + nb.join(' · ') : '') + '">빈도 '
       +       shownFreq + (nb.length > 1 ? ' · ' + nb.length + '브랜드' : '') + '</div>'
+      +     (catEntry && catEntry.others && catEntry.others.length
+              ? '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + catEntry.others.join(' · ') + ' 에서도 사용됨">+ ' + catEntry.others.length + '개 카테고리 중복</div>'
+              : '')
       +     '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="확정 팔레트에서 가장 가까운 색 — ' + (g.near ? g.near.name + ' ' + g.near.hex : '') + ' · Lab ΔE ' + g.nearDe + '">'
       +       '가장 가까운 확정색 ' + (g.near ? g.near.name : '-') + ' ΔE' + g.nearDe + '</div>'
       +   '</div>'
@@ -21479,14 +21492,16 @@ document.addEventListener('DOMContentLoaded',function(){
       return;
     }
 
-    function block(title, sub, color, list){
+    // 카테고리를 가로로 나란히 — 27FW 팔레트의 무드 3단과 같은 배치
+    function column(title, sub, color, list, isFirst){
       var shown = list.slice(0, GAP_MAX);
-      return '<div style="margin-bottom:24px">'
-        + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
+      return '<div style="flex:1 1 320px;min-width:320px;padding:0 18px'
+        +   (isFirst ? '' : ';border-left:1px solid var(--border)') + '">'
+        + '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px">'
         +   '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + color + ';letter-spacing:0.1em">' + title + '</span>'
         +   (sub ? '<span style="font-family:var(--mono);font-size:9px;color:var(--text4)">' + sub + '</span>' : '')
-        +   '<span style="font-family:var(--mono);font-size:9px;color:var(--text3)">'
-        +     (list.length ? shown.length + (list.length > GAP_MAX ? ' / ' + list.length : '') + '색' : '') + '</span>'
+        +   '<span style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-left:auto">'
+        +     (list.length ? shown.length + (list.length > GAP_MAX ? ' / ' + list.length : '') + '색' : '0색') + '</span>'
         + '</div>'
         + (shown.length
             ? '<div style="display:flex;flex-wrap:wrap;gap:14px">'
@@ -21495,13 +21510,14 @@ document.addEventListener('DOMContentLoaded',function(){
         + '</div>';
     }
 
-    var body = r.byCat.cats.map(function(m){
-      return block((m.def.emoji ? m.def.emoji + ' ' : '') + m.def.name, m.def.subLabel, 'var(--gold)', m.list);
-    }).join('');
+    var cols = r.byCat.cats.map(function(m, i){
+      return column((m.def.emoji ? m.def.emoji + ' ' : '') + m.def.name, m.def.subLabel, 'var(--gold)', m.list, i === 0);
+    });
     if(r.byCat.etc.length){
-      body += block('◦ 기타', '카테고리 브랜드 목록에 없는 브랜드', 'var(--text3)', r.byCat.etc);
+      cols.push(column('◦ 기타', '미분류 브랜드', 'var(--text3)', r.byCat.etc, false));
     }
-    sect.innerHTML = head + meta + body;
+    sect.innerHTML = head + meta
+      + '<div style="display:flex;flex-wrap:wrap;align-items:flex-start;row-gap:24px">' + cols.join('') + '</div>';
   }
   window._discRenderGapCandidates = _gapRender;
 
