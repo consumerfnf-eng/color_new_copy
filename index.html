@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_TRENDMATCH_v132 (2026-09-14) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_TRENDMATCH_v133 (2026-09-14) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20811,11 +20811,16 @@ document.addEventListener('DOMContentLoaded',function(){
       : '';
     var _pc = t.pantone || (cc ? _tmPantoneCode(cc.pantone) : '');
     var ptCode = _pc ? ('Pantone ' + _pc + ' TCX') : t.hex;
-    var matchLine = '<div style="font-family:var(--mono);font-size:9px;color:var(--text3)">마켓 빈도 '
-      + it.mkFreq + ' · ΔRGB ' + _tmDistLabel(it)
-      + (it.mkHexes.length > 1 ? ' · ' + it.mkHexes.length + '색 병합' : '') + '</div>';
+    // KOREA 칩의 'Score N' 과 같은 분량으로 압축한다.
+    // .chip 에는 고정 너비가 없어 본문이 길면 칩 자체가 늘어나 레이아웃이 어긋난다.
+    // 범위·병합 색 목록 같은 상세 수치는 팝업의 Market Match 블록에서 본다.
+    var matchLine = '<div style="font-family:var(--mono);font-size:9px;color:var(--text3)" title="ΔRGB '
+      + _tmDistLabel(it) + (it.mkHexes.length > 1 ? ' · ' + it.mkHexes.length + '색 병합' : '') + '">'
+      + '빈도 ' + it.mkFreq + ' · Δ' + it.dist
+      + (it.mkHexes.length > 1 ? ' · ' + it.mkHexes.length + '색' : '') + '</div>';
     var brandLine = it.brands.length
-      ? '<div style="font-family:var(--mono);font-size:8px;color:var(--text4)">' + it.brands.slice(0,3).join(' · ') + '</div>'
+      ? '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'
+        + it.brands.slice(0,2).join(' · ') + '</div>'
       : '';
     var srcBadge = t.sources.map(function(sr){
       var col = (sr === 'WGSN') ? '#4488FF' : '#9966FF';
