@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_TRENDMATCH_v131 (2026-09-10) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_TRENDMATCH_v132 (2026-09-14) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20505,6 +20505,12 @@ document.addEventListener('DOMContentLoaded',function(){
     srcEl.insertBefore(box, srcEl.firstChild);
   }
 
+  // 'TCX' 접미사를 벗겨 순수 코드만 남긴다 (원본 데이터에 이미 붙어 있는 경우가 있어
+  //  표시할 때 다시 붙이면 'Pantone 18-3919 TCX TCX' 처럼 중복된다)
+  function _tmPantoneCode(v){
+    return String(v || '').replace(/\s*TCX\s*/gi, '').trim();
+  }
+
   // ── WGSN + Peclers 컬러 풀 (hex 기준 중복 병합, 출처 누적) ──
   function _tmTrendPool(){
     var out = [], seen = {};
@@ -20521,7 +20527,7 @@ document.addEventListener('DOMContentLoaded',function(){
         seen[h] = {
           hex: h,
           name: c.name || c.code || h,
-          pantone: c.pantone || (c.tcxCode ? c.tcxCode + ' TCX' : ''),
+          pantone: _tmPantoneCode(c.pantone || c.tcxCode || ''),
           sources: [srcLabel],
           file: c.fileName || ''
         };
@@ -20580,18 +20586,21 @@ document.addEventListener('DOMContentLoaded',function(){
     if(typeof rgbDist !== 'function' || list.length < 2) return list;
     var clusters = [];
     list.forEach(function(co){                                           // list 는 이미 빈도 내림차순
+      // 대표색(=클러스터 최고 빈도 색) 기준으로만 판정한다.
+      // 멤버 아무거나와 가까우면 편입하는 단일 연결 방식은 A-B-C 사슬로
+      // 클러스터가 무한정 번져(실데이터에서 53색·ΔRGB 101까지 관측) 사용하지 않는다.
+      var bestI = -1, bestD = TM_CLUSTER_DIST;
       for(var i = 0; i < clusters.length; i++){
-        var members = clusters[i].members;
-        for(var j = 0; j < members.length; j++){
-          if(rgbDist(members[j].hex, co.hex) < TM_CLUSTER_DIST){
-            clusters[i].members.push(co);
-            clusters[i].freq += co.freq;
-            (co.brands || []).forEach(function(b){
-              if(clusters[i].brands.indexOf(b) < 0) clusters[i].brands.push(b);
-            });
-            return;
-          }
-        }
+        var dd = rgbDist(clusters[i].hex, co.hex);
+        if(dd < bestD){ bestD = dd; bestI = i; }                          // 가장 가까운 대표색에 붙임
+      }
+      if(bestI >= 0){
+        clusters[bestI].members.push(co);
+        clusters[bestI].freq += co.freq;
+        (co.brands || []).forEach(function(b){
+          if(clusters[bestI].brands.indexOf(b) < 0) clusters[bestI].brands.push(b);
+        });
+        return;
       }
       clusters.push({
         hex: co.hex,                                                     // 첫 멤버 = 최고 빈도 → 대표색
@@ -20601,7 +20610,12 @@ document.addEventListener('DOMContentLoaded',function(){
         members: [co]
       });
     });
-    clusters.forEach(function(c){ c.memberHexes = c.members.map(function(m){ return m.hex; }); });
+    clusters.forEach(function(c){
+      c.memberHexes = c.members.map(function(m){ return m.hex; });
+      c.memberInfo  = c.members.map(function(m){
+        return { hex: m.hex, freq: m.freq || 1, brands: (m.brands || []).slice() };
+      });
+    });
     return clusters.sort(function(a,b){ return b.freq - a.freq; });      // 합산 빈도로 재정렬
   }
 
@@ -20655,21 +20669,25 @@ document.addEventListener('DOMContentLoaded',function(){
       totals.matched++;
       if(usedTrend[best.hex]){                                           // 같은 트렌드 칩 중복 → 빈도·브랜드 합산
         var ex = usedTrend[best.hex];
-        ex.mkFreq += mc.freq;
-        if(ex.mkHexes.indexOf(mc.hex) < 0) ex.mkHexes.push(mc.hex);
-        (mc.memberHexes || [mc.hex]).forEach(function(h){ if(ex.mkHexes.indexOf(h) < 0) ex.mkHexes.push(h); });
-        (mc.brands || []).forEach(function(b){ if(ex.brands.indexOf(b) < 0) ex.brands.push(b); });
+        var nr = _tmNearMembers(mc, best.hex);
+        ex.mkFreq += nr.freq;
+        nr.hexes.forEach(function(h){ if(ex.mkHexes.indexOf(h) < 0) ex.mkHexes.push(h); });
+        nr.brands.forEach(function(b){ if(ex.brands.indexOf(b) < 0) ex.brands.push(b); });
         _tmSetDistRange(ex);
         return;
       }
+      // 클러스터는 '순위 매기기'용으로 빈도를 합치지만, 근거로 내세우는 멤버는
+      // 트렌드 색과 실제로 TM_DIST 안에 있는 것만 인정한다.
+      // (대표색이 30 떨어져 있으면 멤버는 최대 50까지 벌어질 수 있어 ΔRGB 표기가 임계값을 넘었음)
+      var near = _tmNearMembers(mc, best.hex);
       var item = {
         trend: best,
         dist: Math.round(bd),
         mkHex: mc.hex,
-        mkHexes: (mc.memberHexes || [mc.hex]).slice(),                   // 클러스터 멤버 전부
+        mkHexes: near.hexes,
         mkName: mc.name,
-        mkFreq: mc.freq,
-        brands: (mc.brands || []).slice()
+        mkFreq: near.freq,
+        brands: near.brands
       };
       _tmSetDistRange(item);
       usedTrend[best.hex] = item;
@@ -20684,6 +20702,20 @@ document.addEventListener('DOMContentLoaded',function(){
       totals.families[k] = _tmFamilyCount(buckets[k]);
     });
     return { buckets: buckets, totals: totals };
+  }
+
+  // 클러스터 멤버 중 트렌드 색과 TM_DIST 이내인 것만 추려 hex·빈도·브랜드 반환
+  function _tmNearMembers(mc, trendHex){
+    var info = mc.memberInfo || [{ hex: mc.hex, freq: mc.freq, brands: mc.brands || [] }];
+    var hexes = [], brands = [], freq = 0;
+    info.forEach(function(m){
+      if(rgbDist(m.hex, trendHex) > TM_DIST) return;
+      hexes.push(m.hex);
+      freq += m.freq;
+      (m.brands || []).forEach(function(b){ if(brands.indexOf(b) < 0) brands.push(b); });
+    });
+    if(!hexes.length){ hexes = [mc.hex]; freq = mc.freq; brands = (mc.brands || []).slice(); }
+    return { hexes: hexes, freq: freq, brands: brands };
   }
 
   // 멤버 hex 전체와 트렌드 색의 거리 → 최소·최대·평균
@@ -20777,8 +20809,8 @@ document.addEventListener('DOMContentLoaded',function(){
     var coloroLine = cc
       ? '<div style="font-family:var(--mono);font-size:10px;font-weight:600;color:var(--accent);margin-top:2px">COLORO ' + cc.coloro + '</div>'
       : '';
-    var ptCode = t.pantone ? ('Pantone ' + t.pantone + ' TCX')
-               : (cc ? ('Pantone ' + cc.pantone + ' TCX') : t.hex);
+    var _pc = t.pantone || (cc ? _tmPantoneCode(cc.pantone) : '');
+    var ptCode = _pc ? ('Pantone ' + _pc + ' TCX') : t.hex;
     var matchLine = '<div style="font-family:var(--mono);font-size:9px;color:var(--text3)">마켓 빈도 '
       + it.mkFreq + ' · ΔRGB ' + _tmDistLabel(it)
       + (it.mkHexes.length > 1 ? ' · ' + it.mkHexes.length + '색 병합' : '') + '</div>';
