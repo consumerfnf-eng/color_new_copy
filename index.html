@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_TRENDMATCH_v139 (2026-09-14) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_TRENDMATCH_v140 (2026-09-14) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20879,7 +20879,7 @@ document.addEventListener('DOMContentLoaded',function(){
     // COLORO_MAP 은 기준칩이 39개뿐이라 서로 다른 색이 같은 코드로 수렴한다.
     // Lab 거리가 충분히 가까울 때만, 근사값임을 '≈' 로 밝혀 표시한다.
     var coloroLine = (cc && typeof cc.dist === 'number' && cc.dist <= TM_COLORO_MAX_DE)
-      ? '<div style="font-family:var(--mono);font-size:10px;font-weight:600;color:var(--accent);margin-top:2px" title="COLORO 기준칩 39개 대상 근사 매핑 · Lab ΔE ' + cc.dist + '">COLORO ≈ ' + cc.coloro + '</div>'
+      ? '<div style="font-family:var(--mono);font-size:10px;color:var(--accent);margin-top:2px" title="COLORO 기준칩 39개 대상 근사 매핑 · Lab ΔE ' + cc.dist + '">COLORO ≈ ' + cc.coloro + '</div>'
       : '';
     // 원본 코드의 형식을 판별해 라벨을 붙인다.
     // COLORO 근사 매핑에서 Pantone 을 역산하면 틀린 코드가 나가므로 쓰지 않는다.
