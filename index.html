@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_TRENDMATCH_v141 (2026-09-14) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_27FWPALETTE_v142 (2026-09-14) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20414,6 +20414,7 @@ document.addEventListener('DOMContentLoaded',function(){
   function sync(){
     try{ if(_inScope()) _apply(); else _revert(); }catch(err){ console.warn('[disc-layout] sync 오류:', err); }
     try{ if(typeof _purgeNewsletter === 'function') _purgeNewsletter(); }catch(err){}
+    try{ if(typeof _dcpRender === 'function') _dcpRender(); }catch(err){}
   }
   window._discSyncLayout = sync;
   window._discLayoutInScope = _inScope;
@@ -21085,6 +21086,202 @@ document.addEventListener('DOMContentLoaded',function(){
     };
   }
 
+
+  // ══════════════════════════════════════════════════════════════
+  //  DISCOVERY 27FW COLOR PALETTE (사내 확정 팔레트)
+  //  ────────────────────────────────────────────────────────────
+  //  DISCOVERY_27FW_COLOR_PALETTE_2.html 의 데이터를 그대로 이식.
+  //  원본 CSS 는 .chip / .card 같은 일반 클래스명을 써서 index.html 과
+  //  충돌하므로, 전부 dcp- 접두사로 격리한 전용 스타일을 주입한다.
+  //  Trend-Matched 아래 · KOREA 위에 접이식으로 배치. 기본은 접힘.
+  // ══════════════════════════════════════════════════════════════
+  var DCP_SECT_ID = 'disc-27fw-palette';
+  var DCP_STYLE_ID = 'dcp-style';
+  var _dcpCollapsed = true;
+
+  var DCP_CORE_1 = [
+    {name:'CRS', code:'036-90-02', hex:'F3F0E6'},
+    {name:'CRD', code:'033-90-02', hex:'F4EDE4'},
+    {name:'IVS', code:'034-80-03', hex:'D4CFC2'},
+    {name:'BES', code:'032-69-05', hex:'B9AC97'},
+    {name:'BGL', code:'037-61-06', hex:'A69B83'},
+    {name:'BGS', code:'035-51-09', hex:'978065'},
+    {name:'DWS', code:'029-25-07', hex:'493A2F'},
+    {name:'SAD', code:'032-49-04', hex:'87796A'},
+    {name:'CGS', code:'007-40-01', hex:'685E61'},
+    {name:'NYL', code:'122-36-01', hex:'4E5862'},
+    {name:'DGL', code:'122-28-04', hex:'3C4550'},
+    {name:'NYD', code:'120-21-10', hex:'253445'},
+    {gap:true},
+    {name:'IVM', pct:'',    tag:'B1020', melange:true, hex:'F5EEE4'},
+    {name:'MGL', pct:'1%',  tag:'BC02',  melange:true, hex:'D1CED4'},
+    {name:'MGS', pct:'8%',  tag:'BC06',  melange:true, hex:'9996A7'},
+    {name:'MGD', pct:'35%', tag:'B38',   melange:true, hex:'565661'}
+  ];
+  var DCP_CORE_2 = [
+    {name:'GRL', code:'129-84-00', hex:'D4D8DE'},
+    {name:'LGL', code:'123-76-02', hex:'B8C4CE'},
+    {name:'SIL', pantone:'14-4105 TPG', pname:'Micro Chip', hex:'BDBDC5'},
+    {name:'GRS', pantone:'17-3914 TCX', pname:'Sharkskin',  hex:'80848B'},
+    {name:'GRD', code:'149-40-00', hex:'5E5E67'},
+    {name:'DGS', code:'142-27-00', hex:'443F46'},
+    {name:'CGD', code:'152-25-00', hex:'3E3A42'},
+    {gap:true},
+    {name:'WHS', code:'040-92-00', hex:'F2EEE7'},
+    {name:'BKS', code:'139-18-00', hex:'2B2C31'}
+  ];
+  var DCP_MOODS = [
+    { title:'ACTIVE WELLNESS', rows:[
+      [ {name:'LPS', code:'155-72-12', hex:'DAA6B3'},
+        {name:'BLS', code:'101-66-11', hex:'81B5C2'},
+        {name:'LVL', code:'134-67-16', hex:'ACA5CF'} ],
+      [ {name:'SAS', code:'027-58-04', hex:'A08D7A'},
+        {name:'INS', code:'120-22-18', hex:'1B344F'},
+        {name:'TQL', code:'103-29-11', hex:'264D58'},
+        {name:'WIS', code:'151-22-09', hex:'452B3F'} ]
+    ]},
+    { title:'CASUAL COMMUTE', rows:[
+      [ {name:'LPS', code:'155-72-12', hex:'DAA6B3'},
+        {name:'SBD', code:'117-44-09', hex:'506F88'},
+        {name:'WID', code:'005-23-06', hex:'472F34'} ],
+      [ {name:'KAD', code:'043-24-06', hex:'443C2A'},
+        {name:'KAS', code:'049-34-04', hex:'585740'},
+        {name:'DNS', code:'124-20-03', hex:'262F3A'},
+        {name:'BRD', code:'031-31-11', hex:'5E442E'} ]
+    ]},
+    { title:'OUTDOOR RESORT', rows:[
+      [ {name:'BLL', code:'107-77-11', hex:'9FCADB'},
+        {name:'LPL', code:'154-81-12', hex:'EBC0CE'},
+        {name:'COL', code:'016-72-17', hex:'EBA491'},
+        {name:'MTS', code:'082-72-06', hex:'9FC5B8'},
+        {name:'LDS', code:'131-69-13', hex:'A1A4CF'} ],
+      [ {name:'NBS', code:'025-72-10', hex:'D4B198'},
+        {name:'SPS', pantone:'19-0910 TPG', pname:'Mulch', hex:'53433E'},
+        {name:'BDD', code:'004-23-16', hex:'5C2733'} ]
+    ]}
+  ];
+  var DCP_NOTE = 'CORE 컬러군과 BLS, LVL은 채도 +3%p 버전 HEX, 그 외 컬러(ACTIVE WELLNESS의 LPS·SAS·INS·TQL·WIS / CASUAL COMMUTE 전체 / OUTDOOR RESORT 전체)는 채도 +8%p·명도 -1%p 버전 HEX를 적용. Coloro/Pantone/멜란지 코드는 원본과 동일.';
+
+  function _dcpInjectStyle(){
+    if(document.getElementById(DCP_STYLE_ID)) return;
+    var st = document.createElement('style');
+    st.id = DCP_STYLE_ID;
+    st.textContent = [
+      '#' + DCP_SECT_ID + ' .dcp-body{padding:18px 2px 4px}',
+      '#' + DCP_SECT_ID + ' .dcp-core{display:flex;align-items:flex-start;gap:20px;margin-bottom:10px}',
+      '#' + DCP_SECT_ID + ' .dcp-core-tag{background:#0f0f0f;color:#fff;font-weight:800;font-size:13px;letter-spacing:1px;padding:22px 16px;flex:0 0 auto;font-family:var(--mono)}',
+      '#' + DCP_SECT_ID + ' .dcp-core-rows{display:flex;flex-direction:column;gap:20px;flex:1;min-width:0;overflow-x:auto;padding-bottom:4px}',
+      '#' + DCP_SECT_ID + ' .dcp-row{display:flex;flex-wrap:nowrap;gap:10px}',
+      '#' + DCP_SECT_ID + ' .dcp-chip{width:74px;flex:0 0 auto}',
+      '#' + DCP_SECT_ID + ' .dcp-name{font-size:12px;font-weight:800;text-align:center;margin-bottom:4px;color:var(--text)}',
+      '#' + DCP_SECT_ID + ' .dcp-tag{font-family:var(--mono);font-size:9px;font-weight:700;text-align:center;color:var(--text3);letter-spacing:0.3px}',
+      '#' + DCP_SECT_ID + ' .dcp-pct{font-family:var(--mono);font-size:9px;font-weight:700;text-align:center;color:var(--text3);margin-bottom:2px}',
+      '#' + DCP_SECT_ID + ' .dcp-card{border:1px solid var(--border);background:var(--surface);border-radius:3px;overflow:hidden}',
+      '#' + DCP_SECT_ID + ' .dcp-code{font-family:var(--mono);font-size:8.5px;text-align:center;padding:4px 2px;border-bottom:1px solid var(--border);color:var(--text2);letter-spacing:0.2px}',
+      '#' + DCP_SECT_ID + ' .dcp-fill{height:62px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:5px}',
+      '#' + DCP_SECT_ID + ' .dcp-hex{font-family:var(--mono);font-size:8.5px;text-align:center;padding:4px 2px;border-top:1px solid var(--border);color:var(--text3);letter-spacing:0.3px}',
+      '#' + DCP_SECT_ID + ' .dcp-pnote{font-size:8.5px;text-align:center;padding:5px 3px 3px;color:var(--text2);line-height:1.3;border-top:1px solid var(--border)}',
+      '#' + DCP_SECT_ID + ' .dcp-pnote b{display:block;font-size:9px;font-weight:800}',
+      '#' + DCP_SECT_ID + ' .dcp-moods{display:flex;gap:0;margin-top:22px;border-top:2px solid var(--border2);padding-top:22px;flex-wrap:wrap}',
+      '#' + DCP_SECT_ID + ' .dcp-mood{padding:0 22px;flex:1 1 300px;min-width:300px}',
+      '#' + DCP_SECT_ID + ' .dcp-mood + .dcp-mood{border-left:1px solid var(--border)}',
+      '#' + DCP_SECT_ID + ' .dcp-mood-title{text-align:center;font-family:var(--mono);font-size:11px;font-weight:800;letter-spacing:1px;margin-bottom:20px;color:var(--text)}',
+      '#' + DCP_SECT_ID + ' .dcp-mood-rows{display:flex;flex-direction:column;gap:22px;align-items:center}',
+      '#' + DCP_SECT_ID + ' .dcp-mood-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}',
+      '#' + DCP_SECT_ID + ' .dcp-note{margin-top:24px;font-size:10px;color:var(--text4);line-height:1.6;border-top:1px solid var(--border);padding-top:12px}'
+    ].join('\n');
+    document.head.appendChild(st);
+  }
+
+  function _dcpTextOn(hex){
+    var r = parseInt(hex.substr(0,2),16), g = parseInt(hex.substr(2,2),16), b = parseInt(hex.substr(4,2),16);
+    return ((r*299 + g*587 + b*114) / 1000) >= 150 ? '#1a1a1a' : '#ffffff';
+  }
+
+  function _dcpChip(it){
+    if(it.gap) return '<div style="width:6px;flex:0 0 auto"></div>';
+    var head = '';
+    if(it.melange){
+      head += '<div class="dcp-tag">' + it.tag + '</div>';
+      head += '<div class="dcp-name">' + it.name + '</div>';
+      if(it.pct) head += '<div class="dcp-pct">' + it.pct + '</div>';
+    } else {
+      head += '<div class="dcp-name">' + it.name + '</div>';
+    }
+    var codeLine = it.code ? '<div class="dcp-code">COLORO ' + it.code + '</div>' : '';
+    var fill = '<div class="dcp-fill" style="background:#' + it.hex + '">'
+      + (it.melange ? '<span style="font-family:var(--mono);font-size:9px;font-weight:800;letter-spacing:0.5px;color:' + _dcpTextOn(it.hex) + '">BROS</span>' : '')
+      + '</div>';
+    var foot = it.pantone
+      ? '<div class="dcp-pnote"><b>PANTONE&reg;</b>' + it.pantone + '<br>' + it.pname + '</div>'
+      : '<div class="dcp-hex">#' + it.hex + '</div>';
+    return '<div class="dcp-chip" title="' + it.name + ' · #' + it.hex + '">'
+      + head + '<div class="dcp-card">' + codeLine + fill + foot + '</div></div>';
+  }
+
+  function _dcpBodyHtml(){
+    var core = '<div class="dcp-core">'
+      + '<div class="dcp-core-tag">CORE</div>'
+      + '<div class="dcp-core-rows">'
+      +   '<div class="dcp-row">' + DCP_CORE_1.map(_dcpChip).join('') + '</div>'
+      +   '<div class="dcp-row">' + DCP_CORE_2.map(_dcpChip).join('') + '</div>'
+      + '</div></div>';
+    var moods = '<div class="dcp-moods">' + DCP_MOODS.map(function(m){
+      return '<div class="dcp-mood">'
+        + '<div class="dcp-mood-title">' + m.title + '</div>'
+        + '<div class="dcp-mood-rows">'
+        +   m.rows.map(function(r){ return '<div class="dcp-mood-row">' + r.map(_dcpChip).join('') + '</div>'; }).join('')
+        + '</div></div>';
+    }).join('') + '</div>';
+    return '<div class="dcp-body">' + core + moods
+      + '<div class="dcp-note">' + DCP_NOTE + '</div></div>';
+  }
+
+  window._dcpToggle = function(){
+    _dcpCollapsed = !_dcpCollapsed;
+    _dcpRender();
+  };
+
+  function _dcpSection(){
+    var wrap = document.getElementById('disc-palette-wrap');
+    if(!wrap) return null;
+    var sect = document.getElementById(DCP_SECT_ID);
+    if(!sect){
+      sect = document.createElement('div');
+      sect.id = DCP_SECT_ID;
+      sect.style.marginBottom = '32px';
+      sect.style.paddingBottom = '24px';
+      sect.style.borderBottom = '1px solid var(--border)';
+    }
+    // Trend-Matched 바로 아래 · KOREA 바로 위
+    var tm = document.getElementById(TM_SECT_ID);
+    var ref = (tm && tm.parentNode === wrap) ? tm.nextSibling : wrap.firstChild;
+    if(sect.previousSibling !== tm || sect.parentNode !== wrap) wrap.insertBefore(sect, ref);
+    return sect;
+  }
+
+  function _dcpRender(){
+    var sect = document.getElementById(DCP_SECT_ID);
+    if(!_inScope()){ if(sect) sect.style.display = 'none'; return; }
+    _dcpInjectStyle();
+    sect = _dcpSection();
+    if(!sect) return;
+    sect.style.display = 'block';
+    var cnt = DCP_CORE_1.filter(function(x){ return !x.gap; }).length
+            + DCP_CORE_2.filter(function(x){ return !x.gap; }).length
+            + DCP_MOODS.reduce(function(n,m){ return n + m.rows.reduce(function(k,r){ return k + r.length; }, 0); }, 0);
+    sect.innerHTML =
+        '<div class="spp-trend-market-hd" style="margin-bottom:0;cursor:pointer" onclick="_dcpToggle()">'
+      +   '<span class="spp-trend-market-flame" style="color:var(--gold)">▣ 27FW PALETTE</span>'
+      +   '<span class="spp-trend-market-title">DISCOVERY 27FW Color Palette</span>'
+      +   '<span class="spp-trend-market-sub">사내 확정 팔레트 · CORE + 무드 3종 · 총 ' + cnt + '색</span>'
+      +   '<span style="margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--text3)">'
+      +     (_dcpCollapsed ? '▾ 펼치기' : '▴ 접기') + '</span>'
+      + '</div>'
+      + (_dcpCollapsed ? '' : _dcpBodyHtml());
+  }
+  window._discRender27fwPalette = _dcpRender;
+
   // 03 팔레트가 다시 그려질 때마다 같이 갱신
   ['_renderDiscoveryPalette','discSetRegion'].forEach(function(fn){
     var orig = window[fn];
@@ -21092,6 +21289,7 @@ document.addEventListener('DOMContentLoaded',function(){
     window[fn] = function(){
       var r = orig.apply(this, arguments);
       try{ _tmRender(); }catch(e){ console.warn('[trend-matched] 렌더 오류:', e); }
+      try{ _dcpRender(); }catch(e){ console.warn('[27fw-palette] 렌더 오류:', e); }
       return r;
     };
   });
