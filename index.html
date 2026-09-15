@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_CURATION_v161 (2026-09-15) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_CURATION_v162 (2026-09-15) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20670,7 +20670,7 @@ document.addEventListener('DOMContentLoaded',function(){
   var TM_NEUTRAL_C   = 15;    // 뉴트럴 색상대에서 BASIC 으로 볼 상한
   var TM_DARK_L      = 30;    // 이보다 어두우면 (저채도 한정) BASIC
   var TM_DARK_C      = 20;
-  var TM_KEY_C       = 40;    // KEY 판정 채도 하한 (Lab C*)
+  var TM_KEY_C       = 36;    // KEY 판정 채도 하한 (Lab C*) — 37.8(#0086BB)·36.1(#EC9ABE) 포함
   var TM_KEY_L       = [25, 80];
   var TM_WARM_H      = [40, 100];    // 베이지·아이보리·카키
   var TM_COOL_H      = [230, 310];   // 블루그레이·네이비·차콜
@@ -20688,10 +20688,13 @@ document.addEventListener('DOMContentLoaded',function(){
   function _tmClassify(hex){
     var a = _tmLCh(hex);
     if(a.C < TM_BASIC_C) return 'basic';                                   // 순수 무채
-    if(a.L < TM_DARK_L && a.C < TM_DARK_C) return 'basic';                 // 차콜·네이비 등 어두운 저채도
-    var warm = (a.H >= TM_WARM_H[0] && a.H <= TM_WARM_H[1]);
-    var cool = (a.H >= TM_COOL_H[0] && a.H <= TM_COOL_H[1] && a.L < TM_COOL_MAX_L);
-    if(a.C < TM_NEUTRAL_C && (warm || cool)) return 'basic';               // 뉴트럴로 읽히는 색상대
+    var warmH = (a.H >= TM_WARM_H[0] && a.H <= TM_WARM_H[1]);
+    var coolH = (a.H >= TM_COOL_H[0] && a.H <= TM_COOL_H[1]);
+    // 어두운 저채도라도 색상이 뉴트럴대일 때만 BASIC.
+    // 색상 조건이 없으면 다크 포레스트·딥 틸·다크 플럼까지 전부 빨아들인다.
+    if(a.L < TM_DARK_L && a.C < TM_DARK_C && (warmH || coolH)) return 'basic';
+    var cool = coolH && a.L < TM_COOL_MAX_L;
+    if(a.C < TM_NEUTRAL_C && (warmH || cool)) return 'basic';              // 뉴트럴로 읽히는 색상대
     if(a.C >= TM_KEY_C && a.L >= TM_KEY_L[0] && a.L <= TM_KEY_L[1]) return 'key';
     return 'sub';
   }
