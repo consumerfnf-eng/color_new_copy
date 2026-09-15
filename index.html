@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_GAP_v146 (2026-09-14) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_GAP_v147 (2026-09-14) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21520,6 +21520,58 @@ document.addEventListener('DOMContentLoaded',function(){
       + '<div style="display:flex;flex-wrap:wrap;align-items:flex-start;row-gap:24px">' + cols.join('') + '</div>';
   }
   window._discRenderGapCandidates = _gapRender;
+
+  // ── 진단: 카테고리별 마켓 데이터 규모 ────────────────────────
+  //  콘솔에서 _discDataAudit() 로 호출. 모듈 스코프에서 실행되므로
+  //  compData 접근 문제가 없다. 결과는 표로 찍고 텍스트로도 반환한다.
+  window._discDataAudit = function(){
+    var bkn = window._brandKeyNorm || function(x){ return (x||'').toLowerCase().replace(/[\s._\-]+/g,'').trim(); };
+    var defs = (typeof DISCOVERY_CAT_DEFS !== 'undefined' && DISCOVERY_CAT_DEFS) ? DISCOVERY_CAT_DEFS : [];
+    var sel = (typeof window._curMarketSel === 'function') ? window._curMarketSel() : null;
+    if(typeof compData === 'undefined' || !Array.isArray(compData)){
+      console.warn('compData 를 찾을 수 없습니다.'); return 'compData 없음';
+    }
+    var perBrand = {}, total = 0, skippedSrc = 0, skippedSel = 0;
+    compData.forEach(function(cd){
+      if(!cd || !cd.brand || !cd.hex) return;
+      var src = cd.source || '';
+      if(src.indexOf('gl') < 0 && src.indexOf('kr') < 0){ skippedSrc++; return; }
+      if(sel && sel.size > 0 && !sel.has(bkn(cd.brand))){ skippedSel++; return; }
+      var f = cd.freq || 1;
+      perBrand[cd.brand] = (perBrand[cd.brand] || 0) + f;
+      total += f;
+    });
+    var brands = Object.keys(perBrand).sort(function(a,b){ return perBrand[b] - perBrand[a]; });
+    console.table(brands.map(function(b){
+      var cats = defs.filter(function(d){
+        return (d.brandList||[]).some(function(x){ return bkn(x) === bkn(b); });
+      }).map(function(d){ return d.name; });
+      return { 브랜드: b, freq합: perBrand[b],
+               비중: total ? (perBrand[b]/total*100).toFixed(1) + '%' : '-',
+               카테고리: cats.join(', ') || '(미분류)' };
+    }));
+    var lines = ['=== 브랜드별 ==='];
+    brands.forEach(function(b){ lines.push(b + '  ' + perBrand[b]); });
+    lines.push('전체 ' + total + ' · source 제외 ' + skippedSrc + ' · 브랜드체크 제외 ' + skippedSel);
+    lines.push('=== 카테고리별 ===');
+    defs.forEach(function(def){
+      var set = {}; (def.brandList||[]).forEach(function(b){ set[bkn(b)] = 1; });
+      var sum = 0, names = [];
+      brands.forEach(function(b){ if(set[bkn(b)]){ sum += perBrand[b]; names.push(b); } });
+      lines.push(def.name + '  ' + sum + ' (' + (total ? Math.round(sum/total*100) : 0) + '%)  ' + (names.join(', ') || '없음'));
+      var missing = (def.brandList||[]).filter(function(x){
+        return !brands.some(function(b){ return bkn(b) === bkn(x); });
+      });
+      if(missing.length) lines.push('   └ 데이터에 없는 brandList 항목: ' + missing.join(', '));
+    });
+    var unmatched = brands.filter(function(b){
+      return !defs.some(function(d){ return (d.brandList||[]).some(function(x){ return bkn(x) === bkn(b); }); });
+    });
+    if(unmatched.length) lines.push('=== 어느 카테고리에도 안 잡힌 브랜드 ===\n' + unmatched.join(', '));
+    var out = lines.join('\n');
+    console.log(out);
+    return out;
+  };
 
   // 03 팔레트가 다시 그려질 때마다 같이 갱신
   ['_renderDiscoveryPalette','discSetRegion'].forEach(function(fn){
