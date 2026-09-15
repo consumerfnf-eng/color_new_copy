@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_CURATION_v158 (2026-09-15) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_CURATION_v160 (2026-09-15) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20417,6 +20417,7 @@ document.addEventListener('DOMContentLoaded',function(){
     try{ if(typeof _dcpRender === 'function') _dcpRender(); }catch(err){}
     try{ if(typeof _gapRender === 'function') _gapRender(); }catch(err){}
     try{ if(typeof _ccRender === 'function') _ccRender(); }catch(err){}
+    try{ if(typeof _discOrderSections === 'function') _discOrderSections(); }catch(err){}
     try{ if(typeof _hidSync === 'function') _hidSync(); }catch(err){}
   }
   window._discSyncLayout = sync;
@@ -21023,8 +21024,7 @@ document.addEventListener('DOMContentLoaded',function(){
       sect.style.paddingBottom = '24px';
       sect.style.borderBottom = '1px solid var(--border)';
     }
-    // 03 페이지 최상단에 위치시킴 (KOREA 섹션보다 위)
-    if(wrap.firstElementChild !== sect) wrap.insertBefore(sect, wrap.firstChild);
+    if(!sect.parentNode) wrap.insertBefore(sect, wrap.firstChild);
     return sect;
   }
 
@@ -21309,6 +21309,7 @@ document.addEventListener('DOMContentLoaded',function(){
   window._dcpToggle = function(){
     _dcpCollapsed = !_dcpCollapsed;
     _dcpRender();
+    try{ _discOrderSections(); }catch(e){}
   };
 
   function _dcpSection(){
@@ -21323,10 +21324,7 @@ document.addEventListener('DOMContentLoaded',function(){
       sect.style.paddingBottom = '24px';
       sect.style.borderBottom = '1px solid var(--border)';
     }
-    // Trend-Matched 바로 아래 · KOREA 바로 위
-    var tm = document.getElementById(TM_SECT_ID);
-    var ref = (tm && tm.parentNode === wrap) ? tm.nextSibling : wrap.firstChild;
-    if(sect.previousSibling !== tm || sect.parentNode !== wrap) wrap.insertBefore(sect, ref);
+    if(!sect.parentNode) wrap.appendChild(sect);
     return sect;
   }
 
@@ -21610,10 +21608,7 @@ document.addEventListener('DOMContentLoaded',function(){
       sect.style.paddingBottom = '24px';
       sect.style.borderBottom = '1px solid var(--border)';
     }
-    // 27FW 확정 팔레트 바로 아래 · KOREA 바로 위
-    var pv = document.getElementById(DCP_SECT_ID);
-    var ref = (pv && pv.parentNode === wrap) ? pv.nextSibling : wrap.firstChild;
-    if(sect.previousSibling !== pv || sect.parentNode !== wrap) wrap.insertBefore(sect, ref);
+    if(!sect.parentNode) wrap.appendChild(sect);
     return sect;
   }
 
@@ -21939,12 +21934,7 @@ document.addEventListener('DOMContentLoaded',function(){
       sect.style.paddingBottom = '24px';
       sect.style.borderBottom = '1px solid var(--border)';
     }
-    // 27FW 확정 팔레트 바로 위 (= Trend-Matched 바로 아래)
-    var pv = document.getElementById(DCP_SECT_ID);
-    var ref = (pv && pv.parentNode === wrap) ? pv : null;
-    if(sect.nextSibling !== ref || sect.parentNode !== wrap){
-      wrap.insertBefore(sect, ref || wrap.firstChild);
-    }
+    if(!sect.parentNode) wrap.appendChild(sect);
     return sect;
   }
 
@@ -21987,7 +21977,9 @@ document.addEventListener('DOMContentLoaded',function(){
     var cols = keys.map(function(k, i){
       var box = r.lists[k];
       if(!box) return '';
-      if(k === CC_ETC && !box.list.length && !_ccEdit) return '';       // 기타는 비면 숨김
+      // 기타는 실제로 색이 있을 때만 노출한다.
+      // (예전엔 편집 중 '받을 칸'이 필요해 띄웠지만, 이동이 팝오버 방식으로 바뀌어 불필요)
+      if(k === CC_ETC && !box.list.length) return '';
       var d = box.def;
       return '<div style="flex:1 1 300px;min-width:300px;padding:0 16px'
         + (i === 0 ? '' : ';border-left:1px solid var(--border)') + '">'
@@ -22007,6 +21999,27 @@ document.addEventListener('DOMContentLoaded',function(){
       + '<div style="display:flex;flex-wrap:wrap;align-items:flex-start;row-gap:24px">' + cols + '</div>';
   }
   window._discRenderCatCuration = _ccRender;
+
+  // ── 섹션 순서 고정 ────────────────────────────────────────────
+  //  각 섹션이 제각기 "무엇의 앞/뒤"로 자리를 잡으면 서로를 밀어낸다.
+  //  (27FW 팔레트 토글 시 그것만 다시 그려지며 Curation 위로 올라가던 문제)
+  //  순서는 여기서 한 번에 정한다.
+  var DISC_SECT_ORDER = [TM_SECT_ID, CC_SECT_ID, DCP_SECT_ID, GAP_SECT_ID];
+  function _discOrderSections(){
+    var wrap = document.getElementById('disc-palette-wrap');
+    if(!wrap) return;
+    var first = null;
+    // 원본 섹션들(KOREA·CHINA 등) 중 첫 번째를 기준점으로 삼아 그 앞에 차례로 붙인다
+    for(var i = 0; i < wrap.children.length; i++){
+      var id = wrap.children[i].id;
+      if(DISC_SECT_ORDER.indexOf(id) < 0){ first = wrap.children[i]; break; }
+    }
+    DISC_SECT_ORDER.forEach(function(id){
+      var el = document.getElementById(id);
+      if(el) wrap.insertBefore(el, first);
+    });
+  }
+  window._discOrderSections = _discOrderSections;
 
   // ── 진단: 카테고리별 마켓 데이터 규모 ────────────────────────
   //  콘솔에서 _discDataAudit() 로 호출. 모듈 스코프에서 실행되므로
@@ -22070,6 +22083,7 @@ document.addEventListener('DOMContentLoaded',function(){
       try{ _dcpRender(); }catch(e){ console.warn('[27fw-palette] 렌더 오류:', e); }
       try{ _gapRender(); }catch(e){ console.warn('[gap] 렌더 오류:', e); }
       try{ _ccRender(); }catch(e){ console.warn('[curation] 렌더 오류:', e); }
+      try{ _discOrderSections(); }catch(e){}
       try{ _hidSync(); }catch(e){ console.warn('[hide] 오류:', e); }
       return r;
     };
