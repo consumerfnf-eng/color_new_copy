@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_GAP_v149 (2026-09-14) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_GAP_v150 (2026-09-14) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21304,6 +21304,8 @@ document.addEventListener('DOMContentLoaded',function(){
   var GAP_SECT_ID = 'disc-gap-candidates';
   var GAP_MIN_DE = 10;      // 확정 팔레트 색과 이만큼 떨어져야 '없는 색'으로 본다
   var GAP_MAX = 12;         // 표시 개수
+  var GAP_ALLOW_DUP = true; // true = 걸친 카테고리에 모두 표시(주력 외에는 흐리게)
+                            // false = 비중 최대인 카테고리 한 곳에만 표시
 
   // 확정 팔레트 47색을 평면 목록으로
   function _gapPaletteList(){
@@ -21416,18 +21418,33 @@ document.addEventListener('DOMContentLoaded',function(){
         if(!best || share > best.share) best = { map: m, brands: mine, freq: f, share: share, others: [] };
       });
       if(best){
-        // 다른 카테고리에도 걸쳐 있으면 이름만 기록해 칩에 표시
         maps.forEach(function(m){
           if(m === best.map) return;
           if(nb.some(function(b){ return m.set[bkn(b)]; })) best.others.push(m.def.name);
         });
         best.map.list.push({ g: g, brands: best.brands, freq: best.freq, share: best.share,
-                             total: best.map.total, others: best.others });
+                             total: best.map.total, others: best.others, primary: true });
+        if(GAP_ALLOW_DUP){
+          // 걸친 나머지 카테고리에도 넣되 '부수'로 — 주력이 어디인지는 칩에 남긴다
+          maps.forEach(function(m){
+            if(m === best.map) return;
+            var mine = nb.filter(function(b){ return m.set[bkn(b)]; });
+            if(!mine.length) return;
+            var f = mine.reduce(function(n,b){ return n + (counts[b] || 1); }, 0);
+            m.list.push({ g: g, brands: mine, freq: f, share: m.total ? (f/m.total) : 0,
+                          total: m.total, others: [best.map.def.name], primary: false });
+          });
+        }
       } else {
-        etc.push({ g: g, brands: nb.slice(0,3), freq: g.item.mkFreq, share: 0, others: [] });
+        etc.push({ g: g, brands: nb.slice(0,3), freq: g.item.mkFreq, share: 0, others: [], primary: true });
       }
     });
-    maps.forEach(function(m){ m.list.sort(function(a,b){ return (b.share - a.share) || (b.freq - a.freq); }); });
+    maps.forEach(function(m){
+      m.list.sort(function(a,b){
+        if(a.primary !== b.primary) return a.primary ? -1 : 1;    // 주력 먼저
+        return (b.share - a.share) || (b.freq - a.freq);
+      });
+    });
     etc.sort(function(a,b){ return b.freq - a.freq; });
     return { cats: maps, etc: etc };
   }
@@ -21455,7 +21472,7 @@ document.addEventListener('DOMContentLoaded',function(){
       : '';
     var ptCode = _tmCodeLabel(t.pantone) || t.hex;
     return ''
-      + '<div class="chip" onclick="_tmOpenDetail(\'' + t.hex + '\',\'' + String(t.name || t.hex).replace(/'/g, "\\'") + '\')" style="cursor:pointer;width:150px;flex:0 0 150px">'
+      + '<div class="chip" onclick="_tmOpenDetail(\'' + t.hex + '\',\'' + String(t.name || t.hex).replace(/'/g, "\\'") + '\')" style="cursor:pointer;width:150px;flex:0 0 150px' + (catEntry && catEntry.primary === false ? ';opacity:0.5' : '') + '">'
       +   '<div class="chip-swatch" style="background:' + t.hex + '">'
       +     '<div style="position:absolute;top:8px;left:8px;display:flex;gap:3px">'
       +       t.sources.map(function(sr){
@@ -21480,7 +21497,10 @@ document.addEventListener('DOMContentLoaded',function(){
                 : shownFreq)
       +       (nb.length > 1 ? ' · ' + nb.length + '브랜드' : '') + '</div>'
       +     (catEntry && catEntry.others && catEntry.others.length
-              ? '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + catEntry.others.join(' · ') + ' 에서도 사용됨">+ ' + catEntry.others.length + '개 카테고리 중복</div>'
+              ? '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'
+                + catEntry.others.join(' · ') + (catEntry.primary === false ? ' 이 주력' : ' 에서도 사용됨') + '">'
+                + (catEntry.primary === false ? '↳ 주력: ' + catEntry.others[0] : '+ ' + catEntry.others.length + '개 카테고리 중복')
+                + '</div>'
               : '')
       +     '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="확정 팔레트에서 가장 가까운 색 — ' + (g.near ? g.near.name + ' ' + g.near.hex : '') + ' · Lab ΔE ' + g.nearDe + '">'
       +       '가장 가까운 확정색 ' + (g.near ? g.near.name : '-') + ' ΔE' + g.nearDe + '</div>'
@@ -21526,7 +21546,7 @@ document.addEventListener('DOMContentLoaded',function(){
     }
     var meta = '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-bottom:18px">'
       + 'Trend-Matched 표시 ' + r.scanned + '색 대조 · 확정 팔레트 ' + r.palette + '색 · 미보유 판정 Lab ΔE ≥ ' + GAP_MIN_DE
-      + ' · 후보 ' + r.items.length + '색 · 카테고리 배치는 비중(카테고리 수집량 대비) 최대인 곳'
+      + ' · 후보 ' + r.items.length + '색 · 카테고리는 비중(수집량 대비) 기준' + (GAP_ALLOW_DUP ? ' · 걸친 카테고리에 모두 표시(주력 외 흐리게)' : ' · 주력 한 곳에만 표시')
       + (r.hiddenGap ? ' · 표시 밖 미보유 ' + r.hiddenGap + '색은 제외됨' : '')
       + '</div>';
     if(!r.items.length){
