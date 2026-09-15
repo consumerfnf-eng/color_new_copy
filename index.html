@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_SORT_v167 (2026-09-15) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_SORT_v168 (2026-09-15) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21073,12 +21073,12 @@ document.addEventListener('DOMContentLoaded',function(){
       });
       var blocks = TM_FAMILY_ORDER.filter(function(f){ return byFam[f]; }).map(function(f){
         byFam[f].sort(function(a,b){ return _tmLCh(b.trend.hex).L - _tmLCh(a.trend.hex).L; });
-        return '<div style="display:flex;gap:10px" title="' + (TM_FAMILY_LABEL[f] || f) + ' ' + byFam[f].length + '색">'
+        return '<div style="display:flex;gap:10px;flex:0 0 auto" title="' + (TM_FAMILY_LABEL[f] || f) + ' ' + byFam[f].length + '색">'
           + byFam[f].map(function(it){ return _tmChip(it, isKey); }).join('') + '</div>';
       });
-      body = '<div class="dcp-mood-row" style="justify-content:flex-start;gap:26px">' + blocks.join('') + '</div>';
+      body = '<div class="dcp-mood-row" style="justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;padding-bottom:6px;gap:26px">' + blocks.join('') + '</div>';
     } else {
-      body = '<div class="dcp-mood-row" style="justify-content:flex-start;gap:10px">'
+      body = '<div class="dcp-mood-row" style="' + 'justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;padding-bottom:6px' + ';gap:10px">'
         + shown.map(function(it){ return _tmChip(it, isKey); }).join('') + '</div>';
     }
     return ''
