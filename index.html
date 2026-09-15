@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_CURATION_v162 (2026-09-15) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_CURATION_v164 (2026-09-15) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20472,7 +20472,7 @@ document.addEventListener('DOMContentLoaded',function(){
   // ══════════════════════════════════════════════════════════════
   var TM_DIST   = 30;                                   // 매칭 임계값 (엄격)
   var TM_CAPS   = { sub: 18, key: 8, basic: 18 };        // 그룹별 표시 상한
-  var TM_BASIC_IVORY_MAX = 3;   // BASIC 안에서 아이보리·오프화이트 계열 상한
+  var TM_BASIC_IVORY_N   = 3;   // BASIC 안 아이보리 목표 수 (부족하면 채우고, 넘치면 자름)
   var TM_BASIC_BROWN_MIN = 4;   // BASIC 안에서 최소한 확보할 브라운 계열 수
   var TM_MINDIST = { sub: 35, key: 48, basic: 35 };      // 그룹별 유사색 배제 거리 (03 pickByQuota 기준)
   var TM_COLORO_MAX_DE = 8;                             // 이보다 멀면 COLORO 근사 코드를 표시하지 않음
@@ -20672,7 +20672,7 @@ document.addEventListener('DOMContentLoaded',function(){
   var TM_DARK_C      = 20;
   var TM_KEY_C       = 36;    // KEY 판정 채도 하한 (Lab C*) — 37.8(#0086BB)·36.1(#EC9ABE) 포함
   var TM_KEY_L       = [25, 80];
-  var TM_WARM_H      = [40, 100];    // 베이지·아이보리·카키
+  var TM_WARM_H      = [40, 110];    // 베이지·아이보리·크림·카키 (H105 대 크림까지 포함)
   var TM_COOL_H      = [230, 310];   // 블루그레이·네이비·차콜
   var TM_COOL_MAX_L  = 70;    // 쿨 뉴트럴은 이보다 밝으면 파우더블루로 읽혀 SUB
                               //  (#708497 L54 = 슬레이트 → BASIC / #ADBED3 L76 = 파우더블루 → SUB)
@@ -20820,7 +20820,13 @@ document.addEventListener('DOMContentLoaded',function(){
   // BASIC 안의 톤 균형 — 아이보리류가 자리를 먹고 브라운이 밀리는 걸 막는다.
   //  아이보리: L* 82 이상(아이보리·크림·오프화이트·근백색)
   //  브라운  : Lab H 30~95° · L* 20~75 · C* 5 이상(베이지~다크브라운·카키 포함)
-  function _tmIsIvory(hex){ return _tmLCh(hex).L >= 82; }
+  //  아이보리: 밝고(L* 80+) 따뜻한 기가 실제로 있는 색.
+  //  L* 만 보면 순백(#EDEDED C*0.0)·라이트그레이(#D8D6D5 C*0.9)까지 아이보리로 세어져
+  //  화면에는 크림이 하나뿐인데 상한 3이 이미 찼다고 판단하는 문제가 있었다.
+  function _tmIsIvory(hex){
+    var a = _tmLCh(hex);
+    return a.L >= 80 && a.C >= 3 && a.H >= TM_WARM_H[0] && a.H <= TM_WARM_H[1];   // 분류 색상대와 동일
+  }
   function _tmIsBrown(hex){
     var a = _tmLCh(hex);
     return a.H >= 30 && a.H <= 95 && a.L >= 20 && a.L <= 75 && a.C >= 5;
@@ -20830,44 +20836,47 @@ document.addEventListener('DOMContentLoaded',function(){
     picked.forEach(function(it){ inPick[it.trend.hex] = 1; });
     var rest = pool.filter(function(it){ return !inPick[it.trend.hex]; });   // 빈도순 유지
 
-    // 1) 아이보리 초과분 정리 — 빈도 낮은 것부터 제거
-    var ivo = picked.filter(function(it){ return _tmIsIvory(it.trend.hex); });
-    if(ivo.length > TM_BASIC_IVORY_MAX){
-      ivo.slice(TM_BASIC_IVORY_MAX).forEach(function(it){
+    function countOf(fn){ return picked.filter(function(it){ return fn(it.trend.hex); }).length; }
+
+    // 초과분 잘라내기 — 빈도 낮은 것부터
+    function trimTo(fn, n){
+      var hit = picked.filter(function(it){ return fn(it.trend.hex); });
+      if(hit.length <= n) return;
+      hit.slice(n).forEach(function(it){
         var i = picked.indexOf(it);
         if(i >= 0) picked.splice(i, 1);
         delete inPick[it.trend.hex];
       });
-      for(var i = 0; i < rest.length && picked.length < cap; i++){
-        var c = rest[i];
-        if(inPick[c.trend.hex] || _tmIsIvory(c.trend.hex)) continue;
-        picked.push(c); inPick[c.trend.hex] = 1;
-      }
     }
-
-    // 2) 브라운 최소 확보 — 부족하면 빈도 높은 브라운을 끌어오고,
-    //    브라운도 아이보리도 아닌 것 중 빈도 가장 낮은 자리를 내준다
-    var brownNow = picked.filter(function(it){ return _tmIsBrown(it.trend.hex); }).length;
-    if(brownNow < TM_BASIC_BROWN_MIN){
-      var cands = rest.filter(function(it){ return !inPick[it.trend.hex] && _tmIsBrown(it.trend.hex); });
-      for(var j = 0; j < cands.length && brownNow < TM_BASIC_BROWN_MIN; j++){
+    // 부족분 채우기 — 빈도 높은 후보부터, 자리가 없으면 '보호 대상이 아닌' 색을 내보낸다
+    function fillTo(fn, n, protectFns){
+      var have = countOf(fn);
+      if(have >= n) return;
+      var cands = rest.filter(function(it){ return !inPick[it.trend.hex] && fn(it.trend.hex); });
+      for(var i = 0; i < cands.length && have < n; i++){
         if(picked.length >= cap){
           var victim = -1;
           for(var k = picked.length - 1; k >= 0; k--){
             var h = picked[k].trend.hex;
-            if(!_tmIsBrown(h) && !_tmIsIvory(h)){ victim = k; break; }
-          }
-          if(victim < 0){
-            for(var k2 = picked.length - 1; k2 >= 0; k2--){
-              if(_tmIsIvory(picked[k2].trend.hex)){ victim = k2; break; }
-            }
+            var isProtected = protectFns.some(function(p){ return p(h); });
+            if(!isProtected){ victim = k; break; }
           }
           if(victim < 0) break;
           delete inPick[picked[victim].trend.hex];
           picked.splice(victim, 1);
         }
-        picked.push(cands[j]); inPick[cands[j].trend.hex] = 1; brownNow++;
+        picked.push(cands[i]); inPick[cands[i].trend.hex] = 1; have++;
       }
+    }
+
+    trimTo(_tmIsIvory, TM_BASIC_IVORY_N);                       // 아이보리 3개까지만
+    fillTo(_tmIsIvory, TM_BASIC_IVORY_N, [_tmIsBrown]);         // 부족하면 3개까지 채움 (브라운은 보호)
+    fillTo(_tmIsBrown, TM_BASIC_BROWN_MIN, [_tmIsIvory, _tmIsBrown]);
+
+    // 자리가 남으면 빈도순으로 마저 채움
+    for(var i = 0; i < rest.length && picked.length < cap; i++){
+      if(inPick[rest[i].trend.hex]) continue;
+      picked.push(rest[i]); inPick[rest[i].trend.hex] = 1;
     }
     return picked;
   }
@@ -21065,7 +21074,7 @@ document.addEventListener('DOMContentLoaded',function(){
       + '</div>'
       + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-bottom:14px">'
       +   '마켓 ' + t.scanned + '색 · 트렌드 풀 ' + t.trendPool + '색 · 매칭 임계 ΔRGB ≤ ' + TM_DIST
-      +   ' · 채택 ' + matchedTotal + '색 · 계열 다양성 + 유사색 배제 · BASIC 아이보리≤' + TM_BASIC_IVORY_MAX + '/브라운≥' + TM_BASIC_BROWN_MIN
+      +   ' · 채택 ' + matchedTotal + '색 · 계열 다양성 + 유사색 배제 · BASIC 아이보리 ' + TM_BASIC_IVORY_N + '개/브라운≥' + TM_BASIC_BROWN_MIN
       +   ' · 분류 Lab 기준 BASIC C*<' + TM_BASIC_C + ' (뉴트럴 색상대 C*<' + TM_NEUTRAL_C + ', 쿨은 L<' + TM_COOL_MAX_L + ') / KEY C*≥' + TM_KEY_C + ' · 마켓 근접색 병합 Lab ΔE < ' + TM_CLUSTER_DE + ' · 브랜드 집계 Lab ΔE < ' + TM_NEAR_BRAND_DE
       + '</div>'
       + (t.trendPool === 0
