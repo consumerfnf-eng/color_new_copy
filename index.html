@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_P3_v165 (2026-09-15) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_SORT_v167 (2026-09-15) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20525,6 +20525,16 @@ document.addEventListener('DOMContentLoaded',function(){
     return Math.sqrt(Math.pow(p[0]-q[0],2) + Math.pow(p[1]-q[1],2) + Math.pow(p[2]-q[2],2));
   }
   var TM_SECT_ID = 'disc-trend-matched';
+  var _tmSortMode = 'family';   // 'family' = 계열별 묶음(기본) / 'freq' = 빈도순
+  // 색상환 순서 — 계열별 보기에서 줄이 정돈돼 보이도록 고정 순서를 쓴다
+  var TM_FAMILY_ORDER = ['neutral','red','pink','purple','blue','teal','green','yellow','orange'];
+  var TM_FAMILY_LABEL = { neutral:'뉴트럴', red:'레드', pink:'핑크', purple:'퍼플', blue:'블루',
+                          teal:'틸', green:'그린', yellow:'옐로우', orange:'오렌지' };
+  window._tmSetSort = function(mode){
+    _tmSortMode = mode;
+    _tmRender();
+    try{ _discOrderSections(); }catch(e){}
+  };
   var _tmIndex = {};      // { 트렌드hex: 매칭 아이템 } — 상세 팝업 근거 표시용
 
   // 제안 칩 클릭 → 매칭 근거(마켓 컬러·브랜드)를 함께 실어서 상세 팝업 열기
@@ -21032,6 +21042,18 @@ document.addEventListener('DOMContentLoaded',function(){
       + '</div>';
   }
 
+  function _tmSortTabs(){
+    return [['family','계열별'], ['freq','빈도순']].map(function(t){
+      var on = (_tmSortMode === t[0]);
+      return '<button onclick="_tmSetSort(\'' + t[0] + '\')" style="font-family:var(--mono);font-size:10px;'
+        + 'padding:4px 11px;border-radius:4px;cursor:pointer;'
+        + 'border:1px solid ' + (on ? 'var(--gold)' : 'var(--border)') + ';'
+        + 'background:' + (on ? 'rgba(160,120,64,0.16)' : 'transparent') + ';'
+        + 'color:' + (on ? 'var(--gold)' : 'var(--text3)') + ';font-weight:' + (on ? '700' : '400') + '">'
+        + t[1] + '</button>';
+    }).join('');
+  }
+
   function _tmRow(label, color, items, cap, rawCnt, famCnt){
     var shown = items;                                   // 선발은 _tmPick 에서 이미 끝남
     var cnt = shown.length
@@ -21039,10 +21061,26 @@ document.addEventListener('DOMContentLoaded',function(){
          + (famCnt ? ' · ' + famCnt + '계열' : ''))
       : '';
     var isKey = (label === 'KEY');
-    var body = shown.length
-      ? '<div class="dcp-mood-row" style="justify-content:flex-start;gap:10px">'
-        + shown.map(function(it){ return _tmChip(it, isKey); }).join('') + '</div>'
-      : '<div class="spp-empty" style="font-size:10px">매칭된 트렌드 컬러 없음</div>';
+    var body;
+    if(!shown.length){
+      body = '<div class="spp-empty" style="font-size:10px">매칭된 트렌드 컬러 없음</div>';
+    } else if(_tmSortMode === 'family'){
+      // 계열별로 묶고, 계열 안에서는 밝은 색 → 어두운 색 순
+      var byFam = {};
+      shown.forEach(function(it){
+        var f = _tmFamily(it.trend.hex);
+        (byFam[f] = byFam[f] || []).push(it);
+      });
+      var blocks = TM_FAMILY_ORDER.filter(function(f){ return byFam[f]; }).map(function(f){
+        byFam[f].sort(function(a,b){ return _tmLCh(b.trend.hex).L - _tmLCh(a.trend.hex).L; });
+        return '<div style="display:flex;gap:10px" title="' + (TM_FAMILY_LABEL[f] || f) + ' ' + byFam[f].length + '색">'
+          + byFam[f].map(function(it){ return _tmChip(it, isKey); }).join('') + '</div>';
+      });
+      body = '<div class="dcp-mood-row" style="justify-content:flex-start;gap:26px">' + blocks.join('') + '</div>';
+    } else {
+      body = '<div class="dcp-mood-row" style="justify-content:flex-start;gap:10px">'
+        + shown.map(function(it){ return _tmChip(it, isKey); }).join('') + '</div>';
+    }
     return ''
       + '<div style="margin-bottom:20px">'
       +   '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
@@ -21098,6 +21136,7 @@ document.addEventListener('DOMContentLoaded',function(){
       +   '<span class="spp-trend-market-flame" style="color:var(--gold)">◈ TREND-MATCHED</span>'
       +   '<span class="spp-trend-market-title">Trend-Matched Proposal</span>'
       +   '<span class="spp-trend-market-sub">마켓 빈도 상위 컬러 중 WGSN·Peclers와 일치하는 색만 제안 · 칩은 WGSN/Peclers 원본 컬러</span>'
+      +   '<span style="margin-left:auto;display:flex;gap:4px">' + _tmSortTabs() + '</span>'
       + '</div>'
       + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-bottom:14px">'
       +   '마켓 ' + t.scanned + '색 · 트렌드 풀 ' + t.trendPool + '색 · 매칭 임계 ΔRGB ≤ ' + TM_DIST
@@ -21781,11 +21820,16 @@ document.addEventListener('DOMContentLoaded',function(){
   var CC_STORE_KEY = 'disc27fw_cat_overrides';
   var CC_ETC = 'etc';
   var _ccEdit = false;
+  var CC_HIDE_KEY = 'disc27fw_cat_hidden';
   var _ccSaved = {};     // 저장된 수동 배치 { hex: catKey }
   var _ccDraft = {};     // 편집 중 임시본
+  var _ccHideSaved = {}; // 저장된 삭제 목록 { hex: 1 }
+  var _ccHideDraft = {};
 
   try { _ccSaved = JSON.parse(localStorage.getItem(CC_STORE_KEY) || '{}') || {}; } catch(e) { _ccSaved = {}; }
+  try { _ccHideSaved = JSON.parse(localStorage.getItem(CC_HIDE_KEY) || '{}') || {}; } catch(e) { _ccHideSaved = {}; }
   _ccDraft = JSON.parse(JSON.stringify(_ccSaved));
+  _ccHideDraft = JSON.parse(JSON.stringify(_ccHideSaved));
 
   function _ccCatKeys(){
     return _gapCatDefs().map(function(d){ return d.key; }).concat([CC_ETC]);
@@ -21801,7 +21845,10 @@ document.addEventListener('DOMContentLoaded',function(){
     if(!_tmLastBuild || !_tmLastBuild.buckets) return null;
     var items = [];
     ['key','sub','basic'].forEach(function(k){
-      (_tmLastBuild.buckets[k] || []).forEach(function(it){ items.push({ item: it, group: k }); });
+      (_tmLastBuild.buckets[k] || []).forEach(function(it){
+        if(_ccHideDraft[it.trend.hex]) return;                 // 삭제된 색 제외
+        items.push({ item: it, group: k });
+      });
     });
     var split = _gapSplitByCategory(items);
     var lists = {};
@@ -21892,7 +21939,10 @@ document.addEventListener('DOMContentLoaded',function(){
           ? '<button onclick="event.stopPropagation();_ccClear(\'' + hex + '\')" style="width:100%;cursor:pointer;'
             + 'font-family:var(--mono);font-size:10px;padding:6px;margin-top:3px;border-radius:5px;'
             + 'border:1px solid var(--border);background:transparent;color:var(--text3)">이 색만 자동 배치로</button>'
-          : '');
+          : '')
+      + '<button onclick="event.stopPropagation();_ccHide(\'' + hex + '\')" style="width:100%;cursor:pointer;'
+        + 'font-family:var(--mono);font-size:10px;padding:6px;margin-top:6px;border-radius:5px;'
+        + 'border:1px solid rgba(220,80,80,0.35);background:rgba(220,80,80,0.06);color:#d85a5a">✕ 이 색 삭제</button>';
     pop.style.display = 'block';
     var r = evt.currentTarget.getBoundingClientRect();
     var top = r.bottom + 6, left = r.left;
@@ -21908,6 +21958,17 @@ document.addEventListener('DOMContentLoaded',function(){
     _ccClosePop();
     _ccRender();
   };
+  window._ccHide = function(hex){
+    _ccHideDraft[hex] = 1;
+    delete _ccDraft[hex];          // 숨긴 색의 수동 배치는 의미가 없으므로 같이 정리
+    _ccClosePop();
+    _ccRender();
+  };
+  window._ccUnhideAll = function(){
+    _ccHideDraft = {};
+    if(!_ccEdit){ _ccHideSaved = {}; try{ localStorage.removeItem(CC_HIDE_KEY); }catch(e){} }
+    _ccRender();
+  };
 
   window._ccMove = function(hex, key){
     _ccDraft[hex] = key;
@@ -21916,23 +21977,35 @@ document.addEventListener('DOMContentLoaded',function(){
   };
   window._ccToggleEdit = function(){
     _ccEdit = !_ccEdit;
-    if(_ccEdit) _ccDraft = JSON.parse(JSON.stringify(_ccSaved));   // 편집 시작 시 저장본에서 출발
+    if(_ccEdit){                                                   // 편집 시작 시 저장본에서 출발
+      _ccDraft = JSON.parse(JSON.stringify(_ccSaved));
+      _ccHideDraft = JSON.parse(JSON.stringify(_ccHideSaved));
+    }
     _ccRender();
   };
   window._ccSave = function(){
     _ccSaved = JSON.parse(JSON.stringify(_ccDraft));
-    try { localStorage.setItem(CC_STORE_KEY, JSON.stringify(_ccSaved)); } catch(e){}
+    _ccHideSaved = JSON.parse(JSON.stringify(_ccHideDraft));
+    try {
+      localStorage.setItem(CC_STORE_KEY, JSON.stringify(_ccSaved));
+      localStorage.setItem(CC_HIDE_KEY, JSON.stringify(_ccHideSaved));
+    } catch(e){}
     _ccEdit = false;
     _ccRender();
   };
   window._ccCancel = function(){
     _ccDraft = JSON.parse(JSON.stringify(_ccSaved));               // 저장본으로 되돌림
+    _ccHideDraft = JSON.parse(JSON.stringify(_ccHideSaved));
     _ccEdit = false;
     _ccRender();
   };
   window._ccReset = function(){
     _ccDraft = {}; _ccSaved = {};
-    try { localStorage.removeItem(CC_STORE_KEY); } catch(e){}
+    _ccHideDraft = {}; _ccHideSaved = {};
+    try {
+      localStorage.removeItem(CC_STORE_KEY);
+      localStorage.removeItem(CC_HIDE_KEY);
+    } catch(e){}
     _ccRender();
   };
 
@@ -21988,13 +22061,17 @@ document.addEventListener('DOMContentLoaded',function(){
 
     var r = _ccBuild();
     var nMoved = Object.keys(_ccDraft).length;
+    var nHidden = Object.keys(_ccHideDraft).length;
     var btnStyle = 'font-size:10px;padding:4px 10px;border-radius:4px;cursor:pointer;font-family:var(--mono);';
     var ctrls = _ccEdit
       ? '<button onclick="_ccSave()" style="' + btnStyle + 'border:none;background:#A07840;color:#fff;font-weight:700">저장</button>'
         + '<button onclick="_ccCancel()" style="' + btnStyle + 'border:1px solid var(--border);background:transparent;color:var(--text2)">취소</button>'
         + '<button onclick="_ccReset()" style="' + btnStyle + 'border:1px solid var(--border);background:transparent;color:var(--text3)">원래대로</button>'
       : '<button onclick="_ccToggleEdit()" style="' + btnStyle + 'border:1px solid var(--border);background:transparent;color:var(--text2)">✎ 편집</button>'
-        + (nMoved ? '<button onclick="_ccReset()" style="' + btnStyle + 'border:1px solid var(--border);background:transparent;color:var(--text3)">원래대로</button>' : '');
+        + ((nMoved || nHidden) ? '<button onclick="_ccReset()" style="' + btnStyle + 'border:1px solid var(--border);background:transparent;color:var(--text3)">원래대로</button>' : '');
+    if(nHidden){
+      ctrls = '<button onclick="_ccUnhideAll()" style="' + btnStyle + 'border:1px solid var(--border);background:transparent;color:var(--text3)">삭제 ' + nHidden + '색 되살리기</button>' + ctrls;
+    }
 
     var head = ''
       + '<div class="spp-trend-market-hd" style="margin-bottom:6px">'
@@ -22007,7 +22084,8 @@ document.addEventListener('DOMContentLoaded',function(){
       +   (r ? r.count + '색 · ' : '')
       +   '자동 배치는 비중(카테고리 수집량 대비) 기준'
       +   (nMoved ? ' · 수동 배치 ' + nMoved + '색' : '')
-      +   (_ccEdit ? ' · 편집 중 — 칩 아래 버튼으로 이동' : '')
+      +   (nHidden ? ' · 삭제 ' + nHidden + '색' : '')
+      +   (_ccEdit ? ' · 편집 중 — 칩을 클릭해 이동·삭제' : '')
       + '</div>';
 
     if(!r){
