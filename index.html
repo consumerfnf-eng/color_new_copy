@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_CURATION_v157 (2026-09-15) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_CURATION_v158 (2026-09-15) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20979,8 +20979,7 @@ document.addEventListener('DOMContentLoaded',function(){
     return ''
       + '<div class="dcp-chip" style="cursor:pointer" onclick="_tmOpenDetail(\'' + t.hex + '\',\'' + nameEsc + '\')"'
       +   ' title="' + (t.name || '') + ' ' + t.hex + ' · 마켓 빈도 ' + it.mkFreq + ' · ΔRGB ' + _tmDistLabel(it) + '">'
-      +   '<div class="dcp-tag">' + (src || '&nbsp;') + '</div>'
-      +   '<div class="dcp-name">' + (_tmDisplayName(t) || '&nbsp;') + '</div>'
+      +   '<div class="dcp-name" style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:0.04em">' + (src || '&nbsp;') + '</div>'
       +   '<div class="dcp-card">'
       +     codeLine
       +     '<div class="dcp-fill" style="background:' + t.hex + '">'
@@ -21560,8 +21559,7 @@ document.addEventListener('DOMContentLoaded',function(){
       + '<div class="dcp-chip" style="cursor:pointer'
       +   (catEntry && catEntry.primary === false ? ';opacity:0.5' : '') + '"'
       +   ' onclick="_gapOpenDetail(\'' + t.hex + '\',\'' + nameEsc + '\')" title="' + tip + '">'
-      +   '<div class="dcp-tag">' + (src || '&nbsp;') + '</div>'
-      +   '<div class="dcp-name">' + (_tmDisplayName(t) || '&nbsp;') + '</div>'
+      +   '<div class="dcp-name" style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:0.04em">' + (src || '&nbsp;') + '</div>'
       +   '<div class="dcp-card">'
       +     codeLine
       +     '<div class="dcp-fill" style="background:' + t.hex + '">'
@@ -21805,22 +21803,79 @@ document.addEventListener('DOMContentLoaded',function(){
     return { lists: lists, count: items.length };
   }
 
-  // 편집 모드에서 칩 아래 붙는 이동 버튼
-  function _ccMoveBar(hex, curKey){
-    if(!_ccEdit) return '';
-    var btns = _ccCatKeys().map(function(k){
-      var on = (k === curKey);
-      var lbl = (k === CC_ETC) ? '◦' : (_gapCatDefs().filter(function(d){ return d.key === k; })[0] || {}).emoji || k;
-      return '<button onclick="event.stopPropagation();_ccMove(\'' + hex + '\',\'' + k + '\')" title="' + _ccLabelOf(k) + '로 이동"'
-        + ' style="font-size:10px;line-height:1;padding:3px 5px;border-radius:3px;cursor:pointer;'
-        + 'border:1px solid ' + (on ? 'var(--gold)' : 'var(--border)') + ';'
-        + 'background:' + (on ? 'rgba(160,120,64,0.18)' : 'transparent') + ';color:var(--text2)">' + lbl + '</button>';
-    }).join('');
-    return '<div style="display:flex;gap:3px;justify-content:center;margin-top:4px">' + btns + '</div>';
+  // 편집 모드 이동 UI — SERGIO 큐레이션과 같은 '클릭 → 앵커 팝오버' 방식.
+  //  칩마다 작은 버튼을 깔면 폭 74px 안에서 눌리지 않아, 클릭 시 팝오버를 띄운다.
+  function _ccEnsurePop(){
+    var ov = document.getElementById('cc-move-ov');
+    if(!ov){
+      ov = document.createElement('div');
+      ov.id = 'cc-move-ov';
+      ov.style.cssText = 'position:fixed;inset:0;z-index:9998;display:none;background:transparent';
+      ov.onclick = function(){ _ccClosePop(); };
+      document.body.appendChild(ov);
+    }
+    var pop = document.getElementById('cc-move-pop');
+    if(!pop){
+      pop = document.createElement('div');
+      pop.id = 'cc-move-pop';
+      pop.style.cssText = 'position:fixed;z-index:9999;display:none;min-width:186px;padding:8px;'
+        + 'background:var(--surface);border:1px solid var(--border2);border-radius:8px;'
+        + 'box-shadow:0 8px 28px rgba(0,0,0,0.28)';
+      document.body.appendChild(pop);
+    }
+    return pop;
   }
+  function _ccClosePop(){
+    var p = document.getElementById('cc-move-pop'), o = document.getElementById('cc-move-ov');
+    if(p) p.style.display = 'none';
+    if(o) o.style.display = 'none';
+  }
+  window._ccClosePop = _ccClosePop;
+
+  window._ccOpenMove = function(evt, hex, curKey){
+    evt.stopPropagation();
+    var pop = _ccEnsurePop();
+    var rows = _ccCatKeys().map(function(k){
+      var on = (k === curKey);
+      return '<button onclick="event.stopPropagation();_ccMove(\'' + hex + '\',\'' + k + '\')"'
+        + ' style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;cursor:pointer;'
+        + 'font-family:var(--mono);font-size:11px;padding:7px 9px;margin-bottom:3px;border-radius:5px;'
+        + 'border:1px solid ' + (on ? 'var(--gold)' : 'transparent') + ';'
+        + 'background:' + (on ? 'rgba(160,120,64,0.16)' : 'transparent') + ';color:var(--text)">'
+        + '<span style="width:12px;display:inline-block;color:var(--gold)">' + (on ? '✓' : '') + '</span>'
+        + _ccLabelOf(k) + '</button>';
+    }).join('');
+    var isManual = !!_ccDraft[hex];
+    pop.innerHTML = ''
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+      +   '<span style="width:20px;height:20px;border-radius:4px;background:' + hex + ';border:1px solid var(--border2);display:inline-block"></span>'
+      +   '<span style="font-family:var(--mono);font-size:10px;color:var(--text3)">' + hex + '</span>'
+      + '</div>'
+      + rows
+      + (isManual
+          ? '<button onclick="event.stopPropagation();_ccClear(\'' + hex + '\')" style="width:100%;cursor:pointer;'
+            + 'font-family:var(--mono);font-size:10px;padding:6px;margin-top:3px;border-radius:5px;'
+            + 'border:1px solid var(--border);background:transparent;color:var(--text3)">이 색만 자동 배치로</button>'
+          : '');
+    pop.style.display = 'block';
+    var r = evt.currentTarget.getBoundingClientRect();
+    var top = r.bottom + 6, left = r.left;
+    if(left + 200 > window.innerWidth - 8) left = window.innerWidth - 208;
+    if(top + pop.offsetHeight > window.innerHeight - 8) top = Math.max(8, r.top - pop.offsetHeight - 6);
+    pop.style.top = top + 'px';
+    pop.style.left = left + 'px';
+    document.getElementById('cc-move-ov').style.display = 'block';
+  };
+
+  window._ccClear = function(hex){
+    delete _ccDraft[hex];
+    _ccClosePop();
+    _ccRender();
+  };
 
   window._ccMove = function(hex, key){
     _ccDraft[hex] = key;
+    _ccClosePop();
     _ccRender();
   };
   window._ccToggleEdit = function(){
@@ -21856,9 +21911,12 @@ document.addEventListener('DOMContentLoaded',function(){
       + (e.total ? ' · ' + e.freq + '/' + e.total + ' (' + _gapPct(e.share) + ')' : '')
       + (moved ? ' · 수동 배치' : '');
     return ''
-      + '<div class="dcp-chip" style="cursor:pointer" onclick="_tmOpenDetail(\'' + t.hex + '\',\'' + nameEsc + '\')" title="' + tip + '">'
-      +   '<div class="dcp-tag">' + (src || '&nbsp;') + '</div>'
-      +   '<div class="dcp-name">' + (_tmDisplayName(t) || '&nbsp;') + '</div>'
+      + '<div class="dcp-chip" style="cursor:' + (_ccEdit ? 'move' : 'pointer') + '"'
+      +   ' onclick="' + (_ccEdit
+            ? '_ccOpenMove(event,\'' + t.hex + '\',\'' + curKey + '\')'
+            : '_tmOpenDetail(\'' + t.hex + '\',\'' + nameEsc + '\')') + '"'
+      +   ' title="' + (_ccEdit ? '클릭해서 카테고리 이동' : tip) + '">'
+      +   '<div class="dcp-name" style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:0.04em">' + (src || '&nbsp;') + '</div>'
       +   '<div class="dcp-card"' + (moved ? ' style="border-color:var(--gold)"' : '') + '>'
       +     codeLine
       +     '<div class="dcp-fill" style="background:' + t.hex + '">'
@@ -21866,7 +21924,6 @@ document.addEventListener('DOMContentLoaded',function(){
       +     '</div>'
       +     '<div class="dcp-hex">' + t.hex + '</div>'
       +   '</div>'
-      +   _ccMoveBar(t.hex, curKey)
       + '</div>';
   }
 
