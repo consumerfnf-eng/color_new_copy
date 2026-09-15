@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_GAP_v148 (2026-09-14) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_GAP_v149 (2026-09-14) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20868,6 +20868,9 @@ document.addEventListener('DOMContentLoaded',function(){
       if(!/^#[0-9A-Fa-f]{6}$/.test(cd.hex)) continue;
       if(_tmDeltaE(hex, String(cd.hex).toUpperCase()) >= TM_NEAR_BRAND_DE) continue;
       if(sel && sel.size > 0 && !sel.has(bkn(cd.brand))) continue;
+      // 빈도(_tmMarketPool)와 같은 모집단이 되도록 품목 필터도 동일 적용.
+      // 안 걸면 품목을 Outerwear 로 바꿨을 때 빈도는 줄고 분자는 그대로여서 어긋난다.
+      if(typeof _passesCategoryFilter === 'function' && !_passesCategoryFilter(cd)) continue;
       if(!cnt[cd.brand]){ cnt[cd.brand] = 0; out.push(cd.brand); }
       cnt[cd.brand] += (cd.freq || 1);
     }
@@ -21378,6 +21381,7 @@ document.addEventListener('DOMContentLoaded',function(){
       var src = cd.source || '';
       if(src.indexOf('gl') < 0 && src.indexOf('kr') < 0) return;
       if(sel && sel.size > 0 && !sel.has(bkn(cd.brand))) return;
+      if(typeof _passesCategoryFilter === 'function' && !_passesCategoryFilter(cd)) return;   // 분자와 동일 기준
       var k = bkn(cd.brand), f = cd.freq || 1;
       maps.forEach(function(m, i){ if(m.set[k]) totals[i] += f; });
     });
@@ -21428,6 +21432,15 @@ document.addEventListener('DOMContentLoaded',function(){
     return { cats: maps, etc: etc };
   }
 
+  // 분모가 큰 카테고리(Active Wellness 2610)에서는 0.1% 단위로 끊으면
+  // 대부분 0.0% 로 뭉개져 순위를 읽을 수 없다. 값 크기에 따라 자릿수를 늘린다.
+  function _gapPct(share){
+    var v = (share || 0) * 100;
+    if(v >= 1)   return v.toFixed(1) + '%';
+    if(v >= 0.1) return v.toFixed(2) + '%';
+    return v.toFixed(3) + '%';
+  }
+
   var GAP_GROUP_LABEL = { key: 'KEY', sub: 'SUB', basic: 'BASIC' };
   var GAP_GROUP_COLOR = { key: '#A090F0', sub: 'var(--blue)', basic: 'var(--gold)' };
 
@@ -21462,8 +21475,9 @@ document.addEventListener('DOMContentLoaded',function(){
       +     '<div style="font-family:var(--mono);font-size:9px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'
       +       (catEntry ? '이 카테고리 브랜드 기준 — ' + nb.join(' · ')
                         + (catEntry.total ? ' · 카테고리 전체 ' + catEntry.total + '중 ' + catEntry.freq : '') : '') + '">빈도 '
-      +       shownFreq
-      +       (catEntry && catEntry.share ? ' · ' + (catEntry.share*100).toFixed(1) + '%' : '')
+      +       (catEntry && catEntry.total
+                ? catEntry.freq + '/' + catEntry.total + ' (' + _gapPct(catEntry.share) + ')'
+                : shownFreq)
       +       (nb.length > 1 ? ' · ' + nb.length + '브랜드' : '') + '</div>'
       +     (catEntry && catEntry.others && catEntry.others.length
               ? '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + catEntry.others.join(' · ') + ' 에서도 사용됨">+ ' + catEntry.others.length + '개 카테고리 중복</div>'
@@ -21528,9 +21542,9 @@ document.addEventListener('DOMContentLoaded',function(){
         + '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px">'
         +   '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + color + ';letter-spacing:0.1em">' + title + '</span>'
         +   (sub ? '<span style="font-family:var(--mono);font-size:9px;color:var(--text4)">' + sub + '</span>' : '')
-        +   (list.length && list[0].total ? '<span style="font-family:var(--mono);font-size:8px;color:var(--text4)">수집 ' + list[0].total + '</span>' : '')
+        +   (list.length && list[0].total ? '<span style="font-family:var(--mono);font-size:8px;color:var(--text4)">· 수집 ' + list[0].total + '건</span>' : '')
         +   '<span style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-left:auto">'
-        +     (list.length ? shown.length + (list.length > GAP_MAX ? ' / ' + list.length : '') + '색' : '0색') + '</span>'
+        +     (list.length ? shown.length + (list.length > GAP_MAX ? '/' + list.length : '') + '색' : '0색') + '</span>'
         + '</div>'
         + (shown.length
             ? '<div style="display:flex;flex-wrap:wrap;gap:14px">'
