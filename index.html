@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_P3_v153 (2026-09-15) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_P3_v154 (2026-09-15) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20881,22 +20881,34 @@ document.addEventListener('DOMContentLoaded',function(){
     return out;
   }
 
+  // 칩 코드 줄 — 원본 데이터의 코드가 1순위.
+  //  없으면 팝업과 같은 경로(hexToColoro)의 Pantone 매핑을 쓰되 '≈' 로 근사임을 밝힌다.
+  //  (팝업은 이미 이 값을 쓰고 있어, 칩만 비워두면 같은 색인데 한쪽만 코드가 없다)
+  //  둘 다 없으면 빈 줄을 넣어 칩 높이를 맞춘다.
+  function _tmCodeLineHtml(t){
+    var code = _tmCodeLabel(t.pantone);
+    if(code) return '<div class="dcp-code">' + code + '</div>';
+    var cc = (window.hexToColoro && window.hexToColoro(t.hex)) || null;
+    if(cc && cc.pantone){
+      var pc = _tmPantoneCode(cc.pantone);
+      if(pc) return '<div class="dcp-code" title="원본 데이터에 코드가 없어 HEX 기반 근사 매핑">Pantone ≈ ' + pc + ' TCX</div>';
+    }
+    if(cc && cc.coloro) return '<div class="dcp-code" title="HEX 기반 근사 매핑">COLORO ≈ ' + cc.coloro + '</div>';
+    return '<div class="dcp-code">&nbsp;</div>';       // 자리만 유지
+  }
+
   // ── 칩 렌더 — 27FW Color Palette(dcp) 와 동일한 형태 ──
   //  구성: 출처태그 → 컬러명 → [COLORO 코드 | 색면 | HEX] 카드.
   //  빈도·ΔRGB·브랜드 같은 수치는 칩에서 빼고 클릭 시 팝업에서 본다.
   function _tmChip(it, isKey){
     var t  = it.trend;
-    var cc = (window.hexToColoro && window.hexToColoro(t.hex)) || null;
-    var code = _tmCodeLabel(t.pantone);
-    var codeLine = code ? '<div class="dcp-code">' + code + '</div>'
-                 : ((cc && typeof cc.dist === 'number' && cc.dist <= TM_COLORO_MAX_DE)
-                     ? '<div class="dcp-code">COLORO ≈ ' + cc.coloro + '</div>' : '');
+    var codeLine = _tmCodeLineHtml(t);
     var src = (t.sources && t.sources.length) ? t.sources.join('·') : '';
     var nameEsc = String(t.name || t.hex).replace(/'/g, "\\'").replace(/</g, '&lt;');
     return ''
       + '<div class="dcp-chip" style="cursor:pointer" onclick="_tmOpenDetail(\'' + t.hex + '\',\'' + nameEsc + '\')"'
       +   ' title="' + (t.name || '') + ' ' + t.hex + ' · 마켓 빈도 ' + it.mkFreq + ' · ΔRGB ' + _tmDistLabel(it) + '">'
-      +   (src ? '<div class="dcp-tag">' + src + '</div>' : '')
+      +   '<div class="dcp-tag">' + (src || '&nbsp;') + '</div>'
       +   '<div class="dcp-name">' + (t.name || t.hex) + '</div>'
       +   '<div class="dcp-card">'
       +     codeLine
@@ -21463,11 +21475,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
   function _gapCard(g, catEntry){
     var it = g.item, t = it.trend;
-    var cc = (window.hexToColoro && window.hexToColoro(t.hex)) || null;
-    var code = _tmCodeLabel(t.pantone);
-    var codeLine = code ? '<div class="dcp-code">' + code + '</div>'
-                 : ((cc && typeof cc.dist === 'number' && cc.dist <= TM_COLORO_MAX_DE)
-                     ? '<div class="dcp-code">COLORO ≈ ' + cc.coloro + '</div>' : '');
+    var codeLine = _tmCodeLineHtml(t);
     var src = (t.sources && t.sources.length) ? t.sources.join('·') : '';
     var isKey = (g.group === 'key');
     var nameEsc = String(t.name || t.hex).replace(/'/g, "\\'");
@@ -21481,7 +21489,7 @@ document.addEventListener('DOMContentLoaded',function(){
       + '<div class="dcp-chip" style="cursor:pointer'
       +   (catEntry && catEntry.primary === false ? ';opacity:0.5' : '') + '"'
       +   ' onclick="_gapOpenDetail(\'' + t.hex + '\',\'' + nameEsc + '\')" title="' + tip + '">'
-      +   (src ? '<div class="dcp-tag">' + src + '</div>' : '')
+      +   '<div class="dcp-tag">' + (src || '&nbsp;') + '</div>'
       +   '<div class="dcp-name">' + (t.name || t.hex) + '</div>'
       +   '<div class="dcp-card">'
       +     codeLine
