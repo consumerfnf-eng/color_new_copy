@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_CURATION_v164 (2026-09-15) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_P3_v165 (2026-09-15) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20278,6 +20278,7 @@ document.addEventListener('DOMContentLoaded',function(){
   var SCOPE_SEASON = '27FW';
 
   var _applied = false;   // 현재 재배치가 적용된 상태인가
+  var _cwRestore = [];    // 04 Colorway 숨김 복구용
   var _cache = null;      // 원본 위치/내용 백업
 
   function _inScope(){
@@ -20347,6 +20348,16 @@ document.addEventListener('DOMContentLoaded',function(){
 
     // ── 2) Trend 페이지: Newsletter 숨김 · 좌 WGSN / 우 Peclers ──
     if(e.newsCard) e.newsCard.style.display = 'none';
+
+    // ── 04 Colorway 제거 ──
+    _cwRestore = [];
+    var cwBtn = e.nav.querySelector('button.tab[onclick*="colorway"]');
+    var cwPane = document.getElementById('tab-colorway');
+    [cwBtn, cwPane].forEach(function(el){
+      if(!el) return;
+      _cwRestore.push({ el: el, disp: el.style.display });
+      el.style.display = 'none';
+    });
     var colL = e.twoCol.children[0], colR = e.twoCol.children[1];
     if(colL && colR){
       colL.appendChild(e.wgsnCard);   // 좌측 상단 = WGSN
@@ -20381,6 +20392,16 @@ document.addEventListener('DOMContentLoaded',function(){
         backPal.setAttribute('onclick', "switchTabByName('trend')");
         backPal.innerHTML = '&#8592; 02 Trend Collection';
       }
+      var fwd = e.navPal.querySelector('button[onclick*="colorway"]');
+      if(fwd){
+        _cwRestore.push({ el: fwd, disp: fwd.style.display });
+        fwd.style.display = 'none';
+      }
+      var infoPal = e.navPal.querySelector('.step-nav-info');
+      if(infoPal){
+        _cwRestore.push({ el: infoPal, html: infoPal.innerHTML });
+        infoPal.innerHTML = 'STEP <strong>03</strong> / 03 &nbsp;&middot;&nbsp; Finalize Palette';
+      }
     }
 
     _applied = true;
@@ -20402,6 +20423,12 @@ document.addEventListener('DOMContentLoaded',function(){
     _restore(_cache.trendLog);
     _restore(_cache.collectBtn);
     _restore(_cache.collCard);
+
+    _cwRestore.forEach(function(r){
+      if(r.html !== undefined) r.el.innerHTML = r.html;
+      else r.el.style.display = r.disp || '';
+    });
+    _cwRestore = [];
 
     if(e.navTrend && _cache.navTrendHTML !== null) e.navTrend.innerHTML = _cache.navTrendHTML;
     if(e.navComp  && _cache.navCompHTML  !== null) e.navComp.innerHTML  = _cache.navCompHTML;
@@ -21334,9 +21361,9 @@ document.addEventListener('DOMContentLoaded',function(){
       sect = document.createElement('div');
       sect.id = DCP_SECT_ID;
       sect.className = 'dcp-scope';
-      sect.style.marginBottom = '32px';
-      sect.style.paddingBottom = '24px';
-      sect.style.borderBottom = '1px solid var(--border)';
+      // 사내 확정 팔레트는 제안 섹션들과 성격이 달라 배경으로 구분한다
+      sect.style.cssText = 'margin:0 -14px 32px;padding:16px 14px 20px;'
+        + 'background:rgba(160,120,64,0.055);border:1px solid rgba(160,120,64,0.22);border-radius:8px';
     }
     if(!sect.parentNode) wrap.appendChild(sect);
     return sect;
