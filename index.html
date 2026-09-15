@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_P3_v154 (2026-09-15) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_P3_v155 (2026-09-15) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20469,7 +20469,9 @@ document.addEventListener('DOMContentLoaded',function(){
   //  ※ 매칭 실패한 마켓 컬러는 제외
   // ══════════════════════════════════════════════════════════════
   var TM_DIST   = 30;                                   // 매칭 임계값 (엄격)
-  var TM_CAPS   = { sub: 20, key: 8, basic: 20 };        // 그룹별 표시 상한
+  var TM_CAPS   = { sub: 18, key: 8, basic: 18 };        // 그룹별 표시 상한
+  var TM_BASIC_IVORY_MAX = 3;   // BASIC 안에서 아이보리·오프화이트 계열 상한
+  var TM_BASIC_BROWN_MIN = 4;   // BASIC 안에서 최소한 확보할 브라운 계열 수
   var TM_MINDIST = { sub: 35, key: 48, basic: 35 };      // 그룹별 유사색 배제 거리 (03 pickByQuota 기준)
   var TM_COLORO_MAX_DE = 8;                             // 이보다 멀면 COLORO 근사 코드를 표시하지 않음
   var TM_CLUSTER_DE = 7;                                // 마켓 근접색 병합 거리 (Lab ΔE76)
@@ -20745,6 +20747,7 @@ document.addEventListener('DOMContentLoaded',function(){
       totals.raw[k] = buckets[k].length;
       rawAll[k] = buckets[k].slice();                      // 캡 적용 전 전체 — 보완 후보 계산용
       buckets[k] = _tmPick(buckets[k], TM_CAPS[k], TM_MINDIST[k]);
+      if(k === 'basic') buckets[k] = _tmEnforceBasicMix(buckets[k], rawAll[k], TM_CAPS[k]);
       totals.families[k] = _tmFamilyCount(buckets[k]);
       // 선발은 계열 라운드로빈으로 하되, 출력 순서는 다시 빈도순으로 —
       // 라운드로빈 순서 그대로 내보내면 106 → 1 → 77 처럼 들쭉날쭉해 읽기 어렵다
@@ -20805,6 +20808,61 @@ document.addEventListener('DOMContentLoaded',function(){
     var seen = {}, n = 0;
     list.forEach(function(it){ var f = _tmFamily(it.trend.hex); if(!seen[f]){ seen[f] = 1; n++; } });
     return n;
+  }
+
+  // BASIC 안의 톤 균형 — 아이보리류가 자리를 먹고 브라운이 밀리는 걸 막는다.
+  //  아이보리: L* 82 이상(아이보리·크림·오프화이트·근백색)
+  //  브라운  : Lab H 30~95° · L* 20~75 · C* 5 이상(베이지~다크브라운·카키 포함)
+  function _tmIsIvory(hex){ return _tmLCh(hex).L >= 82; }
+  function _tmIsBrown(hex){
+    var a = _tmLCh(hex);
+    return a.H >= 30 && a.H <= 95 && a.L >= 20 && a.L <= 75 && a.C >= 5;
+  }
+  function _tmEnforceBasicMix(picked, pool, cap){
+    var inPick = {};
+    picked.forEach(function(it){ inPick[it.trend.hex] = 1; });
+    var rest = pool.filter(function(it){ return !inPick[it.trend.hex]; });   // 빈도순 유지
+
+    // 1) 아이보리 초과분 정리 — 빈도 낮은 것부터 제거
+    var ivo = picked.filter(function(it){ return _tmIsIvory(it.trend.hex); });
+    if(ivo.length > TM_BASIC_IVORY_MAX){
+      ivo.slice(TM_BASIC_IVORY_MAX).forEach(function(it){
+        var i = picked.indexOf(it);
+        if(i >= 0) picked.splice(i, 1);
+        delete inPick[it.trend.hex];
+      });
+      for(var i = 0; i < rest.length && picked.length < cap; i++){
+        var c = rest[i];
+        if(inPick[c.trend.hex] || _tmIsIvory(c.trend.hex)) continue;
+        picked.push(c); inPick[c.trend.hex] = 1;
+      }
+    }
+
+    // 2) 브라운 최소 확보 — 부족하면 빈도 높은 브라운을 끌어오고,
+    //    브라운도 아이보리도 아닌 것 중 빈도 가장 낮은 자리를 내준다
+    var brownNow = picked.filter(function(it){ return _tmIsBrown(it.trend.hex); }).length;
+    if(brownNow < TM_BASIC_BROWN_MIN){
+      var cands = rest.filter(function(it){ return !inPick[it.trend.hex] && _tmIsBrown(it.trend.hex); });
+      for(var j = 0; j < cands.length && brownNow < TM_BASIC_BROWN_MIN; j++){
+        if(picked.length >= cap){
+          var victim = -1;
+          for(var k = picked.length - 1; k >= 0; k--){
+            var h = picked[k].trend.hex;
+            if(!_tmIsBrown(h) && !_tmIsIvory(h)){ victim = k; break; }
+          }
+          if(victim < 0){
+            for(var k2 = picked.length - 1; k2 >= 0; k2--){
+              if(_tmIsIvory(picked[k2].trend.hex)){ victim = k2; break; }
+            }
+          }
+          if(victim < 0) break;
+          delete inPick[picked[victim].trend.hex];
+          picked.splice(victim, 1);
+        }
+        picked.push(cands[j]); inPick[cands[j].trend.hex] = 1; brownNow++;
+      }
+    }
+    return picked;
   }
 
   // ── 계열 라운드로빈 + 색거리 필터로 cap 개수만큼 선발 ──
@@ -20990,7 +21048,7 @@ document.addEventListener('DOMContentLoaded',function(){
       + '</div>'
       + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-bottom:14px">'
       +   '마켓 ' + t.scanned + '색 · 트렌드 풀 ' + t.trendPool + '색 · 매칭 임계 ΔRGB ≤ ' + TM_DIST
-      +   ' · 채택 ' + matchedTotal + '색 · 계열 다양성 + 유사색 배제 적용'
+      +   ' · 채택 ' + matchedTotal + '색 · 계열 다양성 + 유사색 배제 · BASIC 아이보리≤' + TM_BASIC_IVORY_MAX + '/브라운≥' + TM_BASIC_BROWN_MIN
       +   ' · 분류 Lab 기준 BASIC C*<' + TM_BASIC_C + ' (뉴트럴 색상대 C*<' + TM_NEUTRAL_C + ') / KEY C*≥' + TM_KEY_C + ' · 마켓 근접색 병합 Lab ΔE < ' + TM_CLUSTER_DE + ' · 브랜드 집계 Lab ΔE < ' + TM_NEAR_BRAND_DE
       + '</div>'
       + (t.trendPool === 0
