@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_GAP_v147 (2026-09-14) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_GAP_v148 (2026-09-14) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21366,6 +21366,24 @@ document.addEventListener('DOMContentLoaded',function(){
     if(typeof DISCOVERY_CAT_DEFS !== 'undefined' && Array.isArray(DISCOVERY_CAT_DEFS)) return DISCOVERY_CAT_DEFS;
     return [];
   }
+  // 카테고리별 마켓 데이터 총량 — 비중 계산의 분모.
+  // 브랜드마다 수집량이 크게 다르다(실데이터: Vuori 2304 vs Moncler 47).
+  // 절대 횟수로 비교하면 데이터가 많은 브랜드의 카테고리가 항상 이긴다.
+  function _gapCatTotals(maps, bkn){
+    var totals = maps.map(function(){ return 0; });
+    if(typeof compData === 'undefined' || !Array.isArray(compData)) return totals;
+    var sel = (typeof window._curMarketSel === 'function') ? window._curMarketSel() : null;
+    compData.forEach(function(cd){
+      if(!cd || !cd.brand || !cd.hex) return;
+      var src = cd.source || '';
+      if(src.indexOf('gl') < 0 && src.indexOf('kr') < 0) return;
+      if(sel && sel.size > 0 && !sel.has(bkn(cd.brand))) return;
+      var k = bkn(cd.brand), f = cd.freq || 1;
+      maps.forEach(function(m, i){ if(m.set[k]) totals[i] += f; });
+    });
+    return totals;
+  }
+
   function _gapSplitByCategory(items){
     var defs = _gapCatDefs();
     var bkn = window._brandKeyNorm || function(x){ return (x||'').toLowerCase().replace(/[\s._\-]+/g,'').trim(); };
@@ -21374,6 +21392,8 @@ document.addEventListener('DOMContentLoaded',function(){
       (def.brandList || []).forEach(function(b){ set[bkn(b)] = 1; });
       return { def: def, set: set, list: [] };
     });
+    var catTotals = _gapCatTotals(maps, bkn);
+    maps.forEach(function(m, i){ m.total = catTotals[i]; });
     var etc = [];
     items.forEach(function(g){
       var nb = _tmNearBrands(g.item.trend.hex);
@@ -21386,7 +21406,10 @@ document.addEventListener('DOMContentLoaded',function(){
         var mine = nb.filter(function(b){ return m.set[bkn(b)]; });
         if(!mine.length) return;
         var f = mine.reduce(function(n,b){ return n + (counts[b] || 1); }, 0);
-        if(!best || f > best.freq) best = { map: m, brands: mine, freq: f, others: [] };
+        // 비중 = 이 톤을 쓴 횟수 ÷ 그 카테고리 전체 수집량.
+        // Moncler 47개 중 10개(21%)가 Vuori 2304개 중 15개(0.7%)를 이긴다.
+        var share = m.total ? (f / m.total) : 0;
+        if(!best || share > best.share) best = { map: m, brands: mine, freq: f, share: share, others: [] };
       });
       if(best){
         // 다른 카테고리에도 걸쳐 있으면 이름만 기록해 칩에 표시
@@ -21394,12 +21417,13 @@ document.addEventListener('DOMContentLoaded',function(){
           if(m === best.map) return;
           if(nb.some(function(b){ return m.set[bkn(b)]; })) best.others.push(m.def.name);
         });
-        best.map.list.push({ g: g, brands: best.brands, freq: best.freq, others: best.others });
+        best.map.list.push({ g: g, brands: best.brands, freq: best.freq, share: best.share,
+                             total: best.map.total, others: best.others });
       } else {
-        etc.push({ g: g, brands: nb.slice(0,3), freq: g.item.mkFreq, others: [] });
+        etc.push({ g: g, brands: nb.slice(0,3), freq: g.item.mkFreq, share: 0, others: [] });
       }
     });
-    maps.forEach(function(m){ m.list.sort(function(a,b){ return b.freq - a.freq; }); });
+    maps.forEach(function(m){ m.list.sort(function(a,b){ return (b.share - a.share) || (b.freq - a.freq); }); });
     etc.sort(function(a,b){ return b.freq - a.freq; });
     return { cats: maps, etc: etc };
   }
@@ -21435,8 +21459,12 @@ document.addEventListener('DOMContentLoaded',function(){
       +     '<div class="chip-name" title="' + t.hex + '">' + (t.name || t.hex) + '</div>'
       +     coloroLine
       +     '<div class="chip-pantone" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + ptCode + '</div>'
-      +     '<div style="font-family:var(--mono);font-size:9px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + (catEntry ? '이 카테고리 브랜드 기준 — ' + nb.join(' · ') : '') + '">빈도 '
-      +       shownFreq + (nb.length > 1 ? ' · ' + nb.length + '브랜드' : '') + '</div>'
+      +     '<div style="font-family:var(--mono);font-size:9px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'
+      +       (catEntry ? '이 카테고리 브랜드 기준 — ' + nb.join(' · ')
+                        + (catEntry.total ? ' · 카테고리 전체 ' + catEntry.total + '중 ' + catEntry.freq : '') : '') + '">빈도 '
+      +       shownFreq
+      +       (catEntry && catEntry.share ? ' · ' + (catEntry.share*100).toFixed(1) + '%' : '')
+      +       (nb.length > 1 ? ' · ' + nb.length + '브랜드' : '') + '</div>'
       +     (catEntry && catEntry.others && catEntry.others.length
               ? '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + catEntry.others.join(' · ') + ' 에서도 사용됨">+ ' + catEntry.others.length + '개 카테고리 중복</div>'
               : '')
@@ -21484,7 +21512,7 @@ document.addEventListener('DOMContentLoaded',function(){
     }
     var meta = '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-bottom:18px">'
       + 'Trend-Matched 표시 ' + r.scanned + '색 대조 · 확정 팔레트 ' + r.palette + '색 · 미보유 판정 Lab ΔE ≥ ' + GAP_MIN_DE
-      + ' · 후보 ' + r.items.length + '색 · 카테고리는 브랜드 기준(중복 가능)'
+      + ' · 후보 ' + r.items.length + '색 · 카테고리 배치는 비중(카테고리 수집량 대비) 최대인 곳'
       + (r.hiddenGap ? ' · 표시 밖 미보유 ' + r.hiddenGap + '색은 제외됨' : '')
       + '</div>';
     if(!r.items.length){
@@ -21500,6 +21528,7 @@ document.addEventListener('DOMContentLoaded',function(){
         + '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px">'
         +   '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + color + ';letter-spacing:0.1em">' + title + '</span>'
         +   (sub ? '<span style="font-family:var(--mono);font-size:9px;color:var(--text4)">' + sub + '</span>' : '')
+        +   (list.length && list[0].total ? '<span style="font-family:var(--mono);font-size:8px;color:var(--text4)">수집 ' + list[0].total + '</span>' : '')
         +   '<span style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-left:auto">'
         +     (list.length ? shown.length + (list.length > GAP_MAX ? ' / ' + list.length : '') + '색' : '0색') + '</span>'
         + '</div>'
