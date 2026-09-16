@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_REVIEW_v183 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_REVIEW_v184 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21628,11 +21628,13 @@ document.addEventListener('DOMContentLoaded',function(){
     try { localStorage.setItem(DCP_UP_KEY, JSON.stringify(data)); } catch(e){}
     _dcpCollapsed = false;
     _dcpRender();
+    try { _gapRender(); } catch(e){}     // 보완 후보도 새 팔레트 기준으로 재계산
   }
   window._dcpClearUpload = function(){
     _dcpCustom = null;
     try { localStorage.removeItem(DCP_UP_KEY); } catch(e){}
     _dcpRender();
+    try { _gapRender(); } catch(e){}
   };
 
   // 업로드 데이터를 화면 구조(CORE 행 + 무드 열)로 변환
@@ -21777,8 +21779,7 @@ document.addEventListener('DOMContentLoaded',function(){
       sect.id = DCP_SECT_ID;
       sect.className = 'dcp-scope';
       // 사내 확정 팔레트는 제안 섹션들과 성격이 달라 배경으로 구분한다
-      sect.style.cssText = 'margin:0 -14px 32px;padding:16px 14px 20px;'
-        + 'background:rgba(160,120,64,0.055);border:1px solid rgba(160,120,64,0.22);border-radius:8px';
+      sect.style.cssText = 'margin:0 0 32px;padding:0';
     }
     if(!sect.parentNode) wrap.appendChild(sect);
     return sect;
@@ -21805,10 +21806,10 @@ document.addEventListener('DOMContentLoaded',function(){
       + '</div>'
       + _dcpBodyHtml()
       + '<div style="margin-top:26px;padding-top:20px;border-top:1px solid var(--border)">'
-      +   '<div class="spp-trend-market-hd" style="margin-bottom:10px">'
-      +     '<span class="spp-trend-market-flame" style="color:var(--gold)">✎ REVIEW</span>'
-      +     '<span class="spp-trend-market-title">팔레트 분석</span>'
-      +     '<span class="spp-trend-market-sub">확정 팔레트를 마켓·트렌드 데이터에 비춰 계산한 결과</span>'
+      +   '<div class="spp-trend-market-hd" style="margin-bottom:14px">'
+      +     '<span class="spp-trend-market-flame" style="color:var(--gold);font-size:14px">✎ REVIEW</span>'
+      +     '<span class="spp-trend-market-title" style="font-size:22px">팔레트 분석</span>'
+      +     '<span class="spp-trend-market-sub" style="font-size:13px">확정 팔레트를 마켓·트렌드 데이터에 비춰 계산한 결과</span>'
       +   '</div>'
       +   _rptHtml()
       + '</div>';
@@ -21834,6 +21835,15 @@ document.addEventListener('DOMContentLoaded',function(){
   // 확정 팔레트 47색을 평면 목록으로
   function _gapPaletteList(){
     var out = [];
+    // 업로드한 팔레트가 있으면 그것이 기준 — 내장 27FW 대신 사용한다.
+    // (이게 없으면 파일을 올려도 분석·보완후보가 내장 팔레트로 계산됐다)
+    if(typeof _dcpCustom !== 'undefined' && _dcpCustom && _dcpCustom.rows){
+      _dcpCustom.rows.forEach(function(r){
+        if(!r.hex) return;
+        out.push({ name: r.name || ('#' + r.hex), hex: '#' + String(r.hex).replace(/^#/, '').toUpperCase() });
+      });
+      return out;
+    }
     function push(arr){
       arr.forEach(function(it){
         if(it.gap || !it.hex) return;
@@ -22759,23 +22769,23 @@ document.addEventListener('DOMContentLoaded',function(){
       return '<div style="height:' + h + 'px;background:' + (hex || 'transparent')
         + (hex ? '' : ';background-image:repeating-linear-gradient(45deg,var(--border) 0 4px,transparent 4px 8px)')
         + ';display:flex;align-items:flex-end;justify-content:center;padding-bottom:2px">'
-        + (label ? '<span style="font-family:var(--mono);font-size:7px;font-weight:700;color:'
+        + (label ? '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:'
             + (hex ? _dcpTextOn(String(hex).slice(1)) : 'var(--text4)') + '">' + label + '</span>' : '')
         + '</div>';
     };
-    return '<div style="width:70px;flex:0 0 auto">'
+    return '<div style="width:104px;flex:0 0 auto">'
       + '<div style="border:1px solid ' + (flip ? 'var(--gold)' : 'var(--border)') + ';border-radius:4px;overflow:hidden">'
-      +   cell(topHex, topLabel, 34)
+      +   cell(topHex, topLabel, 54)
       +   '<div style="height:1px;background:var(--border)"></div>'
-      +   cell(botHex, botLabel, 26)
+      +   cell(botHex, botLabel, 40)
       + '</div>'
-      + '<div style="font-family:var(--mono);font-size:7.5px;color:var(--text3);text-align:center;margin-top:3px;'
+      + '<div style="font-family:var(--mono);font-size:11px;color:var(--text3);text-align:center;margin-top:5px;'
       +   'white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + foot + '</div>'
       + '</div>';
   }
   function _rptPairRow(html, note){
-    return '<div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 14px">' + html + '</div>'
-      + (note ? '<div style="font-family:var(--mono);font-size:8.5px;color:var(--text4);margin:-8px 0 14px">' + note + '</div>' : '');
+    return '<div style="display:flex;flex-wrap:wrap;gap:10px;margin:12px 0 18px">' + html + '</div>'
+      + (note ? '<div style="font-family:var(--mono);font-size:11px;color:var(--text4);margin:-10px 0 18px">' + note + '</div>' : '');
   }
 
   function _rptList(items, n, fmt){
@@ -22785,9 +22795,9 @@ document.addEventListener('DOMContentLoaded',function(){
   function _rptHtml(){
     var r = _rptBuild();
     if(!r) return '<div class="spp-empty">분석할 데이터가 없습니다. 01·02 에서 데이터를 먼저 로드하세요.</div>';
-    var P = function(t){ return '<p style="margin:0 0 10px;line-height:1.75;font-size:12px;color:var(--text2)">' + t + '</p>'; };
-    var H = function(t){ return '<div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--gold);'
-      + 'letter-spacing:0.1em;margin:18px 0 8px">' + t + '</div>'; };
+    var P = function(t){ return '<p style="margin:0 0 14px;line-height:1.85;font-size:15px;color:var(--text2)">' + t + '</p>'; };
+    var H = function(t){ return '<div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--gold);'
+      + 'letter-spacing:0.08em;margin:26px 0 10px">' + t + '</div>'; };
     var B = function(t){ return '<strong style="color:var(--text)">' + t + '</strong>'; };
 
     var vRate = Math.round(r.verified.length / r.pal.length * 100);
@@ -22877,8 +22887,8 @@ document.addEventListener('DOMContentLoaded',function(){
       + (r.weak.length ? '근거가 약한 색은 선행 의도인지 점검하고, ' : '')
       + ((r.gap && r.gap.items.length) ? '보완 후보 중 빈도 상위 몇 색은 추가를 검토할 만합니다.' : '추가할 색은 현재 없습니다.'));
 
-    html += '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-top:16px;'
-      + 'border-top:1px solid var(--border);padding-top:10px;line-height:1.7">'
+    html += '<div style="font-family:var(--mono);font-size:11px;color:var(--text4);margin-top:22px;'
+      + 'border-top:1px solid var(--border);padding-top:14px;line-height:1.8">'
       + '산출 기준 — 시장 검증 Lab ΔE ≤ ' + RPT_VERIFY_DE + ' · 보완 후보 판정 Lab ΔE ≥ ' + GAP_MIN_DE
       + ' · 분류 BASIC C*&lt;' + TM_BASIC_C + ' / KEY C*≥' + TM_KEY_C
       + ' · 마켓 ' + r.marketN + '색 · 트렌드 풀 ' + r.trendN + '색. '
