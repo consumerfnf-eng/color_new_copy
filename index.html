@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_REVIEW_v193 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_REVIEW_v194 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -22839,13 +22839,28 @@ document.addEventListener('DOMContentLoaded',function(){
   // ── 결론 — 데이터에서 도출되는 행동 항목 ────────────────────
   //  수치 나열이 아니라 "그래서 무엇을 해야 하는가"를 먼저 보여준다.
   //  판단 근거는 아래 1~4 섹션에 그대로 남는다.
+  //  권고에 올릴 색의 최소 조건 — 빈도만 보면 한 브랜드 쏠림을 못 거른다.
+  //  (빈도는 브랜드 구분 없이 합산된 값이라 '한 곳이 5번'과 '5곳이 1번씩'이 같은 5로 나온다)
+  var RPT_MIN_FREQ = 5;
+  var RPT_MIN_BRANDS = 2;
+  function _rptStrong(e){
+    if((e.item.mkFreq || 0) < RPT_MIN_FREQ) return false;
+    var nb = _tmNearBrands(e.item.trend.hex);
+    if(!nb.length) nb = e.item.brands || [];
+    return nb.length >= RPT_MIN_BRANDS;
+  }
+  function _rptWeakNote(list){
+    var f = list.reduce(function(n,e){ return n + (e.item.mkFreq||0); }, 0);
+    return list.length + '색 · 합산 빈도 ' + f;
+  }
+
   function _rptConclusion(r, famNames){
     var acts = [];
     var vRate = Math.round(r.verified.length / r.pal.length * 100);
 
     // (1) KEY 비중
     if(r.mkR.n && (r.mkR.p.key - r.palR.p.key) >= 8){
-      var keyCands = (r.gap && r.gap.items || []).filter(function(e){ return e.group === 'key'; });
+      var keyCands = (r.gap && r.gap.items || []).filter(function(e){ return e.group === 'key' && _rptStrong(e); });
       // 비중 차이를 그대로 색 수로 환산하면 과하게 나온다(시장 KEY 67% 같은 경우).
       // 팔레트 규모의 15% 를 상한으로 둔다.
       var need = Math.max(1, Math.round(r.pal.length * (r.mkR.p.key - r.palR.p.key) / 100));
@@ -22880,20 +22895,40 @@ document.addEventListener('DOMContentLoaded',function(){
       var cands = (r.gap && r.gap.items || []).filter(function(e){
         return missFam.indexOf(_tmFamily(e.item.trend.hex)) >= 0;
       });
-      acts.push({
-        tag: '추가', title: missFam.map(function(k){ return famNames[k] || k; }).join(' · ') + ' 계열을 채울지 결정한다',
-        why: '시장에서는 관측되는데 팔레트에 한 색도 없습니다. 의도적으로 뺀 것이 아니라면 공백입니다.',
-        items: cands.slice(0, 6)
-      });
+      var strong = cands.filter(_rptStrong);
+      var famLabel = missFam.map(function(k){ return famNames[k] || k; }).join(' · ');
+      if(strong.length){
+        acts.push({
+          tag: '추가', title: famLabel + ' 계열을 채울지 결정한다',
+          why: famLabel + ' 계열이 마켓에서 ' + _rptWeakNote(strong)
+             + ' 로 관측되는데 팔레트에는 한 색도 없습니다. 의도적으로 뺀 것이 아니라면 공백입니다.',
+          items: strong.slice(0, 6)
+        });
+      } else if(cands.length){
+        // 근거가 약해 단정하지 않는다
+        acts.push({
+          tag: '참고', title: famLabel + ' 계열 부재 — 판단 보류',
+          why: famLabel + ' 계열이 마켓에서 ' + _rptWeakNote(cands) + ' 로만 잡힙니다. '
+             + '빈도 ' + RPT_MIN_FREQ + ' 이상 · ' + RPT_MIN_BRANDS + '개 브랜드 이상 조건에 못 미쳐 '
+             + '공백으로 볼지는 판단이 필요합니다.',
+          items: cands.slice(0, 6)
+        });
+      }
     }
 
     // (4) 추가 후보 상위
     if(r.gap && r.gap.items.length){
-      acts.push({
-        tag: '추가', title: '보완 후보 상위 ' + Math.min(5, r.gap.items.length) + '색을 우선 검토한다',
-        why: '마켓·트렌드 양쪽에서 잡히는데 팔레트에 없습니다. 빈도가 높은 순입니다.',
-        items: r.gap.items.slice(0, 5)
-      });
+      var strongGap = r.gap.items.filter(_rptStrong);
+      if(strongGap.length){
+        acts.push({
+          tag: '추가', title: '보완 후보 상위 ' + Math.min(5, strongGap.length) + '색을 우선 검토한다',
+          why: '마켓·트렌드 양쪽에서 잡히는데 팔레트에 없습니다. '
+             + '빈도 ' + RPT_MIN_FREQ + ' 이상이면서 ' + RPT_MIN_BRANDS + '개 이상 브랜드가 쓰는 색만 추렸습니다'
+             + (strongGap.length < r.gap.items.length
+                 ? ' (전체 후보 ' + r.gap.items.length + '색 중 ' + strongGap.length + '색).' : '.'),
+          items: strongGap.slice(0, 5)
+        });
+      }
     }
 
     // (5) 계열 쏠림
@@ -22911,7 +22946,7 @@ document.addEventListener('DOMContentLoaded',function(){
         why: '시장 검증률 ' + vRate + '% 이고 보완이 필요한 영역이 확인되지 않았습니다.', items: [] });
     }
 
-    var TAGC = { 보강:'#A090F0', 추가:'var(--gold)', 재검토:'var(--warn)', 조정:'var(--blue)', 유지:'var(--text3)' };
+    var TAGC = { 보강:'#A090F0', 추가:'var(--gold)', 재검토:'var(--warn)', 조정:'var(--blue)', 참고:'var(--text3)', 유지:'var(--text3)' };
     return '<div style="border:1px solid var(--border2);border-radius:10px;padding:18px 20px;margin-bottom:26px">'
       + '<div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--gold);letter-spacing:0.1em;margin-bottom:6px">결론</div>'
       + '<div style="font-size:14px;color:var(--text3);margin-bottom:16px;line-height:1.7">'
@@ -22933,7 +22968,11 @@ document.addEventListener('DOMContentLoaded',function(){
                         + 'align-items:center;gap:6px;padding:3px 9px 3px 3px;border:1px solid var(--border);border-radius:20px">'
                         + '<span style="width:22px;height:22px;border-radius:50%;background:' + e.item.trend.hex + '"></span>'
                         + '<span style="font-family:var(--mono);font-size:11px;color:var(--text2)">'
-                        +   (_tmPantoneCode(e.item.trend.pantone) || e.item.trend.hex) + ' ×' + e.item.mkFreq + '</span></span>';
+                        +   (_tmPantoneCode(e.item.trend.pantone) || e.item.trend.hex)
+                        +   ' · 빈도 ' + e.item.mkFreq
+                        +   (function(){ var nb = _tmNearBrands(e.item.trend.hex);
+                              return nb.length ? ' · ' + nb.length + '브랜드' : ''; })()
+                        +   '</span></span>';
                     }).join('') + '</div>'
                 : '')
             + (a.pals && a.pals.length
