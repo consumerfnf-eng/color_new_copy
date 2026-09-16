@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_TERMS_v202 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_TERMS_v203 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -22034,9 +22034,11 @@ document.addEventListener('DOMContentLoaded',function(){
     var GORD = { sub: 0, key: 1, basic: 2 };   // SEASONAL → ACCENT → CORE
     maps.forEach(function(m){
       m.list.sort(function(a,b){
-        if(a.primary !== b.primary) return a.primary ? -1 : 1;    // 주력 먼저
+        // 그룹을 가장 먼저 본다. 주력/부수를 먼저 보면 주력이 한 바퀴,
+        // 부수가 또 한 바퀴 돌면서 그룹 경계가 섞인다.
         var ga = GORD[a.g.group], gb = GORD[b.g.group];
-        if(ga !== gb) return ga - gb;                             // 그룹 순서
+        if(ga !== gb) return ga - gb;
+        if(a.primary !== b.primary) return a.primary ? -1 : 1;    // 그룹 안에서만 주력 우선
         return (b.share - a.share) || (b.freq - a.freq);
       });
     });
