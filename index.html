@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_REVIEW_v184 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_REVIEW_v186 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -22801,8 +22801,11 @@ document.addEventListener('DOMContentLoaded',function(){
     var B = function(t){ return '<strong style="color:var(--text)">' + t + '</strong>'; };
 
     var vRate = Math.round(r.verified.length / r.pal.length * 100);
+    // Lab Hue 구간에는 저채도 색이 함께 들어온다.
+    //  오렌지 구간(15~45°) = 브라운·베이지·카키 포함, 옐로우 구간 = 카키·머스타드 포함.
+    //  '오렌지 13' 처럼만 쓰면 오렌지 13색으로 오해되므로 이름을 실제에 맞춘다.
     var famNames = { neutral:'뉴트럴', red:'레드', pink:'핑크', purple:'퍼플', blue:'블루',
-                     teal:'틸', green:'그린', yellow:'옐로우', orange:'오렌지' };
+                     teal:'틸·민트', green:'그린', yellow:'옐로우·카키', orange:'브라운·오렌지' };
     // 팔레트에 없는데 마켓에 있는 계열 / 그 반대
     var missFam = Object.keys(r.mkFam).filter(function(k){ return !r.palFam[k]; });
     var onlyPal = Object.keys(r.palFam).filter(function(k){ return !r.mkFam[k]; });
@@ -22819,7 +22822,7 @@ document.addEventListener('DOMContentLoaded',function(){
         r.verified.slice(0, 12).map(function(x){
           return _rptPair(x.pal.hex, x.pal.name, x.mkHex, '×' + x.freq, 'ΔE ' + x.de);
         }).join(''),
-        '위 = 확정 팔레트 · 아래 = 대응하는 마켓 컬러 · ΔE 가 작을수록 같은 색');
+        '위 = 확정 팔레트 · 아래 = 마켓·트렌드 · ΔE 가 작을수록 같은 색');
     }
 
     if(r.weak.length){
@@ -22830,7 +22833,7 @@ document.addEventListener('DOMContentLoaded',function(){
         r.weak.slice(0, 12).map(function(x){
           return _rptPair(x.pal.hex, x.pal.name, x.mkHex, x.mkHex ? 'ΔE' + x.de : '없음', '근거 약함', true);
         }).join(''),
-        '위 = 확정 팔레트 · 아래 = 가장 가까운 마켓 컬러(거리 밖)');
+        '위 = 확정 팔레트 · 아래 = 마켓·트렌드(가장 가까운 색이지만 거리 밖)');
     }
 
     html += H('2. 구성비 — BASIC / SUB / KEY');
@@ -22856,6 +22859,27 @@ document.addEventListener('DOMContentLoaded',function(){
       + (onlyPal.length
           ? ' 반대로 ' + B(onlyPal.map(function(k){ return famNames[k]||k; }).join(' · '))
             + ' 계열은 팔레트에만 있고 매칭 결과에는 없습니다.' : ''));
+    // 계열별로 실제 어떤 색이 묶였는지 — 숫자만 보면 'ㅇㅇ 13색' 이 무엇인지 알 수 없다
+    (function(){
+      var byFam = {};
+      r.pal.forEach(function(p){ var k = _tmFamily(p.hex); (byFam[k] = byFam[k] || []).push(p); });
+      var order = Object.keys(byFam).sort(function(a,b){ return byFam[b].length - byFam[a].length; });
+      html += '<div style="display:flex;flex-direction:column;gap:10px;margin:12px 0 18px">'
+        + order.map(function(k){
+            return '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+              + '<span style="font-family:var(--mono);font-size:12px;color:var(--text3);min-width:110px">'
+              +   (famNames[k] || k) + ' <strong style="color:var(--text)">' + byFam[k].length + '</strong></span>'
+              + byFam[k].map(function(p){
+                  return '<span title="' + p.name + ' ' + p.hex + '" style="display:inline-flex;align-items:center;gap:4px;'
+                    + 'padding:2px 6px 2px 2px;border:1px solid var(--border);border-radius:4px">'
+                    + '<span style="width:20px;height:20px;border-radius:3px;background:' + p.hex + '"></span>'
+                    + '<span style="font-family:var(--mono);font-size:10px;color:var(--text3)">' + p.name + '</span>'
+                    + '</span>';
+                }).join('')
+              + '</div>';
+          }).join('')
+        + '</div>';
+    })();
 
     if(r.gap && r.gap.items.length){
       html += H('4. 추가 검토 대상 — 보완 후보 ' + r.gap.items.length + '색');
@@ -22865,10 +22889,18 @@ document.addEventListener('DOMContentLoaded',function(){
         + '가장 가까운 확정색과의 거리가 ΔE ' + top[0].nearDe + ' 이상이라 팔레트가 덮지 못하는 영역입니다.');
       html += _rptPairRow(
         r.gap.items.slice(0, 12).map(function(e){
-          return _rptPair(e.item.trend.hex, '×' + e.item.mkFreq, e.near ? e.near.hex : null,
-                          e.near ? e.near.name : '없음', 'ΔE ' + e.nearDe, true);
+          var t = e.item.trend;
+          var code = _tmPantoneCode(t.pantone) || '';
+          if(!code){
+            var cc = (window.hexToColoro && window.hexToColoro(t.hex)) || null;
+            if(cc && cc.pantone) code = _tmPantoneCode(cc.pantone) + '≈';
+          }
+          // 축은 1번과 동일하게 — 위 = 확정 팔레트, 아래 = 마켓·트렌드
+          return _rptPair(e.near ? e.near.hex : null, e.near ? e.near.name : '없음',
+                          t.hex, '×' + e.item.mkFreq,
+                          (code || t.hex) + ' · ΔE ' + e.nearDe, true);
         }).join(''),
-        '위 = 추가 후보(마켓·트렌드) · 아래 = 가장 가까운 확정색 · ΔE 가 클수록 팔레트에 없는 영역');
+        '위 = 확정 팔레트(가장 가까운 색) · 아래 = 마켓·트렌드(추가 후보) · ΔE 가 클수록 팔레트가 못 덮는 영역');
       if(r.gap.byCat && r.gap.byCat.cats){
         var per = r.gap.byCat.cats.filter(function(m){ return m.list.length; })
           .map(function(m){ return m.def.name + ' ' + m.list.length + '색'; });
