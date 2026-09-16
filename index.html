@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_REVIEW_v198 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_OVERLAY_v199 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21046,7 +21046,9 @@ document.addEventListener('DOMContentLoaded',function(){
   //  중국 마켓 컬러를 덧붙여, "작년에 이 색을 썼고 이만큼 팔렸다"를
   //  칩에서 바로 보여준다. 칩을 클릭하면 상세가 뜬다.
   // ══════════════════════════════════════════════════════════════
-  var OV_DE = 12;                 // 비슷한 색으로 볼 Lab ΔE
+  var OV_DE = 16;                 // 비슷한 색으로 볼 Lab ΔE
+                                  //  12 에서는 세일즈 RED(#AB2C3A)가 가장 가까운 칩과 ΔE 15.4 로
+                                  //  걸러져 붉은 계열이 통째로 빠졌다.
   var _ovOn = { sales: false, cn: false };
 
   window._ovToggle = function(kind){
@@ -21132,11 +21134,39 @@ document.addEventListener('DOMContentLoaded',function(){
   }
 
   var _ovIndex = {};
+
+  // 세일즈 색 ↔ 칩 1:1 배정.
+  //  칩마다 따로 최근접을 찾으면 같은 색(예: 그레이 53.5%)이 여러 칩에 중복으로 붙는다.
+  //  풀의 각 색을 '가장 가까운 칩' 한 곳에만 주고, 칩이 겹치면 더 가까운 색이 차지한다.
+  var _ovAssign = {};
+  function _ovAssignMap(kind){
+    var key = kind;
+    if(_ovAssign[key] && _ovAssign[key].t === _tmLastBuild) return _ovAssign[key].map;
+    var chips = [];
+    if(_tmLastBuild && _tmLastBuild.buckets){
+      ['key','sub','basic'].forEach(function(k){
+        (_tmLastBuild.buckets[k] || []).forEach(function(it){ chips.push(it.trend.hex); });
+      });
+    }
+    var map = {};
+    _ovPool(kind).forEach(function(item){
+      var best = null, bd = OV_DE;
+      chips.forEach(function(c){
+        var dd = _tmDeltaE(c, item.hex);
+        if(dd < bd){ bd = dd; best = c; }
+      });
+      if(!best) return;
+      if(!map[best] || bd < map[best].de) map[best] = { item: item, de: Math.round(bd * 10) / 10 };
+    });
+    _ovAssign[key] = { t: _tmLastBuild, map: map };
+    return map;
+  }
+
   function _ovStrip(hex){
     var html = '';
     ['sales'].forEach(function(kind){
       if(!_ovOn[kind]) return;
-      var m = _ovMatch(kind, hex);
+      var m = _ovAssignMap(kind)[hex];
       if(!m) return;
       var key = kind + '|' + hex;
       _ovIndex[key] = m;
