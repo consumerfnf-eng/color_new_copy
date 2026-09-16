@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_REVIEW_v194 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_REVIEW_v195 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -22843,11 +22843,14 @@ document.addEventListener('DOMContentLoaded',function(){
   //  (빈도는 브랜드 구분 없이 합산된 값이라 '한 곳이 5번'과 '5곳이 1번씩'이 같은 5로 나온다)
   var RPT_MIN_FREQ = 5;
   var RPT_MIN_BRANDS = 2;
+  function _rptBrands(e){
+    var nb = _tmNearBrands(e.item.trend.hex);
+    if(!nb.length) nb = (e.item.brands || []).slice();
+    return nb;
+  }
   function _rptStrong(e){
     if((e.item.mkFreq || 0) < RPT_MIN_FREQ) return false;
-    var nb = _tmNearBrands(e.item.trend.hex);
-    if(!nb.length) nb = e.item.brands || [];
-    return nb.length >= RPT_MIN_BRANDS;
+    return _rptBrands(e).length >= RPT_MIN_BRANDS;
   }
   function _rptWeakNote(list){
     var f = list.reduce(function(n,e){ return n + (e.item.mkFreq||0); }, 0);
@@ -22860,7 +22863,15 @@ document.addEventListener('DOMContentLoaded',function(){
 
     // (1) KEY 비중
     if(r.mkR.n && (r.mkR.p.key - r.palR.p.key) >= 8){
-      var keyCands = (r.gap && r.gap.items || []).filter(function(e){ return e.group === 'key' && _rptStrong(e); });
+      // 화면에 표시된 KEY 8색만 보면 후보가 거의 남지 않는다.
+      // 매칭된 KEY 전체에서 '팔레트에 없고 기준을 통과하는' 색을 다시 찾는다.
+      var keyPool = (_tmLastBuild && _tmLastBuild.raw && _tmLastBuild.raw.key) ? _tmLastBuild.raw.key : [];
+      var keyCands = keyPool.map(function(it){
+          var near = _gapNearest(it.trend.hex);
+          return { item: it, group: 'key', near: near.color, nearDe: Math.round(near.de) };
+        })
+        .filter(function(e){ return e.nearDe >= GAP_MIN_DE && _rptStrong(e); })
+        .sort(function(a,b){ return b.item.mkFreq - a.item.mkFreq; });
       // 비중 차이를 그대로 색 수로 환산하면 과하게 나온다(시장 KEY 67% 같은 경우).
       // 팔레트 규모의 15% 를 상한으로 둔다.
       var need = Math.max(1, Math.round(r.pal.length * (r.mkR.p.key - r.palR.p.key) / 100));
@@ -22868,8 +22879,12 @@ document.addEventListener('DOMContentLoaded',function(){
       acts.push({
         tag: '보강', title: 'KEY 컬러를 ' + need + '색 안팎으로 늘린다',
         why: '팔레트 KEY 비중이 ' + r.palR.p.key + '% 인데 시장은 ' + r.mkR.p.key + '% 입니다. '
-           + '다운 아우터는 면적이 커서 KEY 부족은 매대에서 곧바로 단조로움으로 읽힙니다.',
-        items: keyCands.slice(0, 6)
+           + '다운 아우터는 면적이 커서 KEY 부족은 매대에서 곧바로 단조로움으로 읽힙니다. '
+           + (keyCands.length
+               ? '팔레트에 없으면서 기준(빈도 ' + RPT_MIN_FREQ + ' 이상 · ' + RPT_MIN_BRANDS
+                 + '개 브랜드 이상)을 통과한 KEY 후보가 ' + keyCands.length + '색 있습니다.'
+               : '다만 기준을 통과한 KEY 후보가 없어, 추가할 색은 별도로 찾아야 합니다.'),
+        items: keyCands.slice(0, 10)
       });
     } else if(r.mkR.n && (r.palR.p.key - r.mkR.p.key) >= 8){
       acts.push({
@@ -22970,7 +22985,7 @@ document.addEventListener('DOMContentLoaded',function(){
                         + '<span style="font-family:var(--mono);font-size:11px;color:var(--text2)">'
                         +   (_tmPantoneCode(e.item.trend.pantone) || e.item.trend.hex)
                         +   ' · 빈도 ' + e.item.mkFreq
-                        +   (function(){ var nb = _tmNearBrands(e.item.trend.hex);
+                        +   (function(){ var nb = _rptBrands(e);
                               return nb.length ? ' · ' + nb.length + '브랜드' : ''; })()
                         +   '</span></span>';
                     }).join('') + '</div>'
