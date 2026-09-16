@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_CN_v176 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_CN_v177 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21046,7 +21046,7 @@ document.addEventListener('DOMContentLoaded',function(){
   //  칩에서 바로 보여준다. 칩을 클릭하면 상세가 뜬다.
   // ══════════════════════════════════════════════════════════════
   var OV_DE = 12;                 // 비슷한 색으로 볼 Lab ΔE
-  var _ovOn = { sales: false, cn: false };
+  var _ovOn = { sales: false };   // 중국은 China Market 섹션에서 직접 제안하므로 오버레이 대상 아님
 
   window._ovToggle = function(kind){
     _ovOn[kind] = !_ovOn[kind];
@@ -21099,7 +21099,7 @@ document.addEventListener('DOMContentLoaded',function(){
   var _ovIndex = {};
   function _ovStrip(hex){
     var html = '';
-    ['sales','cn'].forEach(function(kind){
+    ['sales'].forEach(function(kind){
       if(!_ovOn[kind]) return;
       var m = _ovMatch(kind, hex);
       if(!m) return;
@@ -21157,9 +21157,9 @@ document.addEventListener('DOMContentLoaded',function(){
 
   // 섹션 하단 우측 데이터 토글
   function _ovTabs(){
-    var cnt = { sales: _ovPool('sales').length, cn: _ovPool('cn').length };
+    var cnt = { sales: _ovPool('sales').length };
     return '<div style="display:flex;justify-content:flex-start;gap:6px;margin:-6px 0 14px">'
-      + [['sales','세일즈 25FW'], ['cn','중국 마켓']].map(function(t){
+      + [['sales','세일즈 25FW']].map(function(t){
           var on = _ovOn[t[0]];
           return '<button onclick="_ovToggle(\'' + t[0] + '\')" style="font-family:var(--mono);font-size:10px;'
             + 'padding:5px 12px;border-radius:4px;cursor:pointer;'
@@ -21302,8 +21302,7 @@ document.addEventListener('DOMContentLoaded',function(){
               ? '<div class="spp-empty">01 Market Analysis 데이터를 먼저 로드하세요.</div>'
               : _tmRow('SUB', 'var(--blue)', b.sub, TM_CAPS.sub, t.raw.sub, t.families.sub)
               + _tmRow('KEY', '#A090F0',     b.key, TM_CAPS.key, t.raw.key, t.families.key)
-              + _tmRow('BASIC', 'var(--gold)', b.basic, TM_CAPS.basic, t.raw.basic, t.families.basic)
-              + _ovTabs()));
+              + _tmRow('BASIC', 'var(--gold)', b.basic, TM_CAPS.basic, t.raw.basic, t.families.basic)));
   }
   window._discRenderTrendMatched = _tmRender;
 
