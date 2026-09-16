@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_REVIEW_v182 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_REVIEW_v183 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -22709,7 +22709,8 @@ document.addEventListener('DOMContentLoaded',function(){
         var dd = _tmDeltaE(p.hex, m.hex);
         if(dd < bd){ bd = dd; best = m; }
       });
-      var rec = { pal: p, de: Math.round(bd * 10) / 10, freq: best ? best.freq : 0 };
+      var rec = { pal: p, de: Math.round(bd * 10) / 10, freq: best ? best.freq : 0,
+                  mkHex: best ? best.hex : null, mkName: best ? (best.name || '') : '' };
       (bd <= RPT_VERIFY_DE && best) ? verified.push(rec) : weak.push(rec);
     });
     verified.sort(function(a,b){ return b.freq - a.freq; });
@@ -22752,6 +22753,31 @@ document.addEventListener('DOMContentLoaded',function(){
     return '<span style="display:inline-block;width:' + (size||11) + 'px;height:' + (size||11)
       + 'px;border-radius:2px;background:' + hex + ';border:1px solid var(--border2);vertical-align:-1px;margin-right:3px"></span>';
   }
+  // 위: 확정 팔레트 색 / 아래: 대응하는 마켓·트렌드 색 — 방향이 맞는지 눈으로 바로 보게
+  function _rptPair(topHex, topLabel, botHex, botLabel, foot, flip){
+    var cell = function(hex, label, h){
+      return '<div style="height:' + h + 'px;background:' + (hex || 'transparent')
+        + (hex ? '' : ';background-image:repeating-linear-gradient(45deg,var(--border) 0 4px,transparent 4px 8px)')
+        + ';display:flex;align-items:flex-end;justify-content:center;padding-bottom:2px">'
+        + (label ? '<span style="font-family:var(--mono);font-size:7px;font-weight:700;color:'
+            + (hex ? _dcpTextOn(String(hex).slice(1)) : 'var(--text4)') + '">' + label + '</span>' : '')
+        + '</div>';
+    };
+    return '<div style="width:70px;flex:0 0 auto">'
+      + '<div style="border:1px solid ' + (flip ? 'var(--gold)' : 'var(--border)') + ';border-radius:4px;overflow:hidden">'
+      +   cell(topHex, topLabel, 34)
+      +   '<div style="height:1px;background:var(--border)"></div>'
+      +   cell(botHex, botLabel, 26)
+      + '</div>'
+      + '<div style="font-family:var(--mono);font-size:7.5px;color:var(--text3);text-align:center;margin-top:3px;'
+      +   'white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + foot + '</div>'
+      + '</div>';
+  }
+  function _rptPairRow(html, note){
+    return '<div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 14px">' + html + '</div>'
+      + (note ? '<div style="font-family:var(--mono);font-size:8.5px;color:var(--text4);margin:-8px 0 14px">' + note + '</div>' : '');
+  }
+
   function _rptList(items, n, fmt){
     return items.slice(0, n).map(fmt).join(', ') + (items.length > n ? ' 외 ' + (items.length - n) : '');
   }
@@ -22777,14 +22803,24 @@ document.addEventListener('DOMContentLoaded',function(){
     html += P('확정 팔레트 ' + B(r.pal.length + '색') + '을 마켓 컬러 ' + r.marketN + '색과 대조한 결과, '
       + B(r.verified.length + '색(' + vRate + '%)') + '이 Lab ΔE ' + RPT_VERIFY_DE + ' 이내에서 근거를 찾았습니다. '
       + '경쟁 브랜드가 실제로 쓰고 있는 색이라는 뜻입니다.'
-      + (r.verified.length ? ' 그중 마켓 빈도가 높은 쪽은 '
-          + _rptList(r.verified, 5, function(x){ return _rptSw(x.pal.hex) + x.pal.name + '(' + x.freq + ')'; }) + ' 입니다.' : ''));
+      + (r.verified.length ? ' 마켓 빈도 상위는 아래와 같습니다.' : ''));
+    if(r.verified.length){
+      html += _rptPairRow(
+        r.verified.slice(0, 12).map(function(x){
+          return _rptPair(x.pal.hex, x.pal.name, x.mkHex, '×' + x.freq, 'ΔE ' + x.de);
+        }).join(''),
+        '위 = 확정 팔레트 · 아래 = 대응하는 마켓 컬러 · ΔE 가 작을수록 같은 색');
+    }
 
     if(r.weak.length){
-      html += P(B(r.weak.length + '색') + '은 마켓에서 근거가 잡히지 않았습니다 — '
-        + _rptList(r.weak, 8, function(x){ return _rptSw(x.pal.hex) + x.pal.name; }) + '. '
+      html += P(B(r.weak.length + '색') + '은 마켓에서 근거가 잡히지 않았습니다. '
         + '선행 제안이라면 의도된 결과지만, 근거를 두고 넣은 색이라면 재검토가 필요합니다. '
-        + '가장 가까운 마켓 컬러와의 거리가 ' + r.weak[0].de + ' ~ ' + r.weak[r.weak.length-1].de + ' 범위입니다.');
+        + '가장 가까운 마켓 컬러와의 거리가 ΔE ' + r.weak[0].de + ' ~ ' + r.weak[r.weak.length-1].de + ' 범위입니다.');
+      html += _rptPairRow(
+        r.weak.slice(0, 12).map(function(x){
+          return _rptPair(x.pal.hex, x.pal.name, x.mkHex, x.mkHex ? 'ΔE' + x.de : '없음', '근거 약함', true);
+        }).join(''),
+        '위 = 확정 팔레트 · 아래 = 가장 가까운 마켓 컬러(거리 밖)');
     }
 
     html += H('2. 구성비 — BASIC / SUB / KEY');
@@ -22815,10 +22851,14 @@ document.addEventListener('DOMContentLoaded',function(){
       html += H('4. 추가 검토 대상 — 보완 후보 ' + r.gap.items.length + '색');
       var top = r.gap.items.slice(0, 8);
       html += P('마켓과 트렌드(WGSN·Peclers) 양쪽에서 잡히는데 확정 팔레트에는 없는 색이 '
-        + B(r.gap.items.length + '색') + ' 있습니다. 마켓 빈도 상위는 '
-        + top.map(function(e){ return _rptSw(e.item.trend.hex) + (e.item.trend.name || e.item.trend.hex)
-            + '(' + e.item.mkFreq + ')'; }).join(', ') + ' 입니다. '
+        + B(r.gap.items.length + '색') + ' 있습니다. '
         + '가장 가까운 확정색과의 거리가 ΔE ' + top[0].nearDe + ' 이상이라 팔레트가 덮지 못하는 영역입니다.');
+      html += _rptPairRow(
+        r.gap.items.slice(0, 12).map(function(e){
+          return _rptPair(e.item.trend.hex, '×' + e.item.mkFreq, e.near ? e.near.hex : null,
+                          e.near ? e.near.name : '없음', 'ΔE ' + e.nearDe, true);
+        }).join(''),
+        '위 = 추가 후보(마켓·트렌드) · 아래 = 가장 가까운 확정색 · ΔE 가 클수록 팔레트에 없는 영역');
       if(r.gap.byCat && r.gap.byCat.cats){
         var per = r.gap.byCat.cats.filter(function(m){ return m.list.length; })
           .map(function(m){ return m.def.name + ' ' + m.list.length + '색'; });
