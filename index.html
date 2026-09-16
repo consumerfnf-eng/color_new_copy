@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_CN_v178 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_CN_v179 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21049,16 +21049,44 @@ document.addEventListener('DOMContentLoaded',function(){
   var _ovOn = { sales: false, cn: false };
 
   window._ovToggle = function(kind){
-    if(kind === 'cn'){
-      // 중국은 칩에 덧붙이지 않고, 아래 China Market 섹션으로 데려간다
-      var cn = document.getElementById(CNM_SECT_ID);
-      if(cn && cn.scrollIntoView) cn.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      return;
-    }
     _ovOn[kind] = !_ovOn[kind];
     _tmRender();
     try{ _discOrderSections(); }catch(e){}
   };
+
+  // 중국 패널 — KEY 줄 오른쪽 빈 공간에 China Market 결과를 그대로 띄운다
+  function _ovCnPanel(){
+    if(!_ovOn.cn) return '';
+    var r = (typeof _cnmBuild === 'function') ? _cnmBuild() : null;
+    if(!r || !r.items.length){
+      return '<div class="spp-empty" style="font-size:10px">중국 마켓 매칭 결과 없음</div>';
+    }
+    var g = { key: [], sub: [], basic: [] };
+    r.items.forEach(function(it){ g[_tmClassify(it.trend.hex)].push(it); });
+    var rows = [['SUB','var(--blue)', g.sub.concat(g.basic)], ['KEY','#A090F0', g.key]];
+    return ''
+      + '<div style="flex:1 1 380px;min-width:380px;border:1px solid var(--border);border-radius:8px;'
+      +   'padding:12px 14px;background:rgba(80,140,200,0.04)">'
+      +   '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px">'
+      +     '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:#5B8FC9;letter-spacing:0.1em">CN CHINA</span>'
+      +     '<span style="font-family:var(--mono);font-size:9px;color:var(--text4)">중국 마켓 '
+      +       r.scanned + '색 → 매칭 ' + r.items.length + '색 · 상위 ' + CNM_MAX + '</span>'
+      +     '<button onclick="_ovToggle(\'cn\')" style="margin-left:auto;font-family:var(--mono);font-size:10px;'
+      +       'padding:2px 8px;border-radius:4px;cursor:pointer;border:1px solid var(--border);'
+      +       'background:transparent;color:var(--text3)">닫기</button>'
+      +   '</div>'
+      +   rows.map(function(row){
+            var list = row[2].slice(0, CNM_MAX);
+            if(!list.length) return '';
+            return '<div style="margin-bottom:12px">'
+              + '<div style="font-family:var(--mono);font-size:9px;font-weight:700;color:' + row[1]
+              +   ';letter-spacing:0.1em;margin-bottom:6px">' + row[0] + ' <span style="color:var(--text3);font-weight:400">'
+              +   list.length + '색</span></div>'
+              + '<div style="display:flex;gap:10px;flex-wrap:wrap">' + list.map(_cnmChip).join('') + '</div>'
+              + '</div>';
+          }).join('')
+      + '</div>';
+  }
 
   // 세일즈 풀 — 블랙·화이트만 제외하고 그레이는 남긴다
   function _ovSalesPool(){
@@ -21172,7 +21200,7 @@ document.addEventListener('DOMContentLoaded',function(){
             + 'border:1px solid ' + (on ? 'var(--gold)' : 'var(--border)') + ';'
             + 'background:' + (on ? 'rgba(160,120,64,0.16)' : 'transparent') + ';'
             + 'color:' + (on ? 'var(--gold)' : 'var(--text3)') + ';font-weight:' + (on ? '700' : '400') + '">'
-            + (t[0] === 'cn' ? '↓ ' : (on ? '● ' : '○ ')) + t[1] + ' ' + cnt[t[0]] + '색</button>';
+            + (on ? '● ' : '○ ') + t[1] + ' ' + cnt[t[0]] + '색</button>';
         }).join('')
       + '</div>';
   }
@@ -21234,9 +21262,9 @@ document.addEventListener('DOMContentLoaded',function(){
         return '<div style="display:flex;gap:10px" title="' + (TM_FAMILY_LABEL[f] || f) + ' ' + byFam[f].length + '색">'
           + byFam[f].map(function(it){ return _tmChip(it, isKey); }).join('') + '</div>';
       });
-      body = '<div class="dcp-mood-row" style="justify-content:flex-start;gap:26px">' + blocks.join('') + '</div>';
+      body = '<div class="dcp-mood-row" style="justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;gap:26px">' + blocks.join('') + '</div>';
     } else {
-      body = '<div class="dcp-mood-row" style="' + 'justify-content:flex-start' + ';gap:10px">'
+      body = '<div class="dcp-mood-row" style="' + 'justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px' + ';gap:10px">'
         + shown.map(function(it){ return _tmChip(it, isKey); }).join('') + '</div>';
     }
     return ''
@@ -21307,7 +21335,12 @@ document.addEventListener('DOMContentLoaded',function(){
           : (t.scanned === 0
               ? '<div class="spp-empty">01 Market Analysis 데이터를 먼저 로드하세요.</div>'
               : _tmRow('SUB', 'var(--blue)', b.sub, TM_CAPS.sub, t.raw.sub, t.families.sub)
-              + _tmRow('KEY', '#A090F0',     b.key, TM_CAPS.key, t.raw.key, t.families.key)
+              + '<div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">'
+              +   '<div style="flex:1 1 auto;min-width:0">'
+              +     _tmRow('KEY', '#A090F0', b.key, TM_CAPS.key, t.raw.key, t.families.key)
+              +   '</div>'
+              +   _ovCnPanel()
+              + '</div>'
               + _tmRow('BASIC', 'var(--gold)', b.basic, TM_CAPS.basic, t.raw.basic, t.families.basic)));
   }
   window._discRenderTrendMatched = _tmRender;
@@ -22494,7 +22527,7 @@ document.addEventListener('DOMContentLoaded',function(){
   //  칩 레이아웃도 dcp 형태로 통일한다. 원본 그리드는 숨긴다.
   // ══════════════════════════════════════════════════════════════
   var CNM_SECT_ID = 'disc-cn-trendmatched';
-  var CNM_MAX = 12;
+  var CNM_MAX = 4;   // 원본 China Market 이 SUB 4 · KEY 4 로 잘라 보여주므로 맞춘다
 
   function _cnmBuild(){
     if(typeof cnMarketData === 'undefined' || !Array.isArray(cnMarketData) || !cnMarketData.length) return null;
