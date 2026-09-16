@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_OVERLAY_v199 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_OVERLAY_v200 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21046,9 +21046,10 @@ document.addEventListener('DOMContentLoaded',function(){
   //  중국 마켓 컬러를 덧붙여, "작년에 이 색을 썼고 이만큼 팔렸다"를
   //  칩에서 바로 보여준다. 칩을 클릭하면 상세가 뜬다.
   // ══════════════════════════════════════════════════════════════
-  var OV_DE = 16;                 // 비슷한 색으로 볼 Lab ΔE
-                                  //  12 에서는 세일즈 RED(#AB2C3A)가 가장 가까운 칩과 ΔE 15.4 로
-                                  //  걸러져 붉은 계열이 통째로 빠졌다.
+  var OV_DE = 12;                 // 비슷한 색으로 볼 Lab ΔE
+                                  //  16 으로 올렸더니 ΔE 12~16 구간(같은 계열이지만 확실히 다른 색)까지
+                                  //  붙어 근거로 쓰기 어려웠다. 세일즈 RED(#AB2C3A)는 제안색과
+                                  //  ΔE 15.4 로 실제로 다른 색이라 빠지는 게 맞다.
   var _ovOn = { sales: false, cn: false };
 
   window._ovToggle = function(kind){
