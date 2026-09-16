@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_REVIEW_v187 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_REVIEW_v188 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -22890,15 +22890,12 @@ document.addEventListener('DOMContentLoaded',function(){
               + '<span style="font-family:var(--mono);font-size:12px;color:var(--text3);min-width:110px">'
               +   (famNames[k] || k) + ' <strong style="color:var(--text)">' + byFam[k].length + '</strong></span>'
               + byFam[k].map(function(p){
-                  // 27FW 팔레트와 같은 칩 형태 — 이름 / 코드 / 색면 / HEX
-                  var m = _rptPalMeta(p.hex);
-                  return '<div class="dcp-chip" title="' + p.name + ' ' + p.hex + '">'
-                    + '<div class="dcp-name">' + p.name + '</div>'
-                    + '<div class="dcp-card">'
-                    +   (m ? '<div class="dcp-code">' + m + '</div>' : '<div class="dcp-code">&nbsp;</div>')
-                    +   '<div class="dcp-fill" style="background:' + p.hex + '"></div>'
-                    +   '<div class="dcp-hex">' + p.hex + '</div>'
-                    + '</div></div>';
+                  return '<span title="' + p.name + ' ' + p.hex + ' ' + (_rptPalMeta(p.hex) || '')
+                    + '" style="display:inline-flex;align-items:center;gap:4px;'
+                    + 'padding:2px 6px 2px 2px;border:1px solid var(--border);border-radius:4px">'
+                    + '<span style="width:20px;height:20px;border-radius:3px;background:' + p.hex + '"></span>'
+                    + '<span style="font-family:var(--mono);font-size:10px;color:var(--text3)">' + p.name + '</span>'
+                    + '</span>';
                 }).join('')
               + '</div>';
           }).join('')
@@ -22911,20 +22908,35 @@ document.addEventListener('DOMContentLoaded',function(){
       html += P('마켓과 트렌드(WGSN·Peclers) 양쪽에서 잡히는데 확정 팔레트에는 없는 색이 '
         + B(r.gap.items.length + '색') + ' 있습니다. '
         + '가장 가까운 확정색과의 거리가 ΔE ' + top[0].nearDe + ' 이상이라 팔레트가 덮지 못하는 영역입니다.');
-      html += _rptPairRow(
-        r.gap.items.slice(0, 12).map(function(e){
-          var t = e.item.trend;
-          var code = _tmPantoneCode(t.pantone) || '';
-          if(!code){
-            var cc = (window.hexToColoro && window.hexToColoro(t.hex)) || null;
-            if(cc && cc.pantone) code = _tmPantoneCode(cc.pantone) + '≈';
-          }
-          // 축은 1번과 동일하게 — 위 = 확정 팔레트, 아래 = 마켓·트렌드
-          return _rptPair(e.near ? e.near.hex : null, e.near ? e.near.name : '없음',
-                          t.hex, '×' + e.item.mkFreq,
-                          (code || t.hex) + ' · ΔE ' + e.nearDe, true);
-        }).join(''),
-        '위 = 확정 팔레트(가장 가까운 색) · 아래 = 마켓·트렌드(추가 후보) · ΔE 가 클수록 팔레트가 못 덮는 영역');
+      html += '<div style="display:flex;flex-wrap:wrap;gap:10px;margin:12px 0 10px">'
+        + r.gap.items.slice(0, 16).map(function(e){
+            var t = e.item.trend;
+            var src = (t.sources && t.sources.length) ? t.sources.join('·') : '';
+            return '<div class="dcp-chip" title="' + (t.name || '') + ' ' + t.hex
+              +   ' · 마켓 빈도 ' + e.item.mkFreq + ' · 가장 가까운 확정색 '
+              +   (e.near ? e.near.name + ' ' + e.near.hex : '없음') + ' ΔE ' + e.nearDe + '">'
+              + '<div class="dcp-name" style="font-size:10px;font-weight:700;color:var(--text3)">' + (src || '&nbsp;') + '</div>'
+              + '<div class="dcp-card">'
+              +   _tmCodeLineHtml(t)
+              +   '<div class="dcp-fill" style="background:' + t.hex + '">'
+              +     '<span style="font-family:var(--mono);font-size:8px;font-weight:800;color:'
+              +       _dcpTextOn(t.hex.slice(1)) + '">×' + e.item.mkFreq + '</span>'
+              +   '</div>'
+              +   '<div class="dcp-hex">' + t.hex + '</div>'
+              + '</div>'
+              // 아래 띠 = 확정 팔레트에서 가장 가까운 색
+              + '<div style="display:flex;align-items:center;gap:4px;margin-top:3px;padding:2px 4px;'
+              +   'border:1px solid var(--border);border-radius:3px;background:var(--surface)">'
+              +   '<span style="width:12px;height:12px;border-radius:2px;flex:0 0 auto;background:'
+              +     (e.near ? e.near.hex : 'transparent') + '"></span>'
+              +   '<span style="font-family:var(--mono);font-size:7.5px;color:var(--text3);white-space:nowrap;overflow:hidden">'
+              +     (e.near ? e.near.name : '없음') + ' ΔE' + e.nearDe + '</span>'
+              + '</div>'
+              + '</div>';
+          }).join('')
+        + '</div>'
+        + '<div style="font-family:var(--mono);font-size:11px;color:var(--text4);margin:0 0 18px">'
+        +   '칩 = 추가 후보(마켓·트렌드) · 아래 띠 = 확정 팔레트에서 가장 가까운 색 · ΔE 가 클수록 팔레트가 못 덮는 영역</div>';
       if(r.gap.byCat && r.gap.byCat.cats){
         var per = r.gap.byCat.cats.filter(function(m){ return m.list.length; })
           .map(function(m){ return m.def.name + ' ' + m.list.length + '색'; });
