@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_REVIEW_v191 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_REVIEW_v192 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21145,11 +21145,14 @@ document.addEventListener('DOMContentLoaded',function(){
         : ('×' + m.item.freq);
       html += '<div onclick="event.stopPropagation();_ovOpen(event,\'' + kind + '\',\'' + hex + '\')"'
         + ' title="' + (kind === 'sales' ? '25FW 실판매' : '중국 마켓') + ' ' + m.item.hex + ' · ΔE ' + m.de + '"'
-        + ' style="display:flex;align-items:center;gap:4px;margin-top:3px;padding:2px 4px;cursor:pointer;'
-        + 'border:1px solid var(--border);border-radius:3px;background:var(--surface)">'
-        +   '<span style="width:12px;height:12px;border-radius:2px;flex:0 0 auto;background:' + m.item.hex + '"></span>'
-        +   '<span style="font-family:var(--mono);font-size:7.5px;color:var(--text3);white-space:nowrap;overflow:hidden">'
-        +     (kind === 'sales' ? 'S ' : 'CN ') + label + '</span>'
+        + ' style="margin-top:4px;cursor:pointer;border:1px solid var(--border);border-radius:4px;overflow:hidden">'
+        +   '<div style="height:30px;background:' + m.item.hex + ';display:flex;align-items:flex-end;'
+        +     'justify-content:center;padding-bottom:2px">'
+        +     '<span style="font-family:var(--mono);font-size:9px;font-weight:800;color:'
+        +       _dcpTextOn(String(m.item.hex).slice(1)) + '">' + (kind === 'sales' ? 'S' : 'CN') + '</span>'
+        +   '</div>'
+        +   '<div style="font-family:var(--mono);font-size:9px;color:var(--text3);text-align:center;'
+        +     'padding:3px 2px;background:var(--surface);white-space:nowrap;overflow:hidden">' + label + '</div>'
         + '</div>';
     });
     return html;
@@ -21335,13 +21338,18 @@ document.addEventListener('DOMContentLoaded',function(){
           ? '<div class="spp-empty">02 Trend Collection에서 WGSN 또는 Peclers 데이터를 먼저 로드하세요.</div>'
           : (t.scanned === 0
               ? '<div class="spp-empty">01 Market Analysis 데이터를 먼저 로드하세요.</div>'
-              : _tmRow('SUB', 'var(--blue)', b.sub, TM_CAPS.sub, t.raw.sub, t.families.sub)
-              + '<div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">'
-              +   '<div style="flex:1 1 auto;min-width:0">'
-              +     _tmRow('KEY', '#A090F0', b.key, TM_CAPS.key, t.raw.key, t.families.key)
-              +   '</div>'
-              +   _ovCnPanel()
-              + '</div>'
+              : (_ovOn.cn
+                  // 중국 패널이 켜지면 SUB·KEY 를 왼쪽 열로 묶고 패널을 오른쪽에 나란히 둔다
+                  // (SUB 가 두 줄로 내려가도 패널과 겹치지 않는다)
+                  ? '<div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">'
+                    +   '<div style="flex:1 1 520px;min-width:0">'
+                    +     _tmRow('SUB', 'var(--blue)', b.sub, TM_CAPS.sub, t.raw.sub, t.families.sub)
+                    +     _tmRow('KEY', '#A090F0', b.key, TM_CAPS.key, t.raw.key, t.families.key)
+                    +   '</div>'
+                    +   _ovCnPanel()
+                    + '</div>'
+                  : _tmRow('SUB', 'var(--blue)', b.sub, TM_CAPS.sub, t.raw.sub, t.families.sub)
+                    + _tmRow('KEY', '#A090F0', b.key, TM_CAPS.key, t.raw.key, t.families.key))
               + _tmRow('BASIC', 'var(--gold)', b.basic, TM_CAPS.basic, t.raw.basic, t.families.basic)));
   }
   window._discRenderTrendMatched = _tmRender;
