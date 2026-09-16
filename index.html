@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_REVIEW_v196 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_REVIEW_v197 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -22729,7 +22729,9 @@ document.addEventListener('DOMContentLoaded',function(){
         if(dd < bd){ bd = dd; best = m; }
       });
       var rec = { pal: p, de: Math.round(bd * 10) / 10, freq: best ? best.freq : 0,
-                  mkHex: best ? best.hex : null, mkName: best ? (best.name || '') : '' };
+                  mkHex: best ? best.hex : null, mkName: best ? (best.name || '') : '',
+                  // 확실히 맞음(ΔE 5 이내) / 맞는 편(5~10) — 정도를 구분한다
+                  tier: (bd <= 5 ? 'solid' : 'ok') };
       (bd <= RPT_VERIFY_DE && best) ? verified.push(rec) : weak.push(rec);
     });
     verified.sort(function(a,b){ return b.freq - a.freq; });
@@ -22905,6 +22907,19 @@ document.addEventListener('DOMContentLoaded',function(){
       });
     }
 
+    // (0) 잘 맞은 색 — 문제만 나열하면 무엇을 지켜야 할지 알 수 없다
+    var solid = r.verified.filter(function(x){ return x.tier === 'solid'; });
+    if(solid.length){
+      acts.push({
+        tag: '유지', title: '시장에서 확실히 검증된 ' + solid.length + '색은 그대로 간다',
+        why: '가장 가까운 마켓 컬러와 ΔE 5 이내로, 경쟁 브랜드가 사실상 같은 색을 쓰고 있습니다. '
+           + '확정 팔레트 ' + r.pal.length + '색 중 ' + Math.round(solid.length / r.pal.length * 100) + '% 입니다.'
+           + (r.verified.length > solid.length
+               ? ' 나머지 ' + (r.verified.length - solid.length) + '색은 ΔE 5~10 으로 같은 계열이지만 톤 차이가 있습니다.' : ''),
+        pals: solid.slice(0, 10)
+      });
+    }
+
     // (2) 근거 약한 색
     if(r.weak.length){
       acts.push({
@@ -23041,18 +23056,30 @@ document.addEventListener('DOMContentLoaded',function(){
     html += '<div style="font-family:var(--mono);font-size:12px;color:var(--text4);margin:22px 0 4px;'
       + 'letter-spacing:0.08em">— 판단 근거 —</div>';
 
-    html += H('1. 시장 검증 — 확정 팔레트 ' + r.pal.length + '색 중 ' + r.verified.length + '색');
+    var nSolid = r.verified.filter(function(x){ return x.tier === 'solid'; }).length;
+    html += H('1. 시장 검증 — 확정 팔레트 ' + r.pal.length + '색 중 ' + r.verified.length + '색 (확실 ' + nSolid + '색)');
     html += P('확정 팔레트 ' + B(r.pal.length + '색') + '을 마켓 컬러 ' + r.marketN + '색과 대조한 결과, '
       + B(r.verified.length + '색(' + vRate + '%)') + '이 Lab ΔE ' + RPT_VERIFY_DE + ' 이내에서 근거를 찾았습니다. '
       + '경쟁 브랜드가 실제로 쓰고 있는 색이라는 뜻입니다.'
       + (r.verified.length ? ' 마켓 빈도 상위는 아래와 같습니다.' : ''));
     if(r.verified.length){
-      html += _rptPairRow(
-        r.verified.slice(0, 12).map(function(x){
-          return _rptPair(x.pal.hex, x.pal.name, x.mkHex, '×' + x.freq, 'ΔE ' + x.de, false,
-            { topCode: _rptPalMeta(x.pal.hex) || x.pal.hex, botCode: x.mkHex || '' });
-        }).join(''),
-        '위 = 확정 팔레트 · 아래 = 마켓·트렌드 · ΔE 가 작을수록 같은 색');
+      var tiers = [
+        ['확실히 맞음', 'ΔE 5 이내 — 경쟁 브랜드가 사실상 같은 색을 쓰고 있음', r.verified.filter(function(x){ return x.tier === 'solid'; })],
+        ['맞는 편',     'ΔE 5~10 — 같은 계열이지만 톤 차이가 있음',            r.verified.filter(function(x){ return x.tier === 'ok'; })]
+      ];
+      tiers.forEach(function(t){
+        if(!t[2].length) return;
+        html += '<div style="font-family:var(--mono);font-size:12px;color:var(--text2);margin:14px 0 2px">'
+          + '<strong style="color:var(--text)">' + t[0] + ' ' + t[2].length + '색</strong>'
+          + ' <span style="color:var(--text4)">· ' + t[1] + '</span></div>';
+        html += _rptPairRow(
+          t[2].slice(0, 12).map(function(x){
+            return _rptPair(x.pal.hex, x.pal.name, x.mkHex, '×' + x.freq, 'ΔE ' + x.de, false,
+              { topCode: _rptPalMeta(x.pal.hex) || x.pal.hex, botCode: x.mkHex || '' });
+          }).join(''), '');
+      });
+      html += '<div style="font-family:var(--mono);font-size:11px;color:var(--text4);margin:-10px 0 18px">'
+        + '위 = 확정 팔레트 · 아래 = 마켓·트렌드 · ΔE 가 작을수록 같은 색 · 마켓 빈도순</div>';
     }
 
     if(r.weak.length){
