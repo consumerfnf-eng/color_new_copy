@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_REVIEW_v197 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_REVIEW_v198 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -22863,6 +22863,20 @@ document.addEventListener('DOMContentLoaded',function(){
     var acts = [];
     var vRate = Math.round(r.verified.length / r.pal.length * 100);
 
+    // (0) 잘 맞은 색 — 문제만 나열하면 무엇을 지켜야 할지 알 수 없다
+    var solid = r.verified.filter(function(x){ return x.tier === 'solid'; });
+    if(solid.length){
+      acts.push({
+        tag: '유지', title: '시장에서 확실히 검증된 ' + solid.length + '색은 그대로 간다',
+        why: '가장 가까운 마켓 컬러와 ΔE 5 이내로, 경쟁 브랜드가 사실상 같은 색을 쓰고 있습니다. '
+           + '확정 팔레트 ' + r.pal.length + '색 중 ' + Math.round(solid.length / r.pal.length * 100) + '% 입니다.'
+           + (r.verified.length > solid.length
+               ? ' 나머지 ' + (r.verified.length - solid.length) + '색은 ΔE 5~10 으로 같은 계열이지만 톤 차이가 있습니다.' : ''),
+        pals: solid.slice(0, 10)
+      });
+    }
+
+
     // (1) KEY 비중
     if(r.mkR.n && (r.mkR.p.key - r.palR.p.key) >= 8){
       // 화면에 표시된 KEY 8색만 보면 후보가 거의 남지 않는다.
@@ -22904,19 +22918,6 @@ document.addEventListener('DOMContentLoaded',function(){
         tag: '조정', title: 'KEY 컬러를 줄이거나 SUB 로 내린다',
         why: '팔레트 KEY 비중 ' + r.palR.p.key + '% 는 시장 ' + r.mkR.p.key + '% 보다 높습니다. '
            + '포인트가 많으면 서로를 상쇄합니다.', items: []
-      });
-    }
-
-    // (0) 잘 맞은 색 — 문제만 나열하면 무엇을 지켜야 할지 알 수 없다
-    var solid = r.verified.filter(function(x){ return x.tier === 'solid'; });
-    if(solid.length){
-      acts.push({
-        tag: '유지', title: '시장에서 확실히 검증된 ' + solid.length + '색은 그대로 간다',
-        why: '가장 가까운 마켓 컬러와 ΔE 5 이내로, 경쟁 브랜드가 사실상 같은 색을 쓰고 있습니다. '
-           + '확정 팔레트 ' + r.pal.length + '색 중 ' + Math.round(solid.length / r.pal.length * 100) + '% 입니다.'
-           + (r.verified.length > solid.length
-               ? ' 나머지 ' + (r.verified.length - solid.length) + '색은 ΔE 5~10 으로 같은 계열이지만 톤 차이가 있습니다.' : ''),
-        pals: solid.slice(0, 10)
       });
     }
 
