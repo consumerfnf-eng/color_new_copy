@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_REVIEW_v186 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_REVIEW_v187 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20545,8 +20545,8 @@ document.addEventListener('DOMContentLoaded',function(){
   var _tmSortMode = 'family';   // 'family' = 계열별 묶음(기본) / 'freq' = 빈도순
   // 색상환 순서 — 계열별 보기에서 줄이 정돈돼 보이도록 고정 순서를 쓴다
   var TM_FAMILY_ORDER = ['neutral','red','pink','purple','blue','teal','green','yellow','orange'];
-  var TM_FAMILY_LABEL = { neutral:'뉴트럴', red:'레드', pink:'핑크', purple:'퍼플', blue:'블루',
-                          teal:'틸', green:'그린', yellow:'옐로우', orange:'오렌지' };
+  var TM_FAMILY_LABEL = { neutral:'뉴트럴', red:'레드', pink:'핑크', purple:'퍼플·라일락', blue:'블루·네이비',
+                          teal:'틸·민트', green:'그린', yellow:'옐로우·머스타드', orange:'브라운·베이지·오렌지' };
   window._tmSetSort = function(mode){
     _tmSortMode = mode;
     _tmRender();
@@ -20848,22 +20848,23 @@ document.addEventListener('DOMContentLoaded',function(){
       : String(item.dist);
   }
 
-  // ── Hue 계열 판정 ──
-  //  뉴트럴(무채·극단 명도) 먼저 분리하고, 나머지는 색상환으로 나눔.
-  //  붉은 영역(345~15°)은 밝으면 핑크, 어두우면 레드로 갈라서
-  //  더스티로즈·블러시 같은 색이 레드에 묻히지 않게 함.
+  // ── Hue 계열 판정 — Lab LCh 기준 ──────────────────────────────
+  //  HSL 색상각은 밝은 색에서 틀어진다. 코랄 #EBA491 은 HSL 13°(레드) 인데
+  //  Lab 으로는 40°(오렌지)라 실제 눈에 보이는 계열과 맞다.
+  //  구간은 패션 컬러 용례에 맞춰 잡았다 — 베이지·타페·브라운은 Lab 상
+  //  옐로우 영역(70~95°)에 들어오므로 오렌지 구간에 합쳐 '브라운·오렌지'로 본다.
+  var TM_FAM_NEUTRAL_C = 10.5;   // DWS·SAD(C*10.5~10.6 다크브라운)는 색으로, MGS(C*10.0 그레이멜란지)는 무채로
   function _tmFamily(hex){
-    if(typeof rgbToHsl !== 'function') return 'neutral';
-    var a = rgbToHsl(hex), h = a[0], s = a[1], l = a[2];
-    if(s < 0.12 || l < 0.12 || l > 0.93) return 'neutral';
-    if(h >= 300 && h < 345) return 'pink';
-    if(h >= 345 || h < 15)  return (l >= 0.62) ? 'pink' : 'red';
-    if(h < 45)  return 'orange';
-    if(h < 70)  return 'yellow';
-    if(h < 165) return 'green';
-    if(h < 200) return 'teal';
-    if(h < 255) return 'blue';
-    return 'purple';
+    var a = _tmLCh(hex);
+    if(a.C < TM_FAM_NEUTRAL_C || a.L < 12 || a.L > 95) return 'neutral';
+    var H = a.H;
+    if(H >= 320 || H < 25) return (a.L >= 62) ? 'pink' : 'red';   // 밝으면 핑크, 어두우면 레드
+    if(H < 95)  return 'orange';   // 브라운·베이지·카키·코랄
+    if(H < 125) return 'yellow';   // 옐로우·머스타드
+    if(H < 165) return 'green';
+    if(H < 200) return 'teal';
+    if(H < 288) return 'blue';     // 네이비 포함
+    return 'purple';               // 라일락·페리윙클
   }
   function _tmFamilyCount(list){
     var seen = {}, n = 0;
@@ -21805,7 +21806,7 @@ document.addEventListener('DOMContentLoaded',function(){
       +     ' · 총 ' + cnt + '색</span>'
       + '</div>'
       + _dcpBodyHtml()
-      + '<div style="margin-top:26px;padding-top:20px;border-top:1px solid var(--border)">'
+      + '<div class="dcp-scope" style="margin-top:26px;padding-top:20px;border-top:1px solid var(--border)">'
       +   '<div class="spp-trend-market-hd" style="margin-bottom:14px">'
       +     '<span class="spp-trend-market-flame" style="color:var(--gold);font-size:14px">✎ REVIEW</span>'
       +     '<span class="spp-trend-market-title" style="font-size:22px">팔레트 분석</span>'
@@ -22759,6 +22760,25 @@ document.addEventListener('DOMContentLoaded',function(){
     };
   }
 
+  // 확정 팔레트 색의 코드(Coloro/Pantone) — 내장 데이터에서 hex 로 찾는다
+  function _rptPalMeta(hex){
+    var hu = String(hex).toUpperCase().replace(/^#/, '');
+    var hit = null;
+    function scan(arr){ arr.forEach(function(it){ if(!it || it.gap || !it.hex) return;
+      if(String(it.hex).toUpperCase() === hu) hit = it; }); }
+    if(typeof _dcpCustom !== 'undefined' && _dcpCustom && _dcpCustom.rows){
+      _dcpCustom.rows.forEach(function(r){ if(String(r.hex).toUpperCase() === hu) hit = { code: r.code }; });
+      return hit && hit.code ? hit.code : '';
+    }
+    scan(DCP_CORE_1); scan(DCP_CORE_2);
+    DCP_MOODS.forEach(function(m){ m.rows.forEach(scan); });
+    if(!hit) return '';
+    if(hit.code) return 'COLORO ' + hit.code;
+    if(hit.pantone) return 'PANTONE ' + hit.pantone;
+    if(hit.tag) return hit.tag;
+    return '';
+  }
+
   function _rptSw(hex, size){
     return '<span style="display:inline-block;width:' + (size||11) + 'px;height:' + (size||11)
       + 'px;border-radius:2px;background:' + hex + ';border:1px solid var(--border2);vertical-align:-1px;margin-right:3px"></span>';
@@ -22804,8 +22824,8 @@ document.addEventListener('DOMContentLoaded',function(){
     // Lab Hue 구간에는 저채도 색이 함께 들어온다.
     //  오렌지 구간(15~45°) = 브라운·베이지·카키 포함, 옐로우 구간 = 카키·머스타드 포함.
     //  '오렌지 13' 처럼만 쓰면 오렌지 13색으로 오해되므로 이름을 실제에 맞춘다.
-    var famNames = { neutral:'뉴트럴', red:'레드', pink:'핑크', purple:'퍼플', blue:'블루',
-                     teal:'틸·민트', green:'그린', yellow:'옐로우·카키', orange:'브라운·오렌지' };
+    var famNames = { neutral:'뉴트럴', red:'레드', pink:'핑크', purple:'퍼플·라일락', blue:'블루·네이비',
+                     teal:'틸·민트', green:'그린', yellow:'옐로우·머스타드', orange:'브라운·베이지·오렌지' };
     // 팔레트에 없는데 마켓에 있는 계열 / 그 반대
     var missFam = Object.keys(r.mkFam).filter(function(k){ return !r.palFam[k]; });
     var onlyPal = Object.keys(r.palFam).filter(function(k){ return !r.mkFam[k]; });
@@ -22870,11 +22890,15 @@ document.addEventListener('DOMContentLoaded',function(){
               + '<span style="font-family:var(--mono);font-size:12px;color:var(--text3);min-width:110px">'
               +   (famNames[k] || k) + ' <strong style="color:var(--text)">' + byFam[k].length + '</strong></span>'
               + byFam[k].map(function(p){
-                  return '<span title="' + p.name + ' ' + p.hex + '" style="display:inline-flex;align-items:center;gap:4px;'
-                    + 'padding:2px 6px 2px 2px;border:1px solid var(--border);border-radius:4px">'
-                    + '<span style="width:20px;height:20px;border-radius:3px;background:' + p.hex + '"></span>'
-                    + '<span style="font-family:var(--mono);font-size:10px;color:var(--text3)">' + p.name + '</span>'
-                    + '</span>';
+                  // 27FW 팔레트와 같은 칩 형태 — 이름 / 코드 / 색면 / HEX
+                  var m = _rptPalMeta(p.hex);
+                  return '<div class="dcp-chip" title="' + p.name + ' ' + p.hex + '">'
+                    + '<div class="dcp-name">' + p.name + '</div>'
+                    + '<div class="dcp-card">'
+                    +   (m ? '<div class="dcp-code">' + m + '</div>' : '<div class="dcp-code">&nbsp;</div>')
+                    +   '<div class="dcp-fill" style="background:' + p.hex + '"></div>'
+                    +   '<div class="dcp-hex">' + p.hex + '</div>'
+                    + '</div></div>';
                 }).join('')
               + '</div>';
           }).join('')
