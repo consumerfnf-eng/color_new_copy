@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_CN_v175 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_CN_v176 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -22538,24 +22538,32 @@ document.addEventListener('DOMContentLoaded',function(){
   }
 
   var _cnmHidden = [];
+  function _cnmHideOriginal(wrap){
+    // 원본 CN 스와치 줄을 숨긴다. 원본 렌더가 되살릴 수 있어 매번 다시 적용.
+    ['disc-sub-grid-cn','disc-key-grid-cn'].forEach(function(id){
+      var g = document.getElementById(id);
+      var box = g; while(box && box.parentElement !== wrap) box = box.parentElement;
+      if(!box) return;
+      if(!_cnmHidden.some(function(r){ return r.el === box; })) _cnmHidden.push({ el: box, disp: box.style.display });
+      box.style.display = 'none';
+    });
+  }
+  function _cnmShowOriginal(){
+    _cnmHidden.forEach(function(r){ r.el.style.display = r.disp || ''; });
+    _cnmHidden = [];
+  }
+
   function _cnmRender(){
     var sect = document.getElementById(CNM_SECT_ID);
     if(!_inScope()){
       if(sect) sect.style.display = 'none';
-      _cnmHidden.forEach(function(r){ r.el.style.display = r.disp || ''; });
-      _cnmHidden = [];
+      _cnmShowOriginal();
       return;
     }
     var wrap = document.getElementById('disc-palette-wrap');
     if(!wrap) return;
-    // 원본 CN 그리드 숨김 (헤더는 남기고 스와치 줄만)
-    if(!_cnmHidden.length){
-      ['disc-sub-grid-cn','disc-key-grid-cn'].forEach(function(id){
-        var g = document.getElementById(id);
-        var box = g; while(box && box.parentElement !== wrap) box = box.parentElement;
-        if(box){ _cnmHidden.push({ el: box, disp: box.style.display }); box.style.display = 'none'; }
-      });
-    }
+    _cnmHideOriginal(wrap);
+
     if(!sect){
       sect = document.createElement('div');
       sect.id = CNM_SECT_ID;
@@ -22568,18 +22576,35 @@ document.addEventListener('DOMContentLoaded',function(){
       wrap.insertBefore(sect, ref);
     }
     sect.style.display = 'block';
+
     var r = _cnmBuild();
     if(!r || !r.items.length){
       sect.innerHTML = '<div class="spp-empty" style="font-size:10px">중국 마켓 컬러와 매칭되는 트렌드 컬러가 없습니다</div>';
       return;
     }
-    var shown = r.items.slice(0, CNM_MAX);
+    // 원본과 같은 SUB / KEY 구분을 유지한다 (분류는 제안색 기준)
+    var g = { key: [], sub: [], basic: [] };
+    r.items.forEach(function(it){ g[_tmClassify(it.trend.hex)].push(it); });
+    var rows = [
+      ['SUB',   'var(--blue)', g.sub.concat(g.basic)],   // 원본이 SUB/KEY 두 줄이라 BASIC 은 SUB 로 합침
+      ['KEY',   '#A090F0',     g.key]
+    ];
     sect.innerHTML =
         '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-bottom:10px">'
-      +   '중국 마켓 ' + r.scanned + '색 → WGSN·Peclers 매칭 ' + r.items.length + '색 · 상위 ' + shown.length + ' (빈도순) · 매칭 임계 ΔRGB ≤ ' + TM_DIST
+      +   '중국 마켓 ' + r.scanned + '색 → WGSN·Peclers 매칭 ' + r.items.length + '색 · 매칭 임계 ΔRGB ≤ ' + TM_DIST
       + '</div>'
-      + '<div class="dcp-mood-row" style="justify-content:flex-start;gap:10px">'
-      +   shown.map(_cnmChip).join('') + '</div>';
+      + rows.map(function(row){
+          var list = row[2].slice(0, CNM_MAX);
+          if(!list.length) return '';
+          return '<div style="margin-bottom:16px">'
+            + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+            +   '<span style="font-family:var(--mono);font-size:9px;font-weight:700;color:' + row[1] + ';letter-spacing:0.1em">' + row[0] + '</span>'
+            +   '<span style="font-family:var(--mono);font-size:9px;color:var(--text3)">' + list.length + '색</span>'
+            + '</div>'
+            + '<div class="dcp-mood-row" style="justify-content:flex-start;gap:10px">'
+            +   list.map(_cnmChip).join('') + '</div>'
+            + '</div>';
+        }).join('');
   }
   window._discRenderCnMatched = _cnmRender;
 
