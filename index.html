@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_REVIEW_v195 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_REVIEW_v196 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -22876,14 +22876,25 @@ document.addEventListener('DOMContentLoaded',function(){
       // 팔레트 규모의 15% 를 상한으로 둔다.
       var need = Math.max(1, Math.round(r.pal.length * (r.mkR.p.key - r.palR.p.key) / 100));
       need = Math.min(need, Math.max(2, Math.round(r.pal.length * 0.15)));
+      // KEY 0% 는 '포인트 컬러가 없다'가 아니라 'Lab C* 기준을 넘는 색이 없다'는 뜻이다.
+      // 팔레트가 채도를 낮게 잡은 설계일 수 있으므로 단정하지 않는다.
+      var zeroKey = (r.palR.c.key === 0);
       acts.push({
-        tag: '보강', title: 'KEY 컬러를 ' + need + '색 안팎으로 늘린다',
-        why: '팔레트 KEY 비중이 ' + r.palR.p.key + '% 인데 시장은 ' + r.mkR.p.key + '% 입니다. '
-           + '다운 아우터는 면적이 커서 KEY 부족은 매대에서 곧바로 단조로움으로 읽힙니다. '
-           + (keyCands.length
-               ? '팔레트에 없으면서 기준(빈도 ' + RPT_MIN_FREQ + ' 이상 · ' + RPT_MIN_BRANDS
-                 + '개 브랜드 이상)을 통과한 KEY 후보가 ' + keyCands.length + '색 있습니다.'
-               : '다만 기준을 통과한 KEY 후보가 없어, 추가할 색은 별도로 찾아야 합니다.'),
+        tag: '보강',
+        title: 'KEY 비중을 ' + r.mkR.p.key + '% 수준으로 맞출지 결정한다'
+             + (keyCands.length ? ' (필요 ' + need + '색 · 후보 ' + keyCands.length + '색)'
+                                : ' (필요 ' + need + '색 · 후보 없음)'),
+        why: '팔레트 KEY 비중은 ' + r.palR.p.key + '%(' + r.palR.c.key + '색), 시장은 ' + r.mkR.p.key + '% 입니다. '
+           + (zeroKey
+               ? '다만 KEY 0% 는 포인트 컬러가 없다는 뜻이 아니라, 채도 기준(Lab C*≥' + TM_KEY_C
+                 + ')을 넘는 색이 없다는 뜻입니다. 팔레트 전반을 낮은 채도로 잡은 설계라면 의도된 결과입니다. '
+               : '')
+           + '비중을 맞추려면 ' + need + '색 안팎이 필요하지만, 팔레트에 없으면서 기준(빈도 ' + RPT_MIN_FREQ
+           + ' 이상 · ' + RPT_MIN_BRANDS + '개 브랜드 이상)을 통과한 후보는 '
+           + (keyCands.length ? keyCands.length + '색입니다.'
+                              : '없습니다. 추가할 색은 트렌드 자료에서 따로 찾아야 합니다.')
+           + (keyCands.length && keyCands.length < need
+               ? ' 나머지 ' + (need - keyCands.length) + '색은 별도로 찾아야 합니다.' : ''),
         items: keyCands.slice(0, 10)
       });
     } else if(r.mkR.n && (r.palR.p.key - r.mkR.p.key) >= 8){
@@ -22947,8 +22958,11 @@ document.addEventListener('DOMContentLoaded',function(){
     }
 
     // (5) 계열 쏠림
-    var palTop = Object.keys(r.palFam).sort(function(a,b){ return r.palFam[b]-r.palFam[a]; })[0];
-    if(palTop && r.palFam[palTop] / r.pal.length >= 0.45){
+    // 아우터 팔레트에서 뉴트럴이 절반인 것은 흔한 구성이라 신호로 보지 않는다.
+    // 유채색 계열이 과반을 넘을 때만 편중으로 본다.
+    var palTop = Object.keys(r.palFam).filter(function(k){ return k !== 'neutral'; })
+      .sort(function(a,b){ return r.palFam[b]-r.palFam[a]; })[0];
+    if(palTop && r.palFam[palTop] / r.pal.length >= 0.40){
       acts.push({
         tag: '조정', title: (famNames[palTop] || palTop) + ' 계열 ' + r.palFam[palTop] + '색의 편중을 확인한다',
         why: '팔레트의 ' + Math.round(r.palFam[palTop]/r.pal.length*100) + '% 가 한 계열입니다. '
