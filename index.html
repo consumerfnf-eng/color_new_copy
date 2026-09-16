@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_CN_v180 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_REVIEW_v182 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21438,7 +21438,7 @@ document.addEventListener('DOMContentLoaded',function(){
   // ══════════════════════════════════════════════════════════════
   var DCP_SECT_ID = 'disc-27fw-palette';
   var DCP_STYLE_ID = 'dcp-style';
-  var _dcpCollapsed = true;
+  var _dcpCollapsed = false;   // 04 에서는 항상 펼침 (토글 제거)
 
   var DCP_CORE_1 = [
     {name:'CRS', code:'036-90-02', hex:'F3F0E6'},
@@ -21797,15 +21797,21 @@ document.addEventListener('DOMContentLoaded',function(){
              + DCP_CORE_2.filter(function(x){ return !x.gap; }).length
              + DCP_MOODS.reduce(function(n,m){ return n + m.rows.reduce(function(k,r){ return k + r.length; }, 0); }, 0));
     sect.innerHTML =
-        '<div class="spp-trend-market-hd" style="margin-bottom:0;cursor:pointer" onclick="_dcpToggle()">'
+        '<div class="spp-trend-market-hd" style="margin-bottom:0">'
       +   '<span class="spp-trend-market-flame" style="color:var(--gold)">▣ 27FW PALETTE</span>'
       +   '<span class="spp-trend-market-title">' + (cv0 ? '업로드 팔레트' : 'DISCOVERY 27FW Color Palette') + '</span>'
       +   '<span class="spp-trend-market-sub">' + (cv0 ? cv0.fileName : '사내 확정 팔레트 · CORE + 무드 3종')
       +     ' · 총 ' + cnt + '색</span>'
-      +   '<span style="margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--text3)">'
-      +     (_dcpCollapsed ? '▾ 펼치기' : '▴ 접기') + '</span>'
       + '</div>'
-      + (_dcpCollapsed ? '' : _dcpBodyHtml());
+      + _dcpBodyHtml()
+      + '<div style="margin-top:26px;padding-top:20px;border-top:1px solid var(--border)">'
+      +   '<div class="spp-trend-market-hd" style="margin-bottom:10px">'
+      +     '<span class="spp-trend-market-flame" style="color:var(--gold)">✎ REVIEW</span>'
+      +     '<span class="spp-trend-market-title">팔레트 분석</span>'
+      +     '<span class="spp-trend-market-sub">확정 팔레트를 마켓·트렌드 데이터에 비춰 계산한 결과</span>'
+      +   '</div>'
+      +   _rptHtml()
+      + '</div>';
   }
   window._discRender27fwPalette = _dcpRender;
 
@@ -22140,6 +22146,25 @@ document.addEventListener('DOMContentLoaded',function(){
   function _hidTargets(){
     var out = [], wrap = document.getElementById('disc-palette-wrap');
     if(wrap){
+      // China Market 은 Trend-Matched 의 중국 패널로 대체되어 03 에서는 숨긴다.
+      // 'China Market' 헤더부터 Intersection(또는 다음 섹션) 직전까지.
+      (function(){
+        var kids = Array.prototype.slice.call(wrap.children);
+        var st = -1, en = -1;
+        kids.forEach(function(el, i){
+          var txt = (el.textContent || '');
+          if(st < 0 && txt.indexOf('China Market') >= 0) st = i;
+          else if(st >= 0 && en < 0 &&
+                  (txt.indexOf('Intersection') >= 0 || el.id === 'disc-sales-section')) en = i;
+        });
+        if(st >= 0){
+          var stop = (en >= 0) ? en : kids.length;
+          for(var i = st; i < stop; i++){
+            if(kids[i].id === CNM_SECT_ID) continue;   // 내가 만든 매칭 섹션도 같이 제거되므로 제외
+            out.push(kids[i]);
+          }
+        }
+      })();
       // KOREA 는 헤더와 SUB/KEY/BASIC 그리드가 한 컨테이너가 아니라
       // disc-palette-wrap 의 형제 div 로 흩어져 있다.
       // 'Korea Domestic' 헤더부터 'China Market' 헤더 직전까지를 범위로 잡는다.
@@ -22592,6 +22617,14 @@ document.addEventListener('DOMContentLoaded',function(){
   }
 
   function _cnmRender(){
+    // 03 하단의 China Market 섹션은 제거됨 — 중국 결과는 Trend-Matched 의
+    // '중국 마켓' 패널에서만 보여준다. (_cnmBuild / _cnmChip 은 그 패널이 사용)
+    var sect = document.getElementById(CNM_SECT_ID);
+    if(sect) sect.style.display = 'none';
+    _cnmShowOriginal();
+    return;
+  }
+  function _cnmRenderLegacy(){
     var sect = document.getElementById(CNM_SECT_ID);
     if(!_inScope()){
       if(sect) sect.style.display = 'none';
@@ -22645,6 +22678,174 @@ document.addEventListener('DOMContentLoaded',function(){
         }).join('');
   }
   window._discRenderCnMatched = _cnmRender;
+
+
+  // ══════════════════════════════════════════════════════════════
+  //  04 Palette Review — 분석 리포트
+  //  ────────────────────────────────────────────────────────────
+  //  확정 팔레트를 마켓·트렌드 데이터에 비춰 계산한 결과를 서술한다.
+  //  모든 수치는 실제 데이터에서 산출한 값이고, 추정이나 창작은 없다.
+  //   · 검증됨   : 마켓에서 근거가 잡히는 확정색
+  //   · 근거 약함: 마켓에서 안 잡히는 확정색 (선행이거나 근거 부족)
+  //   · 보완 후보: 마켓·트렌드 양쪽에서 잡히는데 팔레트에 없는 색
+  // ══════════════════════════════════════════════════════════════
+  var RPT_VERIFY_DE = 10;   // 확정색이 '마켓에서 잡힌다'고 볼 Lab 거리
+
+  function _rptMarketPool(){
+    try { return _tmMarketPool(); } catch(e){ return []; }
+  }
+
+  function _rptBuild(){
+    var pal = _gapPaletteList();
+    if(!pal.length) return null;
+    var market = _rptMarketPool();
+    var trend  = _tmTrendPool();
+
+    // 1) 확정색별 마켓 근거
+    var verified = [], weak = [];
+    pal.forEach(function(p){
+      var best = null, bd = 1e9;
+      market.forEach(function(m){
+        var dd = _tmDeltaE(p.hex, m.hex);
+        if(dd < bd){ bd = dd; best = m; }
+      });
+      var rec = { pal: p, de: Math.round(bd * 10) / 10, freq: best ? best.freq : 0 };
+      (bd <= RPT_VERIFY_DE && best) ? verified.push(rec) : weak.push(rec);
+    });
+    verified.sort(function(a,b){ return b.freq - a.freq; });
+    weak.sort(function(a,b){ return a.de - b.de; });
+
+    // 2) 확정 팔레트 구성비 vs 매칭 결과 구성비
+    function ratio(list, hexOf){
+      var c = { basic:0, sub:0, key:0 };
+      list.forEach(function(x){ c[_tmClassify(hexOf(x))]++; });
+      var n = list.length || 1;
+      return { c: c, n: list.length,
+               p: { basic: Math.round(c.basic/n*100), sub: Math.round(c.sub/n*100), key: Math.round(c.key/n*100) } };
+    }
+    var palR = ratio(pal, function(x){ return x.hex; });
+    var mkList = [];
+    if(_tmLastBuild && _tmLastBuild.raw){
+      ['key','sub','basic'].forEach(function(k){ mkList = mkList.concat(_tmLastBuild.raw[k] || []); });
+    }
+    var mkR = ratio(mkList, function(x){ return x.trend.hex; });
+
+    // 3) 보완 후보 (GAP 과 동일 기준)
+    var gap = (typeof _gapBuild === 'function') ? _gapBuild() : null;
+
+    // 4) 색상 계열 분포
+    function fams(list, hexOf){
+      var f = {};
+      list.forEach(function(x){ var k = _tmFamily(hexOf(x)); f[k] = (f[k]||0)+1; });
+      return f;
+    }
+    return {
+      pal: pal, verified: verified, weak: weak,
+      palR: palR, mkR: mkR, gap: gap,
+      palFam: fams(pal, function(x){ return x.hex; }),
+      mkFam: fams(mkList, function(x){ return x.trend.hex; }),
+      trendN: trend.length, marketN: market.length
+    };
+  }
+
+  function _rptSw(hex, size){
+    return '<span style="display:inline-block;width:' + (size||11) + 'px;height:' + (size||11)
+      + 'px;border-radius:2px;background:' + hex + ';border:1px solid var(--border2);vertical-align:-1px;margin-right:3px"></span>';
+  }
+  function _rptList(items, n, fmt){
+    return items.slice(0, n).map(fmt).join(', ') + (items.length > n ? ' 외 ' + (items.length - n) : '');
+  }
+
+  function _rptHtml(){
+    var r = _rptBuild();
+    if(!r) return '<div class="spp-empty">분석할 데이터가 없습니다. 01·02 에서 데이터를 먼저 로드하세요.</div>';
+    var P = function(t){ return '<p style="margin:0 0 10px;line-height:1.75;font-size:12px;color:var(--text2)">' + t + '</p>'; };
+    var H = function(t){ return '<div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--gold);'
+      + 'letter-spacing:0.1em;margin:18px 0 8px">' + t + '</div>'; };
+    var B = function(t){ return '<strong style="color:var(--text)">' + t + '</strong>'; };
+
+    var vRate = Math.round(r.verified.length / r.pal.length * 100);
+    var famNames = { neutral:'뉴트럴', red:'레드', pink:'핑크', purple:'퍼플', blue:'블루',
+                     teal:'틸', green:'그린', yellow:'옐로우', orange:'오렌지' };
+    // 팔레트에 없는데 마켓에 있는 계열 / 그 반대
+    var missFam = Object.keys(r.mkFam).filter(function(k){ return !r.palFam[k]; });
+    var onlyPal = Object.keys(r.palFam).filter(function(k){ return !r.mkFam[k]; });
+
+    var html = '';
+
+    html += H('1. 시장 검증 — 확정 팔레트 ' + r.pal.length + '색 중 ' + r.verified.length + '색');
+    html += P('확정 팔레트 ' + B(r.pal.length + '색') + '을 마켓 컬러 ' + r.marketN + '색과 대조한 결과, '
+      + B(r.verified.length + '색(' + vRate + '%)') + '이 Lab ΔE ' + RPT_VERIFY_DE + ' 이내에서 근거를 찾았습니다. '
+      + '경쟁 브랜드가 실제로 쓰고 있는 색이라는 뜻입니다.'
+      + (r.verified.length ? ' 그중 마켓 빈도가 높은 쪽은 '
+          + _rptList(r.verified, 5, function(x){ return _rptSw(x.pal.hex) + x.pal.name + '(' + x.freq + ')'; }) + ' 입니다.' : ''));
+
+    if(r.weak.length){
+      html += P(B(r.weak.length + '색') + '은 마켓에서 근거가 잡히지 않았습니다 — '
+        + _rptList(r.weak, 8, function(x){ return _rptSw(x.pal.hex) + x.pal.name; }) + '. '
+        + '선행 제안이라면 의도된 결과지만, 근거를 두고 넣은 색이라면 재검토가 필요합니다. '
+        + '가장 가까운 마켓 컬러와의 거리가 ' + r.weak[0].de + ' ~ ' + r.weak[r.weak.length-1].de + ' 범위입니다.');
+    }
+
+    html += H('2. 구성비 — BASIC / SUB / KEY');
+    html += P('확정 팔레트는 BASIC ' + B(r.palR.p.basic + '%') + ' · SUB ' + B(r.palR.p.sub + '%')
+      + ' · KEY ' + B(r.palR.p.key + '%') + ' 구성입니다. '
+      + (r.mkR.n
+          ? '같은 기준으로 분류한 마켓·트렌드 매칭 결과는 BASIC ' + r.mkR.p.basic + '% · SUB ' + r.mkR.p.sub
+            + '% · KEY ' + r.mkR.p.key + '% 입니다. '
+            + (Math.abs(r.palR.p.key - r.mkR.p.key) >= 8
+                ? 'KEY 비중이 ' + (r.palR.p.key > r.mkR.p.key ? '시장보다 높습니다' : '시장보다 낮습니다')
+                  + ' (' + r.palR.p.key + '% 대 ' + r.mkR.p.key + '%). 다운 아우터는 면적이 커서 KEY 비중이 곧 매대 인상으로 직결되니, 이 차이는 의도한 것인지 확인이 필요합니다.'
+                : 'KEY 비중은 시장과 큰 차이가 없습니다(' + r.palR.p.key + '% 대 ' + r.mkR.p.key + '%).')
+          : '비교할 매칭 결과가 없어 시장 구성비는 산출하지 못했습니다.'));
+
+    html += H('3. 색상 계열 분포');
+    html += P('확정 팔레트의 계열 구성은 '
+      + Object.keys(r.palFam).sort(function(a,b){ return r.palFam[b]-r.palFam[a]; })
+          .map(function(k){ return (famNames[k]||k) + ' ' + r.palFam[k]; }).join(' · ') + ' 입니다.'
+      + (missFam.length
+          ? ' 시장에서는 잡히는데 팔레트에 없는 계열은 ' + B(missFam.map(function(k){ return famNames[k]||k; }).join(' · '))
+            + ' 입니다. 해당 계열을 의도적으로 뺀 것인지 확인해볼 만합니다.'
+          : ' 시장에서 관측되는 계열은 모두 팔레트에 포함돼 있습니다.')
+      + (onlyPal.length
+          ? ' 반대로 ' + B(onlyPal.map(function(k){ return famNames[k]||k; }).join(' · '))
+            + ' 계열은 팔레트에만 있고 매칭 결과에는 없습니다.' : ''));
+
+    if(r.gap && r.gap.items.length){
+      html += H('4. 추가 검토 대상 — 보완 후보 ' + r.gap.items.length + '색');
+      var top = r.gap.items.slice(0, 8);
+      html += P('마켓과 트렌드(WGSN·Peclers) 양쪽에서 잡히는데 확정 팔레트에는 없는 색이 '
+        + B(r.gap.items.length + '색') + ' 있습니다. 마켓 빈도 상위는 '
+        + top.map(function(e){ return _rptSw(e.item.trend.hex) + (e.item.trend.name || e.item.trend.hex)
+            + '(' + e.item.mkFreq + ')'; }).join(', ') + ' 입니다. '
+        + '가장 가까운 확정색과의 거리가 ΔE ' + top[0].nearDe + ' 이상이라 팔레트가 덮지 못하는 영역입니다.');
+      if(r.gap.byCat && r.gap.byCat.cats){
+        var per = r.gap.byCat.cats.filter(function(m){ return m.list.length; })
+          .map(function(m){ return m.def.name + ' ' + m.list.length + '색'; });
+        if(per.length) html += P('카테고리별로는 ' + per.join(' · ') + ' 로 나뉩니다.');
+      }
+    } else {
+      html += H('4. 추가 검토 대상');
+      html += P('확정 팔레트가 매칭 결과를 모두 포함하고 있어 보완 후보가 없습니다.');
+    }
+
+    html += H('요약');
+    html += P('시장 검증률 ' + B(vRate + '%') + ' · 근거 약한 색 ' + B(r.weak.length + '색')
+      + ' · 보완 후보 ' + B((r.gap ? r.gap.items.length : 0) + '색') + '. '
+      + (vRate >= 70 ? '팔레트 대부분이 시장 근거를 갖고 있습니다. '
+                     : '검증되지 않은 색의 비중이 적지 않습니다. ')
+      + (r.weak.length ? '근거가 약한 색은 선행 의도인지 점검하고, ' : '')
+      + ((r.gap && r.gap.items.length) ? '보완 후보 중 빈도 상위 몇 색은 추가를 검토할 만합니다.' : '추가할 색은 현재 없습니다.'));
+
+    html += '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-top:16px;'
+      + 'border-top:1px solid var(--border);padding-top:10px;line-height:1.7">'
+      + '산출 기준 — 시장 검증 Lab ΔE ≤ ' + RPT_VERIFY_DE + ' · 보완 후보 판정 Lab ΔE ≥ ' + GAP_MIN_DE
+      + ' · 분류 BASIC C*&lt;' + TM_BASIC_C + ' / KEY C*≥' + TM_KEY_C
+      + ' · 마켓 ' + r.marketN + '색 · 트렌드 풀 ' + r.trendN + '색. '
+      + '수치는 현재 로드된 데이터에서 계산한 값이며, 브랜드·품목 필터를 바꾸면 결과도 달라집니다.'
+      + '</div>';
+    return html;
+  }
 
   // ── 진단: 카테고리별 마켓 데이터 규모 ────────────────────────
   //  콘솔에서 _discDataAudit() 로 호출. 모듈 스코프에서 실행되므로
