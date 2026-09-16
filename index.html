@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_REVIEW_v189 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_REVIEW_v191 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -22810,9 +22810,9 @@ document.addEventListener('DOMContentLoaded',function(){
     return '<div style="width:104px;flex:0 0 auto">'
       + codeLine(opt && opt.topCode)
       + '<div style="border:1px solid ' + (flip ? 'var(--gold)' : 'var(--border)') + ';border-radius:4px;overflow:hidden">'
-      +   cell(topHex, topLabel, 54)
+      +   cell(topHex, topLabel, 38)
       +   '<div style="height:1px;background:var(--border)"></div>'
-      +   cell(botHex, botLabel, 40)
+      +   cell(botHex, botLabel, 62)
       + '</div>'
       + codeLine(opt && opt.botCode)
       + '<div style="font-family:var(--mono);font-size:11px;color:var(--text3);text-align:center;margin-top:2px;'
@@ -22936,7 +22936,7 @@ document.addEventListener('DOMContentLoaded',function(){
             { topCode: e.near ? (_rptPalMeta(e.near.hex) || e.near.hex) : '',
               botCode: _rptTrendCode(t) });
         }).join(''),
-        '위 = 확정 팔레트(가장 가까운 색) · 아래 = 마켓·트렌드(추가 후보) · ΔE 가 클수록 팔레트가 못 덮는 영역');
+        '위 = 확정 팔레트(가장 가까운 색) · 아래 = 마켓·트렌드(추가 후보) · ΔE 가 작을수록 같은 색 · 마켓 빈도순');
       if(r.gap.byCat && r.gap.byCat.cats){
         var per = r.gap.byCat.cats.filter(function(m){ return m.list.length; })
           .map(function(m){ return m.def.name + ' ' + m.list.length + '색'; });
