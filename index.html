@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_SORT_v167R (2026-09-15) — 가로 스크롤 도입 이전 상태로 복귀 — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_CN_v174 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20349,15 +20349,31 @@ document.addEventListener('DOMContentLoaded',function(){
     // ── 2) Trend 페이지: Newsletter 숨김 · 좌 WGSN / 우 Peclers ──
     if(e.newsCard) e.newsCard.style.display = 'none';
 
-    // ── 04 Colorway 제거 ──
+    // ── 04 Colorway → 04 Palette Review 로 전환 ──
+    //  새 탭 구조를 만드는 대신 기존 colorway 탭을 빌려 쓴다.
+    //  (switchTab / 활성화 처리 등 원본 로직을 그대로 재사용)
     _cwRestore = [];
     var cwBtn = e.nav.querySelector('button.tab[onclick*="colorway"]');
+    if(cwBtn){
+      _cwRestore.push({ el: cwBtn, html: cwBtn.innerHTML });
+      cwBtn.innerHTML = '<span class="tab-num">04</span>Palette Review';
+    }
     var cwPane = document.getElementById('tab-colorway');
-    [cwBtn, cwPane].forEach(function(el){
-      if(!el) return;
-      _cwRestore.push({ el: el, disp: el.style.display });
-      el.style.display = 'none';
-    });
+    if(cwPane){
+      Array.prototype.slice.call(cwPane.children).forEach(function(ch){
+        if(ch.id === 'disc-review-wrap') return;
+        _cwRestore.push({ el: ch, disp: ch.style.display });
+        ch.style.display = 'none';
+      });
+      if(!document.getElementById('disc-review-wrap')){
+        var rw = document.createElement('div');
+        rw.id = 'disc-review-wrap';
+        rw.className = 'tab-scroll';
+        cwPane.appendChild(rw);
+      } else {
+        document.getElementById('disc-review-wrap').style.display = '';
+      }
+    }
     var colL = e.twoCol.children[0], colR = e.twoCol.children[1];
     if(colL && colR){
       colL.appendChild(e.wgsnCard);   // 좌측 상단 = WGSN
@@ -20394,13 +20410,13 @@ document.addEventListener('DOMContentLoaded',function(){
       }
       var fwd = e.navPal.querySelector('button[onclick*="colorway"]');
       if(fwd){
-        _cwRestore.push({ el: fwd, disp: fwd.style.display });
-        fwd.style.display = 'none';
+        _cwRestore.push({ el: fwd, html: fwd.innerHTML });
+        fwd.innerHTML = '04 Palette Review &#8594;';
       }
       var infoPal = e.navPal.querySelector('.step-nav-info');
       if(infoPal){
         _cwRestore.push({ el: infoPal, html: infoPal.innerHTML });
-        infoPal.innerHTML = 'STEP <strong>03</strong> / 03 &nbsp;&middot;&nbsp; Finalize Palette';
+        infoPal.innerHTML = 'STEP <strong>03</strong> / 04 &nbsp;&middot;&nbsp; Proposal → Review';
       }
     }
 
@@ -20445,6 +20461,7 @@ document.addEventListener('DOMContentLoaded',function(){
     try{ if(typeof _gapRender === 'function') _gapRender(); }catch(err){}
     try{ if(typeof _ccRender === 'function') _ccRender(); }catch(err){}
     try{ if(typeof _discOrderSections === 'function') _discOrderSections(); }catch(err){}
+    try{ if(typeof _cnmRender === 'function') _cnmRender(); }catch(err){}
     try{ if(typeof _hidSync === 'function') _hidSync(); }catch(err){}
   }
   window._discSyncLayout = sync;
@@ -21020,6 +21037,140 @@ document.addEventListener('DOMContentLoaded',function(){
     return '<div class="dcp-code">&nbsp;</div>';       // 자리만 유지
   }
 
+
+  // ══════════════════════════════════════════════════════════════
+  //  데이터 오버레이 — 세일즈 / 중국
+  //  ────────────────────────────────────────────────────────────
+  //  Trend-Matched 칩 아래에 비슷한 색의 실판매 컬러(25FW)나
+  //  중국 마켓 컬러를 덧붙여, "작년에 이 색을 썼고 이만큼 팔렸다"를
+  //  칩에서 바로 보여준다. 칩을 클릭하면 상세가 뜬다.
+  // ══════════════════════════════════════════════════════════════
+  var OV_DE = 12;                 // 비슷한 색으로 볼 Lab ΔE
+  var _ovOn = { sales: false, cn: false };
+
+  window._ovToggle = function(kind){
+    _ovOn[kind] = !_ovOn[kind];
+    _tmRender();
+    try{ _discOrderSections(); }catch(e){}
+  };
+
+  // 세일즈 풀 — 블랙·화이트만 제외하고 그레이는 남긴다
+  function _ovSalesPool(){
+    var d = window.DISC_SALES_DATA;
+    if(!d) return [];
+    var out = [];
+    ['key','sub','basic'].forEach(function(g){
+      (d[g] || []).forEach(function(c){
+        if(!c || !c.hex) return;
+        var a = _tmLCh(c.hex);
+        if(a.L >= 90 && a.C < 8) return;      // 화이트·오프화이트
+        if(a.L <= 16 && a.C < 8) return;      // 블랙
+        out.push({
+          hex: String(c.hex).toUpperCase(), group: g, code: c.code || '',
+          name: c.group || '', sell: c.sell_rate, rev: c.rev_share, score: c.saleScore
+        });
+      });
+    });
+    return out;
+  }
+  function _ovCnPool(){
+    if(typeof cnMarketData === 'undefined' || !Array.isArray(cnMarketData)) return [];
+    return cnMarketData.filter(function(c){ return c && c.hex; }).map(function(c){
+      return { hex: String(c.hex).toUpperCase(), freq: c.freq || 1, brands: c.brands || [] };
+    });
+  }
+  var _ovCache = {};
+  function _ovPool(kind){
+    if(!_ovCache[kind] || _ovCache[kind].t !== _tmLastBuild){
+      _ovCache[kind] = { t: _tmLastBuild, list: (kind === 'sales' ? _ovSalesPool() : _ovCnPool()) };
+    }
+    return _ovCache[kind].list;
+  }
+  // 트렌드 칩 하나에 가장 가까운 항목
+  function _ovMatch(kind, hex){
+    var pool = _ovPool(kind), best = null, bd = OV_DE;
+    for(var i = 0; i < pool.length; i++){
+      var dd = _tmDeltaE(hex, pool[i].hex);
+      if(dd < bd){ bd = dd; best = pool[i]; }
+    }
+    return best ? { item: best, de: Math.round(bd * 10) / 10 } : null;
+  }
+
+  var _ovIndex = {};
+  function _ovStrip(hex){
+    var html = '';
+    ['sales','cn'].forEach(function(kind){
+      if(!_ovOn[kind]) return;
+      var m = _ovMatch(kind, hex);
+      if(!m) return;
+      var key = kind + '|' + hex;
+      _ovIndex[key] = m;
+      var label = (kind === 'sales')
+        ? (m.item.sell != null ? m.item.sell + '%' : '판매')
+        : ('×' + m.item.freq);
+      html += '<div onclick="event.stopPropagation();_ovOpen(event,\'' + kind + '\',\'' + hex + '\')"'
+        + ' title="' + (kind === 'sales' ? '25FW 실판매' : '중국 마켓') + ' ' + m.item.hex + ' · ΔE ' + m.de + '"'
+        + ' style="display:flex;align-items:center;gap:4px;margin-top:3px;padding:2px 4px;cursor:pointer;'
+        + 'border:1px solid var(--border);border-radius:3px;background:var(--surface)">'
+        +   '<span style="width:12px;height:12px;border-radius:2px;flex:0 0 auto;background:' + m.item.hex + '"></span>'
+        +   '<span style="font-family:var(--mono);font-size:7.5px;color:var(--text3);white-space:nowrap;overflow:hidden">'
+        +     (kind === 'sales' ? 'S ' : 'CN ') + label + '</span>'
+        + '</div>';
+    });
+    return html;
+  }
+
+  window._ovOpen = function(evt, kind, hex){
+    var m = _ovIndex[kind + '|' + hex];
+    if(!m) return;
+    var pop = _ccEnsurePop();
+    var it = m.item;
+    var rows = (kind === 'sales')
+      ? [['컬러코드', it.code || '-'], ['계열', it.name || '-'], ['그룹', (it.group || '').toUpperCase()],
+         ['판매율', it.sell != null ? it.sell + '%' : '-'],
+         ['매출비중', it.rev != null ? (it.rev * 100).toFixed(2) + '%' : '-'],
+         ['판매점수', it.score != null ? it.score : '-']]
+      : [['마켓 빈도', '×' + it.freq], ['브랜드', (it.brands || []).slice(0, 4).join(', ') || '-']];
+    pop.innerHTML = ''
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+      +   '<span style="width:22px;height:22px;border-radius:4px;background:' + it.hex + ';border:1px solid var(--border2)"></span>'
+      +   '<span style="font-family:var(--mono);font-size:11px;color:var(--text)">' + it.hex + '</span>'
+      +   '<span style="font-family:var(--mono);font-size:9px;color:var(--text3)">'
+      +     (kind === 'sales' ? '25FW 실판매' : '중국 마켓') + '</span>'
+      + '</div>'
+      + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;font-family:var(--mono);font-size:9px;color:var(--text4)">'
+      +   '<span style="width:12px;height:12px;border-radius:2px;background:' + hex + ';border:1px solid var(--border)"></span>'
+      +   '제안색 ' + hex + ' 와 Lab ΔE ' + m.de
+      + '</div>'
+      + rows.map(function(r){
+          return '<div style="display:flex;justify-content:space-between;gap:14px;font-family:var(--mono);font-size:10px;padding:3px 0">'
+            + '<span style="color:var(--text4)">' + r[0] + '</span><span style="color:var(--text2)">' + r[1] + '</span></div>';
+        }).join('');
+    pop.style.display = 'block';
+    var r = evt.currentTarget.getBoundingClientRect();
+    var top = r.bottom + 6, left = r.left;
+    if(left + 210 > window.innerWidth - 8) left = window.innerWidth - 218;
+    if(top + pop.offsetHeight > window.innerHeight - 8) top = Math.max(8, r.top - pop.offsetHeight - 6);
+    pop.style.top = top + 'px'; pop.style.left = left + 'px';
+    document.getElementById('cc-move-ov').style.display = 'block';
+  };
+
+  // 섹션 하단 우측 데이터 토글
+  function _ovTabs(){
+    var cnt = { sales: _ovPool('sales').length, cn: _ovPool('cn').length };
+    return '<div style="display:flex;justify-content:flex-end;gap:6px;margin-top:4px">'
+      + [['sales','세일즈 25FW'], ['cn','중국 마켓']].map(function(t){
+          var on = _ovOn[t[0]];
+          return '<button onclick="_ovToggle(\'' + t[0] + '\')" style="font-family:var(--mono);font-size:10px;'
+            + 'padding:5px 12px;border-radius:4px;cursor:pointer;'
+            + 'border:1px solid ' + (on ? 'var(--gold)' : 'var(--border)') + ';'
+            + 'background:' + (on ? 'rgba(160,120,64,0.16)' : 'transparent') + ';'
+            + 'color:' + (on ? 'var(--gold)' : 'var(--text3)') + ';font-weight:' + (on ? '700' : '400') + '">'
+            + (on ? '● ' : '○ ') + t[1] + ' ' + cnt[t[0]] + '색</button>';
+        }).join('')
+      + '</div>';
+  }
+
   // ── 칩 렌더 — 27FW Color Palette(dcp) 와 동일한 형태 ──
   //  구성: 출처태그 → 컬러명 → [COLORO 코드 | 색면 | HEX] 카드.
   //  빈도·ΔRGB·브랜드 같은 수치는 칩에서 빼고 클릭 시 팝업에서 본다.
@@ -21039,6 +21190,7 @@ document.addEventListener('DOMContentLoaded',function(){
       +     '</div>'
       +     '<div class="dcp-hex">' + t.hex + '</div>'
       +   '</div>'
+      +   _ovStrip(t.hex)
       + '</div>';
   }
 
@@ -21149,7 +21301,8 @@ document.addEventListener('DOMContentLoaded',function(){
               ? '<div class="spp-empty">01 Market Analysis 데이터를 먼저 로드하세요.</div>'
               : _tmRow('SUB', 'var(--blue)', b.sub, TM_CAPS.sub, t.raw.sub, t.families.sub)
               + _tmRow('KEY', '#A090F0',     b.key, TM_CAPS.key, t.raw.key, t.families.key)
-              + _tmRow('BASIC', 'var(--gold)', b.basic, TM_CAPS.basic, t.raw.basic, t.families.basic)));
+              + _tmRow('BASIC', 'var(--gold)', b.basic, TM_CAPS.basic, t.raw.basic, t.families.basic)
+              + _ovTabs()));
   }
   window._discRenderTrendMatched = _tmRender;
 
@@ -21311,6 +21464,187 @@ document.addEventListener('DOMContentLoaded',function(){
   ];
   var DCP_NOTE = 'CORE 컬러군과 BLS, LVL은 채도 +3%p 버전 HEX, 그 외 컬러(ACTIVE WELLNESS의 LPS·SAS·INS·TQL·WIS / CASUAL COMMUTE 전체 / OUTDOOR RESORT 전체)는 채도 +8%p·명도 -1%p 버전 HEX를 적용. Coloro/Pantone/멜란지 코드는 원본과 동일.';
 
+
+  // ══════════════════════════════════════════════════════════════
+  //  팔레트 파일 업로드 (CSV / XLSX)
+  //  ────────────────────────────────────────────────────────────
+  //  지금은 DISCOVERY 27FW 팔레트가 코드에 내장돼 있지만,
+  //  다른 사업부·시즌에서 자기 팔레트를 올려 쓸 수 있게 한다.
+  //  기대 컬럼: 구분(Mood) · 컬러명 · 컬러 코드 · 코드 종류 · HEX · 비고
+  //  헤더 이름은 키워드로 느슨하게 매칭한다.
+  // ══════════════════════════════════════════════════════════════
+  var DCP_UP_KEY = 'disc_palette_upload';
+  var _dcpCustom = null;          // { fileName, rows:[{mood,name,code,kind,hex,note}] }
+  try { _dcpCustom = JSON.parse(localStorage.getItem(DCP_UP_KEY) || 'null'); } catch(e){ _dcpCustom = null; }
+
+  function _dcpNorm(x){ return String(x == null ? '' : x).trim(); }
+
+  // 헤더 한 줄에서 컬럼 위치 찾기
+  function _dcpMapCols(header){
+    var idx = { mood:-1, name:-1, code:-1, kind:-1, hex:-1, note:-1 };
+    header.forEach(function(h, i){
+      var v = _dcpNorm(h).toLowerCase().replace(/\s|_/g, '');
+      if(idx.hex  < 0 && /hex|헥스|색상값/.test(v))                 idx.hex  = i;
+      else if(idx.mood < 0 && /구분|mood|무드|카테고리|group/.test(v)) idx.mood = i;
+      else if(idx.kind < 0 && /코드종류|kind|type|종류/.test(v))       idx.kind = i;
+      else if(idx.code < 0 && /코드|code|pantone|coloro/.test(v))    idx.code = i;
+      else if(idx.name < 0 && /컬러명|색상명|이름|name|color/.test(v)) idx.name = i;
+      else if(idx.note < 0 && /비고|note|메모|remark/.test(v))        idx.note = i;
+    });
+    return idx;
+  }
+
+  function _dcpRowsFromMatrix(matrix, fileName){
+    if(!matrix || !matrix.length) throw new Error('내용이 비어 있습니다');
+    // 헤더 후보: HEX 처럼 보이는 값이 없는 첫 줄
+    var hi = 0;
+    for(var i = 0; i < Math.min(matrix.length, 5); i++){
+      if(!matrix[i].some(function(c){ return /^#?[0-9A-Fa-f]{6}$/.test(_dcpNorm(c)); })){ hi = i; break; }
+    }
+    var idx = _dcpMapCols(matrix[hi]);
+    if(idx.hex < 0) throw new Error('HEX 컬럼을 찾지 못했습니다');
+    var rows = [];
+    for(var r = hi + 1; r < matrix.length; r++){
+      var row = matrix[r];
+      if(!row || !row.length) continue;
+      var hex = _dcpNorm(row[idx.hex]).replace(/^#/, '').toUpperCase();
+      if(!/^[0-9A-F]{6}$/.test(hex)) continue;
+      rows.push({
+        mood: idx.mood >= 0 ? _dcpNorm(row[idx.mood]) : 'CORE',
+        name: idx.name >= 0 ? _dcpNorm(row[idx.name]) : '',
+        code: idx.code >= 0 ? _dcpNorm(row[idx.code]) : '',
+        kind: idx.kind >= 0 ? _dcpNorm(row[idx.kind]) : '',
+        hex:  hex,
+        note: idx.note >= 0 ? _dcpNorm(row[idx.note]) : ''
+      });
+    }
+    if(!rows.length) throw new Error('유효한 HEX 행이 없습니다');
+    return { fileName: fileName, rows: rows };
+  }
+
+  // 따옴표를 감안한 CSV 파서
+  function _dcpParseCsv(text){
+    text = text.replace(/^\uFEFF/, '');
+    var out = [], row = [], cell = '', q = false;
+    for(var i = 0; i < text.length; i++){
+      var c = text[i];
+      if(q){
+        if(c === '"'){ if(text[i+1] === '"'){ cell += '"'; i++; } else q = false; }
+        else cell += c;
+      } else if(c === '"') q = true;
+      else if(c === ','){ row.push(cell); cell = ''; }
+      else if(c === '\n'){ row.push(cell); out.push(row); row = []; cell = ''; }
+      else if(c !== '\r') cell += c;
+    }
+    if(cell.length || row.length){ row.push(cell); out.push(row); }
+    return out.filter(function(r){ return r.some(function(c){ return _dcpNorm(c); }); });
+  }
+
+  function _dcpLoadSheetJs(){
+    return new Promise(function(res, rej){
+      if(window.XLSX) return res(window.XLSX);
+      var sc = document.createElement('script');
+      sc.src = 'https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js';
+      sc.onload = function(){ window.XLSX ? res(window.XLSX) : rej(new Error('XLSX 로드 실패')); };
+      sc.onerror = function(){ rej(new Error('XLSX 라이브러리를 불러오지 못했습니다 (네트워크 차단 가능). CSV 로 저장해 올려주세요.')); };
+      document.head.appendChild(sc);
+    });
+  }
+
+  function _dcpUpStatus(msg, isErr){
+    var el = document.getElementById('dcp-up-status');
+    if(!el) return;
+    el.textContent = msg || '';
+    el.style.color = isErr ? 'var(--warn)' : 'var(--text3)';
+  }
+
+  window._dcpHandleFile = function(input){
+    var f = input && input.files && input.files[0];
+    if(!f) return;
+    var name = f.name || 'palette';
+    _dcpUpStatus('읽는 중… ' + name);
+    var isXlsx = /\.(xlsx|xlsm|xls)$/i.test(name);
+    var rd = new FileReader();
+    rd.onerror = function(){ _dcpUpStatus('파일을 읽지 못했습니다', true); };
+    rd.onload = function(ev){
+      try {
+        if(isXlsx){
+          _dcpLoadSheetJs().then(function(XLSX){
+            var wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array' });
+            var ws = wb.Sheets[wb.SheetNames[0]];
+            var mat = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+            _dcpApplyUpload(_dcpRowsFromMatrix(mat, name));
+          }).catch(function(err){ _dcpUpStatus(err.message || String(err), true); });
+        } else {
+          _dcpApplyUpload(_dcpRowsFromMatrix(_dcpParseCsv(ev.target.result), name));
+        }
+      } catch(err){ _dcpUpStatus(err.message || String(err), true); }
+    };
+    if(isXlsx) rd.readAsArrayBuffer(f); else rd.readAsText(f, 'utf-8');
+    input.value = '';
+  };
+
+  function _dcpApplyUpload(data){
+    _dcpCustom = data;
+    try { localStorage.setItem(DCP_UP_KEY, JSON.stringify(data)); } catch(e){}
+    _dcpCollapsed = false;
+    _dcpRender();
+  }
+  window._dcpClearUpload = function(){
+    _dcpCustom = null;
+    try { localStorage.removeItem(DCP_UP_KEY); } catch(e){}
+    _dcpRender();
+  };
+
+  // 업로드 데이터를 화면 구조(CORE 행 + 무드 열)로 변환
+  function _dcpCustomView(){
+    if(!_dcpCustom) return null;
+    var groups = {}, order = [];
+    _dcpCustom.rows.forEach(function(r){
+      var g = r.mood || 'CORE';
+      if(!groups[g]){ groups[g] = []; order.push(g); }
+      groups[g].push({
+        name: r.name || r.hex,
+        code: /coloro/i.test(r.kind) ? _dcpNorm(r.code).replace(/coloro\s*/i, '') : '',
+        pantone: /pantone/i.test(r.kind) ? _dcpNorm(r.code).replace(/pantone\s*/i, '') : '',
+        pname: '',
+        hex: r.hex,
+        note: r.note
+      });
+    });
+    var coreKey = order.filter(function(g){ return /core/i.test(g); })[0];
+    return {
+      core: coreKey ? groups[coreKey] : [],
+      moods: order.filter(function(g){ return g !== coreKey; }).map(function(g){
+        return { title: g, rows: [groups[g]] };
+      }),
+      total: _dcpCustom.rows.length,
+      fileName: _dcpCustom.fileName
+    };
+  }
+
+  function _dcpUploadPanel(){
+    var cur = _dcpCustom
+      ? '<span style="font-family:var(--mono);font-size:10px;color:var(--text2)">📄 ' + _dcpCustom.fileName
+        + ' · ' + _dcpCustom.rows.length + '색</span>'
+        + '<button onclick="_dcpClearUpload()" style="font-family:var(--mono);font-size:10px;padding:4px 10px;'
+        + 'border-radius:4px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text3)">내장 팔레트로</button>'
+      : '<span style="font-family:var(--mono);font-size:10px;color:var(--text4)">내장: DISCOVERY 27FW</span>';
+    return ''
+      + '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;padding:10px 12px;'
+      +   'border:1px dashed var(--border2);border-radius:6px">'
+      +   '<label style="font-family:var(--mono);font-size:10px;padding:5px 12px;border-radius:4px;cursor:pointer;'
+      +     'border:1px solid var(--gold);background:rgba(160,120,64,0.14);color:var(--gold);font-weight:700">'
+      +     '팔레트 파일 올리기'
+      +     '<input type="file" accept=".csv,.xlsx,.xlsm,.xls" onchange="_dcpHandleFile(this)" style="display:none">'
+      +   '</label>'
+      +   cur
+      +   '<span id="dcp-up-status" style="font-family:var(--mono);font-size:10px;color:var(--text3)"></span>'
+      +   '<span style="margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--text4)">'
+      +     'CSV · XLSX · 컬럼: 구분 / 컬러명 / 컬러 코드 / 코드 종류 / HEX / 비고</span>'
+      + '</div>';
+  }
+
   function _dcpInjectStyle(){
     if(document.getElementById(DCP_STYLE_ID)) return;
     var st = document.createElement('style');
@@ -21362,28 +21696,30 @@ document.addEventListener('DOMContentLoaded',function(){
       + (it.melange ? '<span style="font-family:var(--mono);font-size:9px;font-weight:800;letter-spacing:0.5px;color:' + _dcpTextOn(it.hex) + '">BROS</span>' : '')
       + '</div>';
     var foot = it.pantone
-      ? '<div class="dcp-pnote"><b>PANTONE&reg;</b>' + it.pantone + '<br>' + it.pname + '</div>'
+      ? '<div class="dcp-pnote"><b>PANTONE&reg;</b>' + it.pantone + (it.pname ? '<br>' + it.pname : '') + '</div>'
       : '<div class="dcp-hex">#' + it.hex + '</div>';
     return '<div class="dcp-chip" title="' + it.name + ' · #' + it.hex + '">'
       + head + '<div class="dcp-card">' + codeLine + fill + foot + '</div></div>';
   }
 
   function _dcpBodyHtml(){
+    var cv = _dcpCustomView();
+    var coreRows = cv ? [cv.core] : [DCP_CORE_1, DCP_CORE_2];
+    var moodDefs = cv ? cv.moods : DCP_MOODS;
     var core = '<div class="dcp-core">'
       + '<div class="dcp-core-tag">CORE</div>'
       + '<div class="dcp-core-rows">'
-      +   '<div class="dcp-row">' + DCP_CORE_1.map(_dcpChip).join('') + '</div>'
-      +   '<div class="dcp-row">' + DCP_CORE_2.map(_dcpChip).join('') + '</div>'
+      +   coreRows.map(function(r){ return '<div class="dcp-row">' + r.map(_dcpChip).join('') + '</div>'; }).join('')
       + '</div></div>';
-    var moods = '<div class="dcp-moods">' + DCP_MOODS.map(function(m){
+    var moods = '<div class="dcp-moods">' + moodDefs.map(function(m){
       return '<div class="dcp-mood">'
         + '<div class="dcp-mood-title">' + m.title + '</div>'
         + '<div class="dcp-mood-rows">'
         +   m.rows.map(function(r){ return '<div class="dcp-mood-row">' + r.map(_dcpChip).join('') + '</div>'; }).join('')
         + '</div></div>';
     }).join('') + '</div>';
-    return '<div class="dcp-body">' + core + moods
-      + '<div class="dcp-note">' + DCP_NOTE + '</div></div>';
+    return '<div class="dcp-body">' + _dcpUploadPanel() + core + moods
+      + (cv ? '' : '<div class="dcp-note">' + DCP_NOTE + '</div>') + '</div>';
   }
 
   window._dcpToggle = function(){
@@ -21393,7 +21729,8 @@ document.addEventListener('DOMContentLoaded',function(){
   };
 
   function _dcpSection(){
-    var wrap = document.getElementById('disc-palette-wrap');
+    // 04 Palette Review 로 이동 — 04 컨테이너가 준비되기 전이면 대기
+    var wrap = document.getElementById('disc-review-wrap');
     if(!wrap) return null;
     var sect = document.getElementById(DCP_SECT_ID);
     if(!sect){
@@ -21415,14 +21752,17 @@ document.addEventListener('DOMContentLoaded',function(){
     sect = _dcpSection();
     if(!sect) return;
     sect.style.display = 'block';
-    var cnt = DCP_CORE_1.filter(function(x){ return !x.gap; }).length
-            + DCP_CORE_2.filter(function(x){ return !x.gap; }).length
-            + DCP_MOODS.reduce(function(n,m){ return n + m.rows.reduce(function(k,r){ return k + r.length; }, 0); }, 0);
+    var cv0 = _dcpCustomView();
+    var cnt = cv0 ? cv0.total
+            : (DCP_CORE_1.filter(function(x){ return !x.gap; }).length
+             + DCP_CORE_2.filter(function(x){ return !x.gap; }).length
+             + DCP_MOODS.reduce(function(n,m){ return n + m.rows.reduce(function(k,r){ return k + r.length; }, 0); }, 0));
     sect.innerHTML =
         '<div class="spp-trend-market-hd" style="margin-bottom:0;cursor:pointer" onclick="_dcpToggle()">'
       +   '<span class="spp-trend-market-flame" style="color:var(--gold)">▣ 27FW PALETTE</span>'
-      +   '<span class="spp-trend-market-title">DISCOVERY 27FW Color Palette</span>'
-      +   '<span class="spp-trend-market-sub">사내 확정 팔레트 · CORE + 무드 3종 · 총 ' + cnt + '색</span>'
+      +   '<span class="spp-trend-market-title">' + (cv0 ? '업로드 팔레트' : 'DISCOVERY 27FW Color Palette') + '</span>'
+      +   '<span class="spp-trend-market-sub">' + (cv0 ? cv0.fileName : '사내 확정 팔레트 · CORE + 무드 3종')
+      +     ' · 총 ' + cnt + '색</span>'
       +   '<span style="margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--text3)">'
       +     (_dcpCollapsed ? '▾ 펼치기' : '▴ 접기') + '</span>'
       + '</div>'
@@ -22123,7 +22463,7 @@ document.addEventListener('DOMContentLoaded',function(){
   //  각 섹션이 제각기 "무엇의 앞/뒤"로 자리를 잡으면 서로를 밀어낸다.
   //  (27FW 팔레트 토글 시 그것만 다시 그려지며 Curation 위로 올라가던 문제)
   //  순서는 여기서 한 번에 정한다.
-  var DISC_SECT_ORDER = [TM_SECT_ID, CC_SECT_ID, DCP_SECT_ID, GAP_SECT_ID];
+  var DISC_SECT_ORDER = [TM_SECT_ID, CC_SECT_ID, GAP_SECT_ID];   // 27FW 팔레트는 04 로 이동
   function _discOrderSections(){
     var wrap = document.getElementById('disc-palette-wrap');
     if(!wrap) return;
@@ -22139,6 +22479,108 @@ document.addEventListener('DOMContentLoaded',function(){
     });
   }
   window._discOrderSections = _discOrderSections;
+
+  // ══════════════════════════════════════════════════════════════
+  //  China Market — WGSN/Peclers 칩으로 제안
+  //  ────────────────────────────────────────────────────────────
+  //  원본은 중국 마켓 hex 를 그대로 보여준다. Trend-Matched 와 같은
+  //  방식으로 트렌드 풀과 매칭해 WGSN/Peclers 원본 컬러로 바꿔 놓고,
+  //  칩 레이아웃도 dcp 형태로 통일한다. 원본 그리드는 숨긴다.
+  // ══════════════════════════════════════════════════════════════
+  var CNM_SECT_ID = 'disc-cn-trendmatched';
+  var CNM_MAX = 12;
+
+  function _cnmBuild(){
+    if(typeof cnMarketData === 'undefined' || !Array.isArray(cnMarketData) || !cnMarketData.length) return null;
+    var trend = _tmTrendPool();
+    if(!trend.length) return null;
+    var used = {}, out = [];
+    cnMarketData.slice().sort(function(a,b){ return (b.freq||0) - (a.freq||0); }).forEach(function(c){
+      if(!c || !c.hex || !/^#[0-9A-Fa-f]{6}$/.test(c.hex)) return;
+      var hx = c.hex.toUpperCase(), best = null, bd = TM_DIST;
+      for(var i = 0; i < trend.length; i++){
+        var dd = rgbDist(hx, trend[i].hex);
+        if(dd < bd){ bd = dd; best = trend[i]; }
+      }
+      if(!best) return;
+      if(used[best.hex]){                                  // 같은 트렌드 칩이면 빈도만 합산
+        used[best.hex].freq += (c.freq || 1);
+        (c.brands || []).forEach(function(b){ if(used[best.hex].brands.indexOf(b) < 0) used[best.hex].brands.push(b); });
+        return;
+      }
+      used[best.hex] = { trend: best, freq: c.freq || 1, cnHex: hx, de: Math.round(bd),
+                         brands: (c.brands || []).slice() };
+      out.push(used[best.hex]);
+    });
+    out.sort(function(a,b){ return b.freq - a.freq; });
+    return { items: out, scanned: cnMarketData.length };
+  }
+
+  function _cnmChip(it){
+    var t = it.trend;
+    var codeLine = _tmCodeLineHtml(t);
+    var src = (t.sources && t.sources.length) ? t.sources.join('·') : '';
+    var nameEsc = String(t.name || t.hex).replace(/'/g, "\\'");
+    return ''
+      + '<div class="dcp-chip" style="cursor:pointer" onclick="_tmOpenDetail(\'' + t.hex + '\',\'' + nameEsc + '\')"'
+      +   ' title="중국 마켓 ' + it.cnHex + ' ×' + it.freq + ' · ΔRGB ' + it.de
+      +   (it.brands.length ? ' · ' + it.brands.slice(0,3).join(' · ') : '') + '">'
+      +   '<div class="dcp-name" style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:0.04em">' + (src || '&nbsp;') + '</div>'
+      +   '<div class="dcp-card">'
+      +     codeLine
+      +     '<div class="dcp-fill" style="background:' + t.hex + '">'
+      +       '<span style="font-family:var(--mono);font-size:8px;font-weight:800;color:' + _dcpTextOn(t.hex.slice(1)) + '">×' + it.freq + '</span>'
+      +     '</div>'
+      +     '<div class="dcp-hex">' + t.hex + '</div>'
+      +   '</div>'
+      + '</div>';
+  }
+
+  var _cnmHidden = [];
+  function _cnmRender(){
+    var sect = document.getElementById(CNM_SECT_ID);
+    if(!_inScope()){
+      if(sect) sect.style.display = 'none';
+      _cnmHidden.forEach(function(r){ r.el.style.display = r.disp || ''; });
+      _cnmHidden = [];
+      return;
+    }
+    var wrap = document.getElementById('disc-palette-wrap');
+    if(!wrap) return;
+    // 원본 CN 그리드 숨김 (헤더는 남기고 스와치 줄만)
+    if(!_cnmHidden.length){
+      ['disc-sub-grid-cn','disc-key-grid-cn'].forEach(function(id){
+        var g = document.getElementById(id);
+        var box = g; while(box && box.parentElement !== wrap) box = box.parentElement;
+        if(box){ _cnmHidden.push({ el: box, disp: box.style.display }); box.style.display = 'none'; }
+      });
+    }
+    if(!sect){
+      sect = document.createElement('div');
+      sect.id = CNM_SECT_ID;
+      sect.className = 'dcp-scope';
+      sect.style.marginBottom = '24px';
+      var ref = null;
+      for(var i = 0; i < wrap.children.length; i++){
+        if((wrap.children[i].textContent || '').indexOf('China Market') >= 0){ ref = wrap.children[i].nextSibling; break; }
+      }
+      wrap.insertBefore(sect, ref);
+    }
+    sect.style.display = 'block';
+    var r = _cnmBuild();
+    if(!r || !r.items.length){
+      sect.innerHTML = '<div class="spp-empty" style="font-size:10px">중국 마켓 컬러와 매칭되는 트렌드 컬러가 없습니다</div>';
+      return;
+    }
+    var shown = r.items.slice(0, CNM_MAX);
+    sect.innerHTML =
+        '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-bottom:10px">'
+      +   '중국 마켓 ' + r.scanned + '색 → WGSN·Peclers 매칭 ' + r.items.length + '색 · 상위 ' + shown.length + ' (빈도순) · 매칭 임계 ΔRGB ≤ ' + TM_DIST
+      + '</div>'
+      + '<div class="dcp-mood-row" style="justify-content:flex-start;gap:10px">'
+      +   shown.map(_cnmChip).join('') + '</div>';
+  }
+  window._discRenderCnMatched = _cnmRender;
 
   // ── 진단: 카테고리별 마켓 데이터 규모 ────────────────────────
   //  콘솔에서 _discDataAudit() 로 호출. 모듈 스코프에서 실행되므로
@@ -22203,6 +22645,7 @@ document.addEventListener('DOMContentLoaded',function(){
       try{ _gapRender(); }catch(e){ console.warn('[gap] 렌더 오류:', e); }
       try{ _ccRender(); }catch(e){ console.warn('[curation] 렌더 오류:', e); }
       try{ _discOrderSections(); }catch(e){}
+      try{ _cnmRender(); }catch(e){ console.warn('[cn-matched] 렌더 오류:', e); }
       try{ _hidSync(); }catch(e){ console.warn('[hide] 오류:', e); }
       return r;
     };
