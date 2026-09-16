@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_REVIEW_v192 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_REVIEW_v193 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -22836,6 +22836,121 @@ document.addEventListener('DOMContentLoaded',function(){
     return items.slice(0, n).map(fmt).join(', ') + (items.length > n ? ' 외 ' + (items.length - n) : '');
   }
 
+  // ── 결론 — 데이터에서 도출되는 행동 항목 ────────────────────
+  //  수치 나열이 아니라 "그래서 무엇을 해야 하는가"를 먼저 보여준다.
+  //  판단 근거는 아래 1~4 섹션에 그대로 남는다.
+  function _rptConclusion(r, famNames){
+    var acts = [];
+    var vRate = Math.round(r.verified.length / r.pal.length * 100);
+
+    // (1) KEY 비중
+    if(r.mkR.n && (r.mkR.p.key - r.palR.p.key) >= 8){
+      var keyCands = (r.gap && r.gap.items || []).filter(function(e){ return e.group === 'key'; });
+      // 비중 차이를 그대로 색 수로 환산하면 과하게 나온다(시장 KEY 67% 같은 경우).
+      // 팔레트 규모의 15% 를 상한으로 둔다.
+      var need = Math.max(1, Math.round(r.pal.length * (r.mkR.p.key - r.palR.p.key) / 100));
+      need = Math.min(need, Math.max(2, Math.round(r.pal.length * 0.15)));
+      acts.push({
+        tag: '보강', title: 'KEY 컬러를 ' + need + '색 안팎으로 늘린다',
+        why: '팔레트 KEY 비중이 ' + r.palR.p.key + '% 인데 시장은 ' + r.mkR.p.key + '% 입니다. '
+           + '다운 아우터는 면적이 커서 KEY 부족은 매대에서 곧바로 단조로움으로 읽힙니다.',
+        items: keyCands.slice(0, 6)
+      });
+    } else if(r.mkR.n && (r.palR.p.key - r.mkR.p.key) >= 8){
+      acts.push({
+        tag: '조정', title: 'KEY 컬러를 줄이거나 SUB 로 내린다',
+        why: '팔레트 KEY 비중 ' + r.palR.p.key + '% 는 시장 ' + r.mkR.p.key + '% 보다 높습니다. '
+           + '포인트가 많으면 서로를 상쇄합니다.', items: []
+      });
+    }
+
+    // (2) 근거 약한 색
+    if(r.weak.length){
+      acts.push({
+        tag: '재검토', title: '시장 근거가 없는 ' + r.weak.length + '색을 점검한다',
+        why: '가장 가까운 마켓 컬러와 ΔE ' + r.weak[0].de + ' 이상 떨어져 있습니다. '
+           + '선행 제안이면 유지하고, 근거를 두고 넣은 색이면 교체 대상입니다.',
+        pals: r.weak.slice(0, 8)
+      });
+    }
+
+    // (3) 빠진 계열
+    var missFam = Object.keys(r.mkFam).filter(function(k){ return !r.palFam[k]; });
+    if(missFam.length){
+      var cands = (r.gap && r.gap.items || []).filter(function(e){
+        return missFam.indexOf(_tmFamily(e.item.trend.hex)) >= 0;
+      });
+      acts.push({
+        tag: '추가', title: missFam.map(function(k){ return famNames[k] || k; }).join(' · ') + ' 계열을 채울지 결정한다',
+        why: '시장에서는 관측되는데 팔레트에 한 색도 없습니다. 의도적으로 뺀 것이 아니라면 공백입니다.',
+        items: cands.slice(0, 6)
+      });
+    }
+
+    // (4) 추가 후보 상위
+    if(r.gap && r.gap.items.length){
+      acts.push({
+        tag: '추가', title: '보완 후보 상위 ' + Math.min(5, r.gap.items.length) + '색을 우선 검토한다',
+        why: '마켓·트렌드 양쪽에서 잡히는데 팔레트에 없습니다. 빈도가 높은 순입니다.',
+        items: r.gap.items.slice(0, 5)
+      });
+    }
+
+    // (5) 계열 쏠림
+    var palTop = Object.keys(r.palFam).sort(function(a,b){ return r.palFam[b]-r.palFam[a]; })[0];
+    if(palTop && r.palFam[palTop] / r.pal.length >= 0.45){
+      acts.push({
+        tag: '조정', title: (famNames[palTop] || palTop) + ' 계열 ' + r.palFam[palTop] + '색의 편중을 확인한다',
+        why: '팔레트의 ' + Math.round(r.palFam[palTop]/r.pal.length*100) + '% 가 한 계열입니다. '
+           + '베이직 성격이면 정상이지만, 시즌 색상 폭이 좁아 보일 수 있습니다.', items: []
+      });
+    }
+
+    if(!acts.length){
+      acts.push({ tag: '유지', title: '현 팔레트를 유지한다',
+        why: '시장 검증률 ' + vRate + '% 이고 보완이 필요한 영역이 확인되지 않았습니다.', items: [] });
+    }
+
+    var TAGC = { 보강:'#A090F0', 추가:'var(--gold)', 재검토:'var(--warn)', 조정:'var(--blue)', 유지:'var(--text3)' };
+    return '<div style="border:1px solid var(--border2);border-radius:10px;padding:18px 20px;margin-bottom:26px">'
+      + '<div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--gold);letter-spacing:0.1em;margin-bottom:6px">결론</div>'
+      + '<div style="font-size:14px;color:var(--text3);margin-bottom:16px;line-height:1.7">'
+      +   '확정 팔레트 ' + r.pal.length + '색 · 시장 검증률 ' + vRate + '% · 근거 약한 색 ' + r.weak.length + '색 · 보완 후보 '
+      +   (r.gap ? r.gap.items.length : 0) + '색 기준으로, 아래 ' + acts.length + '가지가 필요합니다.'
+      + '</div>'
+      + acts.map(function(a, i){
+          return '<div style="padding:14px 0;border-top:1px solid var(--border)">'
+            + '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px;flex-wrap:wrap">'
+            +   '<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:' + (TAGC[a.tag]||'var(--gold)')
+            +     ';border:1px solid ' + (TAGC[a.tag]||'var(--gold)') + ';border-radius:3px;padding:2px 7px">' + a.tag + '</span>'
+            +   '<span style="font-size:16px;font-weight:700;color:var(--text)">' + (i+1) + '. ' + a.title + '</span>'
+            + '</div>'
+            + '<div style="font-size:14px;color:var(--text2);line-height:1.75;margin-bottom:' + ((a.items&&a.items.length)||(a.pals&&a.pals.length) ? '10px' : '0') + '">' + a.why + '</div>'
+            + (a.items && a.items.length
+                ? '<div style="display:flex;flex-wrap:wrap;gap:8px">'
+                  + a.items.map(function(e){
+                      return '<span title="' + e.item.trend.hex + ' · 빈도 ' + e.item.mkFreq + '" style="display:inline-flex;'
+                        + 'align-items:center;gap:6px;padding:3px 9px 3px 3px;border:1px solid var(--border);border-radius:20px">'
+                        + '<span style="width:22px;height:22px;border-radius:50%;background:' + e.item.trend.hex + '"></span>'
+                        + '<span style="font-family:var(--mono);font-size:11px;color:var(--text2)">'
+                        +   (_tmPantoneCode(e.item.trend.pantone) || e.item.trend.hex) + ' ×' + e.item.mkFreq + '</span></span>';
+                    }).join('') + '</div>'
+                : '')
+            + (a.pals && a.pals.length
+                ? '<div style="display:flex;flex-wrap:wrap;gap:8px">'
+                  + a.pals.map(function(x){
+                      return '<span title="' + x.pal.hex + ' · ΔE ' + x.de + '" style="display:inline-flex;'
+                        + 'align-items:center;gap:6px;padding:3px 9px 3px 3px;border:1px solid var(--border);border-radius:20px">'
+                        + '<span style="width:22px;height:22px;border-radius:50%;background:' + x.pal.hex + '"></span>'
+                        + '<span style="font-family:var(--mono);font-size:11px;color:var(--text2)">'
+                        +   x.pal.name + ' ΔE' + x.de + '</span></span>';
+                    }).join('') + '</div>'
+                : '')
+            + '</div>';
+        }).join('')
+      + '</div>';
+  }
+
   function _rptHtml(){
     var r = _rptBuild();
     if(!r) return '<div class="spp-empty">분석할 데이터가 없습니다. 01·02 에서 데이터를 먼저 로드하세요.</div>';
@@ -22854,7 +22969,9 @@ document.addEventListener('DOMContentLoaded',function(){
     var missFam = Object.keys(r.mkFam).filter(function(k){ return !r.palFam[k]; });
     var onlyPal = Object.keys(r.palFam).filter(function(k){ return !r.mkFam[k]; });
 
-    var html = '';
+    var html = _rptConclusion(r, famNames);
+    html += '<div style="font-family:var(--mono);font-size:12px;color:var(--text4);margin:22px 0 4px;'
+      + 'letter-spacing:0.08em">— 판단 근거 —</div>';
 
     html += H('1. 시장 검증 — 확정 팔레트 ' + r.pal.length + '색 중 ' + r.verified.length + '색');
     html += P('확정 팔레트 ' + B(r.pal.length + '색') + '을 마켓 컬러 ' + r.marketN + '색과 대조한 결과, '
