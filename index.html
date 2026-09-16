@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_TERMS_v203 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_CONTEMP_v204 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -15787,6 +15787,9 @@ const COMP_LIFESTYLE_MAP = {
                     '몽클레어','스톤아일랜드','살로몬','뉴발란스','산산기어','노스페이스','세티스파이'],
   'KR Brands':   ['Somewherebutter','Somewhere Butter','Ttudement','Raive','Dunst','The Barnet','Levar','Ronron','Partimento',
                     '썸웨어버터','튜드먼트','레이브','던스트','더바넷','론론','르바','파르티멘토'],
+  // DISCOVERY 27FW — 컨템포러리 베이직 (데이터가 있을 때만 화면에 나타남)
+  'Contemporary':  ['Uniqlo','UNIQLO','uniqlo','Musinsa Standard','MUSINSA STANDARD','Musinsa','MUSINSA',
+                    '유니클로','무신사 스탠다드','무신사스탠다드','무신사'],
 };
 
 // ── 브랜드 매칭 헬퍼 (단어경계 기준) ──────────────────────
@@ -16480,14 +16483,14 @@ function renderCompBrandPage() {
     });
     Object.values(otherMap).forEach(b => allBrands.push(b));
   })();
-  const lsOrder = ['Luxury','Athleisure','Outdoor/Sports','Court Active','KR Brands','EU Brands Raw','Other'];
+  const lsOrder = ['Luxury','Athleisure','Outdoor/Sports','Contemporary','Court Active','KR Brands','EU Brands Raw','Other'];
   const allLS = [...new Set(allBrands.map(b=>b.lifestyle))];
   const sortedLS = [...new Set([...lsOrder,...allLS])].filter(ls=>allLS.includes(ls));
   const brandNames = allBrands.map(b=>b.brand).sort();
 
   const lsAccent = {
     'Court Active':'#D08838','Luxury':'#E0A0C0','Athleisure':'#9966FF',
-    'Outdoor/Sports':'#00C8A0','KR Brands':'#E8C060','EU Brands Raw':'#6699CC','Other':'#6A6760',
+    'Outdoor/Sports':'#00C8A0','Contemporary':'#C08A60','KR Brands':'#E8C060','EU Brands Raw':'#6699CC','Other':'#6A6760',
   };
 
   const activeBrand = wrap.dataset.filterBrand || '';
@@ -20459,6 +20462,7 @@ document.addEventListener('DOMContentLoaded',function(){
     try{ if(typeof _purgeNewsletter === 'function') _purgeNewsletter(); }catch(err){}
     try{ if(typeof _dcpRender === 'function') _dcpRender(); }catch(err){}
     try{ if(typeof _gapRender === 'function') _gapRender(); }catch(err){}
+    try{ if(typeof _contempSeed === 'function') _contempSeed(); }catch(err){}
     try{ if(typeof _ccRender === 'function') _ccRender(); }catch(err){}
     try{ if(typeof _discOrderSections === 'function') _discOrderSections(); }catch(err){}
     try{ if(typeof _cnmRender === 'function') _cnmRender(); }catch(err){}
@@ -21946,13 +21950,17 @@ document.addEventListener('DOMContentLoaded',function(){
   // DISCOVERY 27FW 전용 카테고리 정의.
   //  원본 DISCOVERY_CAT_DEFS 는 다른 시즌도 쓰므로 건드리지 않고 여기서 덮어쓴다.
   var DISC27_CAT_DEFS = [
-    { key:'commute',  emoji:'🧭', name:'Casual Commute',  subLabel:'Sports & Outdoor',
-      brandList:['Uniqlo','UNIQLO','Musinsa Standard','무신사 스탠다드','Musinsa'] },
+    { key:'commute',  emoji:'🧭', name:'Casual Commute',  subLabel:'Contemporary',
+      brandList:['Uniqlo','UNIQLO','uniqlo','Musinsa Standard','MUSINSA STANDARD','Musinsa','MUSINSA',
+                 '유니클로','무신사 스탠다드','무신사스탠다드','무신사'],
+      brandShow:['Uniqlo','Musinsa Standard'] },
     { key:'wellness', emoji:'🌿', name:'Active Wellness', subLabel:'Athleisure',
       brandList:['Lululemon','Alo','Alo Yoga','ALO YOGA','Aritzia','Vuori','Skims',
-                 'On Running','On','Satisfy','Salomon','New Balance'] },
+                 'On Running','On','Satisfy','Salomon','New Balance'],
+      brandShow:['Lululemon','Alo Yoga','Aritzia','Vuori','Skims','On Running','Satisfy','Salomon','New Balance'] },
     { key:'resort',   emoji:'🏔', name:'Outdoor Resort',  subLabel:'Luxury',
-      brandList:['Moncler','Loro Piana','Prada','Miu Miu','Miumiu','Louis Vuitton','LV'] }
+      brandList:['Moncler','Loro Piana','Prada','Miu Miu','Miumiu','Louis Vuitton','LV'],
+      brandShow:['Moncler','Loro Piana','Prada','Miu Miu','Louis Vuitton'] }
   ];
   function _gapCatDefs(){
     if(_inScope()) return DISC27_CAT_DEFS;
@@ -22307,6 +22315,22 @@ document.addEventListener('DOMContentLoaded',function(){
   function _ccCatKeys(){
     return _gapCatDefs().map(function(d){ return d.key; }).concat([CC_ETC]);
   }
+  // brandList 에는 표기 변형(UNIQLO, 무신사 스탠다드 등)이 섞여 있어 대표 이름만 추린다
+  function _ccBrandLabel(list){
+    var bkn = window._brandKeyNorm || function(x){ return (x||'').toLowerCase().replace(/[\s._\-]+/g,'').trim(); };
+    var seen = {}, out = [];
+    list.forEach(function(b){
+      var k = bkn(b);
+      if(seen[k]) return;
+      seen[k] = 1; out.push(b);
+    });
+    // 'On' 과 'On Running' 처럼 포함 관계면 긴 쪽만 남긴다
+    out = out.filter(function(b){
+      return !out.some(function(o){ return o !== b && bkn(o).indexOf(bkn(b)) === 0 && bkn(o).length > bkn(b).length; });
+    });
+    return out.join(' · ');
+  }
+
   function _ccLabelOf(key){
     var d = _gapCatDefs().filter(function(x){ return x.key === key; })[0];
     return d ? ((d.emoji ? d.emoji + ' ' : '') + d.name) : '◦ 기타';
@@ -22575,12 +22599,17 @@ document.addEventListener('DOMContentLoaded',function(){
       var d = box.def;
       return '<div style="flex:1 1 300px;min-width:300px;padding:0 16px'
         + (i === 0 ? '' : ';border-left:1px solid var(--border)') + '">'
-        + '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px">'
+        + '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px">'
         +   '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:'
         +     (k === CC_ETC ? 'var(--text3)' : 'var(--gold)') + ';letter-spacing:0.1em">' + _ccLabelOf(k) + '</span>'
         +   (d.subLabel ? '<span style="font-family:var(--mono);font-size:9px;color:var(--text4)">' + d.subLabel + '</span>' : '')
         +   '<span style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-left:auto">' + box.list.length + '색</span>'
         + '</div>'
+        // 이 카테고리에 속한 브랜드 (별칭은 빼고 대표 표기만)
+        + ((d.brandShow || d.brandList || []).length
+            ? '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);line-height:1.5;margin-bottom:10px">'
+              + _ccBrandLabel(d.brandShow || d.brandList) + '</div>'
+            : '<div style="margin-bottom:10px"></div>')
         + (box.list.length
             ? '<div class="dcp-mood-row" style="justify-content:flex-start;gap:10px">'
               + box.list.map(function(e){ return _ccChip(e, k); }).join('') + '</div>'
@@ -22591,6 +22620,31 @@ document.addEventListener('DOMContentLoaded',function(){
       + '<div style="display:flex;flex-wrap:wrap;align-items:flex-start;row-gap:24px">' + cols + '</div>';
   }
   window._discRenderCatCuration = _ccRender;
+
+  // ── 기본 체크 브랜드에 컨템포러리 2종 추가 ──────────────────
+  //  원본 _defaultBrandSel.DISCOVERY 를 런타임에 보강하고 버전을 올려,
+  //  저장돼 있던 옛 체크 목록이 새 기본값을 한 번 따라가게 한다.
+  var CONTEMP_BRANDS = ['Uniqlo','UNIQLO','Musinsa Standard','MUSINSA STANDARD','Musinsa','무신사 스탠다드','유니클로'];
+  var _contempDone = false;
+  function _contempSeed(){
+    if(_contempDone || !_inScope()) return;
+    try{
+      var d = window._defaultBrandSel && window._defaultBrandSel.DISCOVERY;
+      if(!d) return;
+      var added = false;
+      CONTEMP_BRANDS.forEach(function(b){ if(d.indexOf(b) < 0){ d.push(b); added = true; } });
+      if(added){
+        window._defaultBrandSelVersion = window._defaultBrandSelVersion || {};
+        window._defaultBrandSelVersion.DISCOVERY = (window._defaultBrandSelVersion.DISCOVERY || 0) + 1;
+      }
+      // 이미 로드된 선택 세트에도 즉시 반영
+      var sel = (typeof window._curMarketSel === 'function') ? window._curMarketSel() : null;
+      var bkn = window._brandKeyNorm || function(x){ return (x||'').toLowerCase().replace(/[\s._\-]+/g,'').trim(); };
+      if(sel) CONTEMP_BRANDS.forEach(function(b){ sel.add(bkn(b)); });
+      _contempDone = true;
+    }catch(e){}
+  }
+  window._discSeedContemporary = _contempSeed;
 
   // ── 섹션 순서 고정 ────────────────────────────────────────────
   //  각 섹션이 제각기 "무엇의 앞/뒤"로 자리를 잡으면 서로를 밀어낸다.
