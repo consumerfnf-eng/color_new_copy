@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_CN_v177 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_CN_v178 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21046,9 +21046,15 @@ document.addEventListener('DOMContentLoaded',function(){
   //  칩에서 바로 보여준다. 칩을 클릭하면 상세가 뜬다.
   // ══════════════════════════════════════════════════════════════
   var OV_DE = 12;                 // 비슷한 색으로 볼 Lab ΔE
-  var _ovOn = { sales: false };   // 중국은 China Market 섹션에서 직접 제안하므로 오버레이 대상 아님
+  var _ovOn = { sales: false, cn: false };
 
   window._ovToggle = function(kind){
+    if(kind === 'cn'){
+      // 중국은 칩에 덧붙이지 않고, 아래 China Market 섹션으로 데려간다
+      var cn = document.getElementById(CNM_SECT_ID);
+      if(cn && cn.scrollIntoView) cn.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
     _ovOn[kind] = !_ovOn[kind];
     _tmRender();
     try{ _discOrderSections(); }catch(e){}
@@ -21157,16 +21163,16 @@ document.addEventListener('DOMContentLoaded',function(){
 
   // 섹션 하단 우측 데이터 토글
   function _ovTabs(){
-    var cnt = { sales: _ovPool('sales').length };
+    var cnt = { sales: _ovPool('sales').length, cn: _ovPool('cn').length };
     return '<div style="display:flex;justify-content:flex-start;gap:6px;margin:-6px 0 14px">'
-      + [['sales','세일즈 25FW']].map(function(t){
+      + [['sales','세일즈 25FW'], ['cn','중국 마켓']].map(function(t){
           var on = _ovOn[t[0]];
           return '<button onclick="_ovToggle(\'' + t[0] + '\')" style="font-family:var(--mono);font-size:10px;'
             + 'padding:5px 12px;border-radius:4px;cursor:pointer;'
             + 'border:1px solid ' + (on ? 'var(--gold)' : 'var(--border)') + ';'
             + 'background:' + (on ? 'rgba(160,120,64,0.16)' : 'transparent') + ';'
             + 'color:' + (on ? 'var(--gold)' : 'var(--text3)') + ';font-weight:' + (on ? '700' : '400') + '">'
-            + (on ? '● ' : '○ ') + t[1] + ' ' + cnt[t[0]] + '색</button>';
+            + (t[0] === 'cn' ? '↓ ' : (on ? '● ' : '○ ')) + t[1] + ' ' + cnt[t[0]] + '색</button>';
         }).join('')
       + '</div>';
   }
