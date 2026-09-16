@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_CN_v174 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_CN_v175 (2026-09-16) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21158,7 +21158,7 @@ document.addEventListener('DOMContentLoaded',function(){
   // 섹션 하단 우측 데이터 토글
   function _ovTabs(){
     var cnt = { sales: _ovPool('sales').length, cn: _ovPool('cn').length };
-    return '<div style="display:flex;justify-content:flex-end;gap:6px;margin-top:4px">'
+    return '<div style="display:flex;justify-content:flex-start;gap:6px;margin:-6px 0 14px">'
       + [['sales','세일즈 25FW'], ['cn','중국 마켓']].map(function(t){
           var on = _ovOn[t[0]];
           return '<button onclick="_ovToggle(\'' + t[0] + '\')" style="font-family:var(--mono);font-size:10px;'
@@ -21295,6 +21295,7 @@ document.addEventListener('DOMContentLoaded',function(){
       +   ' · 채택 ' + matchedTotal + '색 · 계열 다양성 + 유사색 배제 · BASIC 아이보리 ' + TM_BASIC_IVORY_N + '개/브라운≥' + TM_BASIC_BROWN_MIN
       +   ' · 분류 Lab 기준 BASIC C*<' + TM_BASIC_C + ' (뉴트럴 색상대 C*<' + TM_NEUTRAL_C + ', 쿨은 L<' + TM_COOL_MAX_L + ') / KEY C*≥' + TM_KEY_C + ' · 마켓 근접색 병합 Lab ΔE < ' + TM_CLUSTER_DE + ' · 브랜드 집계 Lab ΔE < ' + TM_NEAR_BRAND_DE
       + '</div>'
+      + _ovTabs()
       + (t.trendPool === 0
           ? '<div class="spp-empty">02 Trend Collection에서 WGSN 또는 Peclers 데이터를 먼저 로드하세요.</div>'
           : (t.scanned === 0
