@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_REVIEW_v205 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_REVIEW_v207 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -22934,6 +22934,38 @@ document.addEventListener('DOMContentLoaded',function(){
       +   'white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + foot + '</div>'
       + '</div>';
   }
+  // 리포트 전용 칩 — 앞장 Trend-Matched 와 같은 dcp 형태로 통일한다.
+  //  위: 코드 / 색면(라벨) / HEX   아래: 대응하는 색 띠 (있을 때만)
+  function _rptChip(main, sub, accent){
+    // main = { hex, code, label, name }  sub = { hex, label } | null
+    var lab = main.label || '';
+    return '<div class="dcp-chip" title="' + (main.name ? main.name + ' ' : '') + main.hex
+      +   (sub && sub.hex ? ' · 대응 ' + sub.hex : '') + '">'
+      + '<div class="dcp-card">'
+      +   '<div class="dcp-code">' + (main.code || '&nbsp;') + '</div>'
+      +   '<div class="dcp-fill" style="background:' + main.hex + '">'
+      +     (lab ? '<span style="font-family:var(--mono);font-size:8px;font-weight:800;color:'
+      +       _dcpTextOn(String(main.hex).slice(1)) + '">' + lab + '</span>' : '')
+      +   '</div>'
+      +   '<div class="dcp-hex">' + main.hex + '</div>'
+      + '</div>'
+      + (sub
+          ? '<div style="margin-top:3px;border:1px solid ' + (accent || 'var(--border)') + ';border-radius:4px;overflow:hidden">'
+            + (sub.hex
+                ? '<div style="height:20px;background:' + sub.hex + '"></div>'
+                : '<div style="height:20px;background-image:repeating-linear-gradient(45deg,var(--border) 0 4px,transparent 4px 8px)"></div>')
+            + '<div style="font-family:var(--mono);font-size:8px;text-align:center;padding:2px;color:'
+            +   (accent || 'var(--text3)') + '">' + (sub.label || '') + '</div>'
+            + '</div>'
+          : '')
+      + '</div>';
+  }
+  function _rptChipRow(html, note){
+    return '<div class="dcp-mood-row" style="justify-content:flex-start;flex-wrap:wrap;gap:8px;margin:10px 0 14px">'
+      + html + '</div>'
+      + (note ? '<div style="font-family:var(--mono);font-size:11px;color:var(--text4);margin:-8px 0 18px">' + note + '</div>' : '');
+  }
+
   function _rptPairRow(html, note){
     return '<div style="display:flex;flex-wrap:wrap;gap:10px;margin:12px 0 18px">' + html + '</div>'
       + (note ? '<div style="font-family:var(--mono);font-size:11px;color:var(--text4);margin:-10px 0 18px">' + note + '</div>' : '');
@@ -23099,7 +23131,7 @@ document.addEventListener('DOMContentLoaded',function(){
     }
 
     var TAGC = { 보강:'#A090F0', 추가:'var(--gold)', 재검토:'var(--warn)', 조정:'var(--blue)', 참고:'var(--text3)', 유지:'var(--text3)' };
-    return '<div style="border:1px solid var(--border2);border-radius:10px;padding:18px 20px;margin-bottom:26px">'
+    return '<div class="dcp-scope" style="border:1px solid var(--border2);border-radius:10px;padding:18px 20px;margin-bottom:26px">'
       + '<div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--gold);letter-spacing:0.1em;margin-bottom:6px">결론</div>'
       + '<div style="font-size:14px;color:var(--text3);margin-bottom:16px;line-height:1.7">'
       +   '확정 팔레트 ' + r.pal.length + '색 · 시장 검증률 ' + vRate + '% · 근거 약한 색 ' + r.weak.length + '색 · 보완 후보 '
@@ -23115,27 +23147,23 @@ document.addEventListener('DOMContentLoaded',function(){
             + '<div style="font-size:14px;color:var(--text2);line-height:1.75;margin-bottom:' + ((a.items&&a.items.length)||(a.pals&&a.pals.length) ? '10px' : '0') + '">' + a.why + '</div>'
             + (a.extra ? a.extra : '')
             + (a.items && a.items.length
-                ? '<div style="display:flex;flex-wrap:wrap;gap:8px">'
+                ? '<div class="dcp-mood-row" style="justify-content:flex-start;flex-wrap:wrap;gap:8px">'
                   + a.items.map(function(e){
-                      return '<span title="' + e.item.trend.hex + ' · 빈도 ' + e.item.mkFreq + '" style="display:inline-flex;'
-                        + 'align-items:center;gap:6px;padding:3px 9px 3px 3px;border:1px solid var(--border);border-radius:20px">'
-                        + '<span style="width:22px;height:22px;border-radius:50%;background:' + e.item.trend.hex + '"></span>'
-                        + '<span style="font-family:var(--mono);font-size:11px;color:var(--text2)">'
-                        +   (_tmPantoneCode(e.item.trend.pantone) || e.item.trend.hex)
-                        +   ' · 빈도 ' + e.item.mkFreq
-                        +   (function(){ var nb = _rptBrands(e);
-                              return nb.length ? ' · ' + nb.length + '브랜드' : ''; })()
-                        +   '</span></span>';
+                      var nb = _rptBrands(e);
+                      return _rptChip(
+                        { hex: e.item.trend.hex, code: _rptTrendCode(e.item.trend),
+                          label: '×' + e.item.mkFreq, name: e.item.trend.name || '' },
+                        { hex: null, label: '빈도 ' + e.item.mkFreq + (nb.length ? ' · ' + nb.length + '브' : '') },
+                        'var(--gold)');
                     }).join('') + '</div>'
                 : '')
             + (a.pals && a.pals.length
-                ? '<div style="display:flex;flex-wrap:wrap;gap:8px">'
+                ? '<div class="dcp-mood-row" style="justify-content:flex-start;flex-wrap:wrap;gap:8px">'
                   + a.pals.map(function(x){
-                      return '<span title="' + x.pal.hex + ' · ΔE ' + x.de + '" style="display:inline-flex;'
-                        + 'align-items:center;gap:6px;padding:3px 9px 3px 3px;border:1px solid var(--border);border-radius:20px">'
-                        + '<span style="width:22px;height:22px;border-radius:50%;background:' + x.pal.hex + '"></span>'
-                        + '<span style="font-family:var(--mono);font-size:11px;color:var(--text2)">'
-                        +   x.pal.name + ' ΔE' + x.de + '</span></span>';
+                      return _rptChip(
+                        { hex: x.pal.hex, code: _rptPalMeta(x.pal.hex) || '', label: x.pal.name, name: x.pal.name },
+                        { hex: x.mkHex, label: 'ΔE' + x.de },
+                        (a.tag === '유지' ? '#5FA85F' : 'var(--warn)'));
                     }).join('') + '</div>'
                 : '')
             + '</div>';
@@ -23201,13 +23229,60 @@ document.addEventListener('DOMContentLoaded',function(){
       + '</div>';
   }
   // 칩 아래에 붙는 상태 띠 (앞장 세일즈 칩과 같은 형태)
+  // hex → Pantone 근사 코드 (원본 코드가 없는 마켓 컬러용)
+  function _dcpPantoneOf(hex){
+    var cc = (window.hexToColoro && window.hexToColoro(hex)) || null;
+    if(cc && cc.pantone) return 'Pantone ≈ ' + _tmPantoneCode(cc.pantone) + ' TCX';
+    if(cc && cc.coloro)  return 'COLORO ≈ ' + cc.coloro;
+    return '';
+  }
+  // 상태 띠 클릭 → 확정색과 마켓색을 코드까지 나란히
+  window._dcpOpenStatus = function(evt, hex){
+    evt.stopPropagation();
+    var st = _dcpStatusMap()[String(hex).toUpperCase()];
+    if(!st) return;
+    var meta = DCP_TABS.filter(function(t){ return t[0] === st.tier; })[0];
+    var pal = _gapPaletteList().filter(function(p){ return String(p.hex).toUpperCase() === String(hex).toUpperCase(); })[0];
+    var pop = _ccEnsurePop();
+    var row = function(label, h, name, code){
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0">'
+        + '<span style="width:40px;height:40px;border-radius:5px;flex:0 0 auto;border:1px solid var(--border2);background:'
+        +   (h || 'transparent') + (h ? '' : ';background-image:repeating-linear-gradient(45deg,var(--border) 0 4px,transparent 4px 8px)') + '"></span>'
+        + '<div style="min-width:0">'
+        +   '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);letter-spacing:0.06em">' + label + '</div>'
+        +   (name ? '<div style="font-size:13px;font-weight:700;color:var(--text)">' + name + '</div>' : '')
+        +   '<div style="font-family:var(--mono);font-size:11px;color:var(--text2)">' + (h || '—') + '</div>'
+        +   (code ? '<div style="font-family:var(--mono);font-size:10px;color:var(--text3)">' + code + '</div>' : '')
+        + '</div></div>';
+    };
+    pop.innerHTML = ''
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'
+      +   '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + meta[2]
+      +     ';border:1px solid ' + meta[2] + ';border-radius:3px;padding:2px 7px">' + meta[1] + '</span>'
+      +   '<span style="font-family:var(--mono);font-size:11px;color:var(--text3)">ΔE ' + st.de + '</span>'
+      + '</div>'
+      + row('확정 팔레트', hex, pal ? pal.name : '', _rptPalMeta(hex) || _dcpPantoneOf(hex))
+      + '<div style="height:1px;background:var(--border)"></div>'
+      + row('가장 가까운 마켓 컬러', st.mkHex, st.freq ? '빈도 ' + st.freq : '', st.mkHex ? _dcpPantoneOf(st.mkHex) : '')
+      + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-top:6px;line-height:1.6">'
+      +   '≈ 는 HEX 기반 근사 매핑입니다.</div>';
+    pop.style.display = 'block';
+    var r = evt.currentTarget.getBoundingClientRect();
+    var top = r.bottom + 6, left = r.left;
+    if(left + 250 > window.innerWidth - 8) left = window.innerWidth - 258;
+    if(top + pop.offsetHeight > window.innerHeight - 8) top = Math.max(8, r.top - pop.offsetHeight - 6);
+    pop.style.top = top + 'px'; pop.style.left = left + 'px';
+    document.getElementById('cc-move-ov').style.display = 'block';
+  };
+
   function _dcpStatusStrip(hex){
     if(DCP_TAB === 'all') return '';
     var st = _dcpStatusMap()[String(hex).toUpperCase()];
     if(!st || st.tier !== DCP_TAB) return '';
     var meta = DCP_TABS.filter(function(t){ return t[0] === st.tier; })[0];
-    return '<div style="margin-top:4px;border:1px solid ' + meta[2] + ';border-radius:4px;overflow:hidden"'
-      + ' title="' + meta[1] + ' · 가장 가까운 마켓 컬러 ' + (st.mkHex || '-') + ' · ΔE ' + st.de + '">'
+    return '<div onclick="_dcpOpenStatus(event,\'' + hex + '\')" style="margin-top:4px;cursor:pointer;'
+      + 'border:1px solid ' + meta[2] + ';border-radius:4px;overflow:hidden"'
+      + ' title="클릭 — HEX·Pantone 확인 · ΔE ' + st.de + '">'
       +   (st.mkHex
             ? '<div style="height:22px;background:' + st.mkHex + '"></div>'
             : '<div style="height:22px;background-image:repeating-linear-gradient(45deg,var(--border) 0 4px,transparent 4px 8px)"></div>')
@@ -23382,10 +23457,12 @@ document.addEventListener('DOMContentLoaded',function(){
         html += '<div style="font-family:var(--mono);font-size:12px;color:var(--text2);margin:14px 0 2px">'
           + '<strong style="color:var(--text)">' + t[0] + ' ' + t[2].length + '색</strong>'
           + ' <span style="color:var(--text4)">· ' + t[1] + '</span></div>';
-        html += _rptPairRow(
-          t[2].slice(0, 12).map(function(x){
-            return _rptPair(x.pal.hex, x.pal.name, x.mkHex, '×' + x.freq, 'ΔE ' + x.de, false,
-              { topCode: _rptPalMeta(x.pal.hex) || x.pal.hex, botCode: x.mkHex || '' });
+        html += _rptChipRow(
+          t[2].slice(0, 16).map(function(x){
+            return _rptChip(
+              { hex: x.pal.hex, code: _rptPalMeta(x.pal.hex) || '', label: x.pal.name, name: x.pal.name },
+              { hex: x.mkHex, label: 'ΔE' + x.de + ' ×' + x.freq },
+              '#5FA85F');
           }).join(''), '');
       });
       html += '<div style="font-family:var(--mono);font-size:11px;color:var(--text4);margin:-10px 0 18px">'
@@ -23396,12 +23473,14 @@ document.addEventListener('DOMContentLoaded',function(){
       html += P(B(r.weak.length + '색') + '은 마켓에서 근거가 잡히지 않았습니다. '
         + '선행 제안이라면 의도된 결과지만, 근거를 두고 넣은 색이라면 재검토가 필요합니다. '
         + '가장 가까운 마켓 컬러와의 거리가 ΔE ' + r.weak[0].de + ' ~ ' + r.weak[r.weak.length-1].de + ' 범위입니다.');
-      html += _rptPairRow(
-        r.weak.slice(0, 12).map(function(x){
-          return _rptPair(x.pal.hex, x.pal.name, x.mkHex, x.mkHex ? 'ΔE' + x.de : '없음', '근거 약함', true,
-            { topCode: _rptPalMeta(x.pal.hex) || x.pal.hex, botCode: x.mkHex || '' });
+      html += _rptChipRow(
+        r.weak.slice(0, 16).map(function(x){
+          return _rptChip(
+            { hex: x.pal.hex, code: _rptPalMeta(x.pal.hex) || '', label: x.pal.name, name: x.pal.name },
+            { hex: x.mkHex, label: x.mkHex ? 'ΔE' + x.de : '없음' },
+            'var(--warn)');
         }).join(''),
-        '위 = 확정 팔레트 · 아래 = 마켓·트렌드(가장 가까운 색이지만 거리 밖)');
+        '칩 = 확정 팔레트 · 아래 띠 = 가장 가까운 마켓 컬러(거리 밖)');
     }
 
     html += H('2. 구성비 — ' + TM_GROUP_LABEL.basic + ' / ' + TM_GROUP_LABEL.sub + ' / ' + TM_GROUP_LABEL.key);
@@ -23431,17 +23510,16 @@ document.addEventListener('DOMContentLoaded',function(){
       html += P('마켓과 트렌드(WGSN·Peclers) 양쪽에서 잡히는데 확정 팔레트에는 없는 색이 '
         + B(r.gap.items.length + '색') + ' 있습니다. '
         + '가장 가까운 확정색과의 거리가 ΔE ' + top[0].nearDe + ' 이상이라 팔레트가 덮지 못하는 영역입니다.');
-      html += _rptPairRow(
+      html += _rptChipRow(
         r.gap.items.slice(0, 16).map(function(e){
           var t = e.item.trend;
-          return _rptPair(
-            e.near ? e.near.hex : null, e.near ? e.near.name : '없음',
-            t.hex, '×' + e.item.mkFreq,
-            'ΔE ' + e.nearDe, true,
-            { topCode: e.near ? (_rptPalMeta(e.near.hex) || e.near.hex) : '',
-              botCode: _rptTrendCode(t) });
+          return _rptChip(
+            { hex: t.hex, code: _rptTrendCode(t), label: '×' + e.item.mkFreq, name: t.name || '' },
+            { hex: e.near ? e.near.hex : null,
+              label: (e.near ? e.near.name + ' ' : '') + 'ΔE' + e.nearDe },
+            'var(--gold)');
         }).join(''),
-        '위 = 확정 팔레트(가장 가까운 색) · 아래 = 마켓·트렌드(추가 후보) · ΔE 가 작을수록 같은 색 · 마켓 빈도순');
+        '칩 = 마켓·트렌드(추가 후보) · 아래 띠 = 확정 팔레트에서 가장 가까운 색 · 마켓 빈도순');
       if(r.gap.byCat && r.gap.byCat.cats){
         var per = r.gap.byCat.cats.filter(function(m){ return m.list.length; })
           .map(function(m){ return m.def.name + ' ' + m.list.length + '색'; });
