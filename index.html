@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_REVIEW_v211 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_REVIEW_v212 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21796,8 +21796,16 @@ document.addEventListener('DOMContentLoaded',function(){
     var moodDefs = cv ? cv.moods : DCP_MOODS;
     // 상단 판은 SEASONAL / ACCENT / CORE 로 재분류해서 보여준다.
     // (무드 3종은 아래에 그대로 남는다)
-    var flat = [];
-    coreRows.forEach(function(r){ r.forEach(function(it){ if(it && !it.gap && it.hex) flat.push(it); }); });
+    var flat = [], _seen = {};
+    function _pushFlat(it){
+      if(!it || it.gap || !it.hex) return;
+      var k = String(it.hex).toUpperCase();
+      if(_seen[k]) return;                      // LPS 처럼 두 무드에 걸친 색은 한 번만
+      _seen[k] = 1; flat.push(it);
+    }
+    coreRows.forEach(function(r){ r.forEach(_pushFlat); });
+    // 무드 3종 색도 같은 기준으로 재분류에 포함 (아래 무드 섹션은 그대로 남음)
+    moodDefs.forEach(function(m){ m.rows.forEach(function(r){ r.forEach(_pushFlat); }); });
     var tiers = [
       ['sub',   TM_GROUP_LABEL.sub,   'var(--blue)'],
       ['key',   TM_GROUP_LABEL.key,   '#A090F0'],
