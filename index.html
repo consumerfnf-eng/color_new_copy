@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v247 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_STD_v248 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -24773,7 +24773,10 @@ document.addEventListener('DOMContentLoaded',function(){
   // ══════════════════════════════════════════════════════════════
   var STD_SECT_ID = 'disc-std-page';
   var STD_CUT = { accent_chroma: 50.0, achro_gate: 10.0, core_warm_chroma: 22.5, core_warm_light: 82.0,   // v246: 35 → 22.5
-                  olive_h: 85, olive_l: 50 };
+                  olive_h: 85, olive_l: 50,
+                  navy_c: 25,                 // v248 네이비 채도 상한
+                  cream_l: 85, cream_c: 15,   // v248 크림·아이보리
+                  dark_l: 30, dark_c: 20 };   // v248 어두운 저채도
   var STD_TIERS = [
     ['Seasonal', 'var(--blue)'],
     ['Accent',   '#A090F0'],
@@ -24785,7 +24788,8 @@ document.addEventListener('DOMContentLoaded',function(){
     var a = _tmLCh(hex);
     if(a.C < STD_CUT.achro_gate) return '무채';
     var H = a.H;
-    if(H >= 230 && H <= 300 && a.L < 45) return '네이비';
+    if(H >= 230 && H <= 300 && a.L < 45 && a.C < STD_CUT.navy_c) return '네이비';   // v248: 채도 상한 — 코발트·로열블루는 블루
+    if(a.L >= STD_CUT.cream_l && a.C < STD_CUT.cream_c && H >= 30 && H <= 110) return '베이지';   // v248: 크림·아이보리
     if(H >= 40 && H <= 75  && a.L >= 60 && a.C < 25) return '베이지';
     if(H >= 30 && H <= 95) return (a.L < 60 ? '브라운' : '베이지');
     if(H > 95  && H <= 115) return '옐로';
@@ -24802,6 +24806,10 @@ document.addEventListener('DOMContentLoaded',function(){
     if(a.C >= STD_CUT.accent_chroma) return 'Accent';           // ① (형광 안료는 우리 데이터에 없음)
     var h = _stdHue(hex);
     if(h === '무채' || h === '네이비') return 'Core';            // ②
+    // v248 — 어두운 저채도(L*<30 · C*<20)는 색상군과 무관하게 Core (다크 플럼·와인·그린)
+    if(a.L < STD_CUT.dark_l && a.C < STD_CUT.dark_c) return 'Core';
+    // v248 — 밝은 저채도 크림·아이보리는 밝기 제한(L*<82)과 무관하게 Core
+    if(h === '베이지' && a.L >= STD_CUT.cream_l && a.C < STD_CUT.cream_c) return 'Core';
     // ③ v246 조정 — 채도 상한 35 → 22.5, 밝은 올리브베이지(H>85 & L≥50)는 제외
     //   (로즈브라운·카멜·올리브골드·올리브베이지는 Seasonal)
     if((h === '베이지' || h === '브라운')
