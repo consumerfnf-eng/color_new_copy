@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v235 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_STD_v237 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21372,6 +21372,7 @@ document.addEventListener('DOMContentLoaded',function(){
       +   ' · 채택 ' + matchedTotal + '색 · 계열 다양성 + 유사색 배제 · BASIC 아이보리 ' + TM_BASIC_IVORY_N + '개/브라운≥' + TM_BASIC_BROWN_MIN
       +   ' · 분류 Lab 기준 BASIC C*<' + TM_BASIC_C + ' (뉴트럴 색상대 C*<' + TM_NEUTRAL_C + ', 쿨은 L<' + TM_COOL_MAX_L + ') / KEY C*≥' + TM_KEY_C + ' · 마켓 근접색 병합 Lab ΔE < ' + TM_CLUSTER_DE + ' · 브랜드 집계 Lab ΔE < ' + TM_NEAR_BRAND_DE
       + '</div>'
+      + _fnMarketTierBar()
       + _ovTabs()
       + (t.trendPool === 0
           ? '<div class="spp-empty">02 Trend Collection에서 WGSN 또는 Peclers 데이터를 먼저 로드하세요.</div>'
@@ -22644,18 +22645,14 @@ document.addEventListener('DOMContentLoaded',function(){
             ? '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);line-height:1.5;margin-bottom:6px">'
               + _ccBrandLabel(d.brandShow || d.brandList) + '</div>'
             : '<div style="margin-bottom:6px"></div>')
-        // 라이프스타일별 등급 비중 (v235)
-        + (k === CC_ETC ? '' : (function(){
-            var c = _fnCatRatios().filter(function(x){ return x.key === k; })[0];
-            return _fnMiniBar(c ? c.pct : null);
-          })())
+
         + (box.list.length
             ? '<div class="dcp-mood-row" style="justify-content:flex-start;gap:10px">'
               + box.list.map(function(e){ return _ccChip(e, k); }).join('') + '</div>'
             : '<div class="spp-empty" style="font-size:10px">없음</div>')
         + '</div>';
     }).join('');
-    sect.innerHTML = head
+    sect.innerHTML = head + _fnCatPanel()
       + '<div style="display:flex;flex-wrap:wrap;align-items:flex-start;row-gap:24px">' + cols + '</div>';
   }
   window._discRenderCatCuration = _ccRender;
@@ -23922,7 +23919,8 @@ document.addEventListener('DOMContentLoaded',function(){
     var sel = (typeof window._curMarketSel === 'function') ? window._curMarketSel() : null;
     var maps = defs.map(function(d){
       var set = {}; (d.brandList || []).forEach(function(b){ set[bkn(b)] = 1; });
-      return { def: d, set: set, w: { Core: 0, Seasonal: 0, Accent: 0 }, tot: 0, hex: {} };
+      return { def: d, set: set, w: { Core: 0, Seasonal: 0, Accent: 0 }, tot: 0, hex: {},
+               th: { Core: {}, Seasonal: {}, Accent: {} } };
     });
     var tierMemo = {};
     if(typeof compData !== 'undefined' && Array.isArray(compData)){
@@ -23937,7 +23935,7 @@ document.addEventListener('DOMContentLoaded',function(){
         if(!/^#[0-9A-F]{6}$/.test(h)) return;
         var t = tierMemo[h] || (tierMemo[h] = _stdTier(h));
         var f = cd.freq || 1;
-        maps.forEach(function(m){ if(m.set[k]){ m.w[t] += f; m.tot += f; m.hex[h] = 1; } });
+        maps.forEach(function(m){ if(m.set[k]){ m.w[t] += f; m.tot += f; m.hex[h] = 1; m.th[t][h] = (m.th[t][h] || 0) + f; } });
       });
     }
     var out = maps.map(function(m){
@@ -23947,7 +23945,8 @@ document.addEventListener('DOMContentLoaded',function(){
         Object.keys(m.w).forEach(function(t){ pct[t] = Math.round(m.w[t] / m.tot * 1000) / 10; });
       }
       return { key: m.def.key, name: m.def.name, emoji: m.def.emoji || '', sub: m.def.subLabel || '',
-               pct: pct, freq: m.tot, colors: Object.keys(m.hex).length };
+               brands: m.def.brandShow || m.def.brandList || [],
+               pct: pct, freq: m.tot, colors: Object.keys(m.hex).length, tierHex: m.th };
     });
     _fnCatCache = out; _fnCatKey = _tmLastBuild;
     return out;
@@ -23965,6 +23964,147 @@ document.addEventListener('DOMContentLoaded',function(){
       + '</div></div>';
   }
   window._discCatMiniBar = _fnMiniBar;
+
+  // ── 라이프스타일별 구성비 — 큰 막대 (기본 / 컬러 구성 상세) v236 ──
+  var FN_CAT_VIEW = 'basic';
+  var FN_SOLID = { Core: '#111111', Seasonal: '#5E5E5E', Accent: '#D98A2B' };
+  var FN_CLUSTER_DE = 7, FN_CLUSTER_MAX = 36;
+  window._fnSetCatView = function(v){ FN_CAT_VIEW = v; try{ _ccRender(); }catch(e){} try{ _discOrderSections(); }catch(e){} };
+  // 같은 등급 안의 비슷한 색을 묶어 막대를 읽을 수 있게 — 비중(빈도)은 그대로 보존
+  function _fnCluster(hexFreq){
+    var list = Object.keys(hexFreq).map(function(h){ return { hex: h, f: hexFreq[h] }; })
+      .sort(function(a, b){ return b.f - a.f; });
+    var cl = [];
+    list.forEach(function(x){
+      for(var i = 0; i < cl.length; i++){
+        if(_tmDeltaE(cl[i].hex, x.hex) < FN_CLUSTER_DE){ cl[i].f += x.f; return; }
+      }
+      if(cl.length < FN_CLUSTER_MAX) cl.push({ hex: x.hex, f: x.f });
+      else {
+        var best = 0, bd = 1e9;
+        cl.forEach(function(c, j){ var dd = _tmDeltaE(c.hex, x.hex); if(dd < bd){ bd = dd; best = j; } });
+        cl[best].f += x.f;
+      }
+    });
+    cl.forEach(function(c){ c.L = _tmLCh(c.hex).L; });
+    return cl.sort(function(a, b){ return a.L - b.L; });      // 어두운 → 밝은
+  }
+  function _fnBigBar(c, target){
+    var tiers = ['Core','Seasonal','Accent'];
+    var pct = target ? FN_RP.target : c.pct;
+    var detail = (FN_CAT_VIEW === 'detail') && !target;
+    return '<div style="display:flex;height:52px;gap:3px">'
+      + tiers.map(function(t){
+          var v = pct[t];
+          if(!v) return '';
+          var inner;
+          if(detail){
+            var cl = _fnCluster(c.tierHex[t] || {});
+            inner = cl.map(function(x){
+              return '<div title="' + t + ' · ' + x.hex + ' · 빈도 ' + x.f + '" style="flex:' + x.f + ';background:' + x.hex + '"></div>';
+            }).join('');
+          } else {
+            inner = '<div style="flex:1;background:' + FN_SOLID[t] + '"></div>';
+          }
+          var lbl = v >= 2.5
+            ? '<span style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;'
+              + 'font-family:var(--mono);font-size:13px;font-weight:800;color:#fff;white-space:nowrap;'
+              + (detail ? 'padding:3px 9px;border-radius:12px;background:rgba(20,20,20,0.38);'
+                          + '-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);' : '')
+              + '">' + (detail ? t + ' ' : '') + v + '%</span>'
+            : '';
+          return '<div title="' + t + ' ' + v + '%" style="position:relative;flex:' + v + ';display:flex;overflow:hidden;'
+            + (detail ? 'border:2px solid ' + FN_SOLID[t] + ';border-radius:3px' : '') + '">'
+            + inner + lbl + '</div>';
+        }).join('')
+      + '</div>';
+  }
+  function _fnCatPanel(){
+    var cats = _fnCatRatios();
+    if(!cats.some(function(c){ return c.pct; })) return '';
+    var tab = function(k, l){
+      var on = FN_CAT_VIEW === k;
+      return '<button onclick="_fnSetCatView(\'' + k + '\')" style="font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer;'
+        + 'border:1px solid #111;background:' + (on ? '#111' : 'transparent') + ';color:' + (on ? '#fff' : 'var(--text)') + '">' + l + '</button>';
+    };
+    var row = function(label, sub, bar){
+      return '<div style="display:grid;grid-template-columns:230px 1fr;gap:14px;align-items:center;margin-bottom:12px">'
+        + '<div style="text-align:right"><div style="font-size:15px;font-weight:700;color:var(--text)">' + label + '</div>'
+        +   '<div style="font-family:var(--mono);font-size:10px;color:var(--text4);line-height:1.5">' + sub + '</div></div>'
+        + bar + '</div>';
+    };
+    return '<div style="border:1px solid var(--border);border-radius:8px;padding:16px 18px;margin:0 0 22px">'
+      + '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-bottom:12px;border-bottom:2px solid var(--text);margin-bottom:16px">'
+      +   '<span style="font-size:15px;font-weight:700;color:var(--text)">라이프스타일별 컬러 구성비 — Core / Seasonal / Accent</span>'
+      +   '<span style="display:flex">' + tab('basic', '기본') + tab('detail', '컬러 구성 상세') + '</span>'
+      +   '<span style="margin-left:auto;display:flex;gap:14px;font-size:11px;color:var(--text2)">'
+      +     ['Core','Seasonal','Accent'].map(function(t){ return '<span><span style="display:inline-block;width:10px;height:10px;background:' + FN_SOLID[t] + ';margin-right:4px"></span>' + t + '</span>'; }).join('')
+      +   '</span>'
+      + '</div>'
+      + cats.map(function(c){
+          return row(c.emoji + ' ' + c.name,
+                     c.sub + ' · ' + c.colors + '색 · 빈도 ' + c.freq.toLocaleString() + '<br>' + c.brands.slice(0, 5).join(' · ') + (c.brands.length > 5 ? ' 외' : ''),
+                     c.pct ? _fnBigBar(c, false) : '<div class="spp-empty">데이터 없음</div>');
+        }).join('')
+      + row('디커 제안 목표', '참고 브랜드 평균 · 레인지플랜 산출', _fnBigBar(null, true))
+      + '<div style="font-family:var(--mono);font-size:10px;color:var(--text4);padding-top:10px;border-top:1px solid var(--border)">'
+      +   '해당 라이프스타일 브랜드의 마켓 컬러를 디커 기준으로 나누고 빈도로 가중 · '
+      +   '컬러 구성 상세 = 등급 안에서 비슷한 색(ΔE < ' + FN_CLUSTER_DE + ')을 묶어 어두운 색부터 · 폭 = 빈도</div>'
+      + '</div>';
+  }
+  window._discCatPanel = _fnCatPanel;
+
+  // ── 03 Trend-Matched 상단 — 마켓 전체 컬러바 (01 Market Analysis 하단 컬러바 디자인) v237 ──
+  function _fnMarketTierBar(){
+    var mk = [];
+    try{ mk = _tmMarketPool(); }catch(e){}
+    if(!mk.length) return '';
+    var th = { Core: {}, Seasonal: {}, Accent: {} }, w = { Core: 0, Seasonal: 0, Accent: 0 }, tot = 0;
+    mk.forEach(function(x){
+      var t = _stdTier(x.hex), f = x.freq || 1;
+      th[t][x.hex] = (th[t][x.hex] || 0) + f; w[t] += f; tot += f;
+    });
+    var pct = {};
+    Object.keys(w).forEach(function(t){ pct[t] = Math.round(w[t] / tot * 1000) / 10; });
+    var ac = 'var(--gold)';
+    var groups = ['Core','Seasonal','Accent'].map(function(t){
+      if(!w[t]) return '';
+      var cl = _fnCluster(th[t]);
+      var sw = cl.map(function(c){
+        var pt = '';
+        try{ pt = (typeof pantoneApprox === 'function' ? (pantoneApprox(c.hex) || '') : ''); }catch(e){}
+        pt = String(pt).replace(/ TCX$/i, '') || c.hex;
+        var sPt = pt.replace(/'/g, "\\'");
+        return '<div title="' + t + ' · ' + pt + ' · ' + c.hex + ' · 빈도 ' + c.f + '"'
+          + ' onclick="typeof openCompColorDetail===\'function\'&&openCompColorDetail(\'' + c.hex + '\',\'' + sPt + '\',' + c.f + ',\'\')"'
+          + ' style="flex:' + c.f + ';min-width:2px;height:100%;background:' + c.hex + ';cursor:pointer;transition:opacity .15s"'
+          + ' onmouseenter="this.style.opacity=\'0.75\'" onmouseleave="this.style.opacity=\'1\'"></div>';
+      }).join('');
+      var lbl = pct[t] >= 2.5
+        ? '<span style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;'
+          + 'font-family:var(--mono);font-size:11px;font-weight:800;color:#fff;white-space:nowrap;padding:2px 8px;border-radius:10px;'
+          + 'background:rgba(20,20,20,0.38);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)">' + pct[t] + '%</span>'
+        : '';
+      return '<div title="' + t + ' ' + pct[t] + '%" style="position:relative;flex:' + w[t] + ';display:flex;height:100%;'
+        + 'border:2px solid ' + FN_SOLID[t] + ';border-radius:4px;overflow:hidden">' + sw + lbl + '</div>';
+    }).join('');
+    return '<div style="margin:0 0 16px;padding:16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px">'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">'
+      +   '<div style="width:3px;height:16px;background:' + ac + ';border-radius:2px"></div>'
+      +   '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + ac + ';letter-spacing:0.06em;text-transform:uppercase">MARKET COLORS · CORE / SEASONAL / ACCENT</span>'
+      +   '<span style="font-family:var(--mono);font-size:9px;color:var(--text3)">마켓 전체 ' + mk.length + '색 · 빈도 ' + tot.toLocaleString() + ' · 디커 기준</span>'
+      +   '<span style="font-family:var(--mono);font-size:8px;color:var(--text4)">Click swatch for Pantone</span>'
+      +   '<span style="margin-left:auto;display:flex;gap:12px;font-family:var(--mono);font-size:9px;color:var(--text2)">'
+      +     ['Core','Seasonal','Accent'].map(function(t){
+              return '<span><span style="display:inline-block;width:9px;height:9px;border:2px solid ' + FN_SOLID[t] + ';margin-right:4px;vertical-align:-1px"></span>'
+                + t + ' <b style="color:var(--text)">' + pct[t] + '%</b></span>';
+            }).join('')
+      +   '</span>'
+      + '</div>'
+      + '<div style="display:flex;gap:3px;height:36px">' + groups + '</div>'
+      + '</div>';
+  }
+  window._discMarketTierBar = _fnMarketTierBar;
 
   function _fnAlloc(total, weights){
     var sw = weights.reduce(function(a, b){ return a + b; }, 0) || 1;
