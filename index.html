@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v242 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_STD_v243 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -24050,7 +24050,7 @@ document.addEventListener('DOMContentLoaded',function(){
       + '</div>';
   }
   function _fnCatPanel(){
-    var cats = _fnCatRatios('ours');
+    var cats = _fnCatRatios(FN_CRIT);
     if(!cats.some(function(c){ return c.pct; })) return '';
     var ac = 'var(--gold)';
     var tab = function(k, l){
@@ -24077,6 +24077,7 @@ document.addEventListener('DOMContentLoaded',function(){
       + '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
       +   '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text2);letter-spacing:0.06em">LIFESTYLE COLOR MIX · CORE / SEASONAL / ACCENT</span>'
       +   '<span style="display:flex;gap:4px">' + tab('basic', '기본') + tab('detail', '컬러 구성 상세') + '</span>'
+      +   _fnCritTabs()
       +   '<span style="margin-left:auto;display:flex;gap:12px;font-family:var(--mono);font-size:9px;color:var(--text3)">'
       +     ['Core','Seasonal','Accent'].map(function(t){ return '<span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + FN_SOLID[t] + ';margin-right:4px"></span>' + t + '</span>'; }).join('')
       +   '</span>'
@@ -24089,7 +24090,7 @@ document.addEventListener('DOMContentLoaded',function(){
         }).join('')
       + card('DISCOVERY TARGET', '참고 브랜드 평균 · 레인지플랜 산출 · ' + pctTxt(FN_RP.target), _fnBigBar(null, true))
       + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:8px">'
-      +   '우리 기준 (Accent C*≥' + TM_KEY_C + ') · 해당 라이프스타일 브랜드의 마켓 컬러를 빈도 가중 · DISCOVERY TARGET 은 디스커버리팀 산출값(디커 기준) · 컬러 구성 상세 = 비슷한 색(ΔE < ' + FN_CLUSTER_DE + ') 묶음, 어두운 색부터</div>'
+      +   _fnCritLabel() + ' · 해당 라이프스타일 브랜드의 마켓 컬러를 빈도 가중 · DISCOVERY TARGET 은 디스커버리팀 산출값(디커 기준) · 컬러 구성 상세 = 비슷한 색(ΔE < ' + FN_CLUSTER_DE + ') 묶음, 어두운 색부터</div>'
       + '</div>';
   }
   window._discCatPanel = _fnCatPanel;
@@ -24119,14 +24120,35 @@ document.addEventListener('DOMContentLoaded',function(){
     return out;
   }
   var _fnBarIdx = {};
+  // v243 — 두 패널 공통 분류 기준 (비교용 토글)
+  var FN_CRIT = 'disc';     // 'disc' | 'ours'
+  window._fnSetCrit = function(c){
+    FN_CRIT = c;
+    try{ _tmRender(); }catch(e){}
+    try{ _ccRender(); }catch(e){}
+    try{ _discOrderSections(); }catch(e){}
+  };
+  function _fnCritTier(hex){
+    return FN_CRIT === 'ours' ? ({ basic: 'Core', sub: 'Seasonal', key: 'Accent' })[_tmClassify(hex)] : _stdTier(hex);
+  }
+  function _fnCritLabel(){
+    return FN_CRIT === 'ours' ? '우리 기준 (Accent C*≥' + TM_KEY_C + ')' : '디커 기준 (Accent C*≥' + STD_CUT.accent_chroma + ')';
+  }
+  function _fnCritTabs(){
+    return '<span style="display:inline-flex;gap:4px">' + [['ours','우리 기준'],['disc','디커 기준']].map(function(x){
+      var on = FN_CRIT === x[0];
+      return '<button onclick="_fnSetCrit(\'' + x[0] + '\')" style="font-family:var(--mono);font-size:9px;padding:3px 9px;border-radius:4px;cursor:pointer;'
+        + 'border:1px solid ' + (on ? 'var(--gold)' : 'var(--border)') + ';background:' + (on ? 'rgba(160,120,64,0.16)' : 'transparent') + ';'
+        + 'color:' + (on ? 'var(--gold)' : 'var(--text3)') + ';font-weight:' + (on ? 700 : 400) + '">' + x[1] + '</button>';
+    }).join('') + '</span>';
+  }
   function _fnMarketTierBar(){
     var mk = [];
     try{ mk = _tmMarketPool(); }catch(e){}
     if(!mk.length) return '';
-    var OURS = { basic: 'Core', sub: 'Seasonal', key: 'Accent' };
     var groups = { Core: [], Seasonal: [], Accent: [] }, w = { Core: 0, Seasonal: 0, Accent: 0 }, tot = 0;
     mk.forEach(function(x){
-      var t = OURS[_tmClassify(x.hex)], f = x.freq || 1;
+      var t = _fnCritTier(x.hex), f = x.freq || 1;
       groups[t].push(x); w[t] += f; tot += f;
     });
     var pct = {};
@@ -24169,13 +24191,14 @@ document.addEventListener('DOMContentLoaded',function(){
       + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">'
       +   '<div style="width:3px;height:16px;background:' + ac + ';border-radius:2px"></div>'
       +   '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + ac + ';letter-spacing:0.06em;text-transform:uppercase">MARKET COLORS · CORE / SEASONAL / ACCENT</span>'
-      +   '<span style="font-family:var(--mono);font-size:9px;color:var(--text3)">마켓 전체 ' + mk.length + '색 · 빈도 ' + tot.toLocaleString() + ' · 우리 기준 (Accent C*≥' + TM_KEY_C + ')</span>'
+      +   '<span style="font-family:var(--mono);font-size:9px;color:var(--text3)">마켓 전체 ' + mk.length + '색 · 빈도 ' + tot.toLocaleString() + ' · ' + _fnCritLabel() + '</span>'
+      +   _fnCritTabs()
       +   '<span style="font-family:var(--mono);font-size:8px;color:var(--text4)">Click swatch for brands</span>'
       +   '<span style="margin-left:auto;display:flex;gap:12px;font-family:var(--mono);font-size:9px;color:var(--text2)">'
       +     ['Core','Seasonal','Accent'].map(function(t){
               var k = { Core: 'basic', Seasonal: 'sub', Accent: 'key' }[t];
               return '<span><span style="display:inline-block;width:9px;height:9px;border:2px solid ' + FN_SOLID[t] + ';margin-right:4px;vertical-align:-1px"></span>'
-                + t + ' <b style="color:var(--text)">' + pct[t] + '%</b> → ' + TM_CAPS[k] + '칩</span>';
+                + t + ' <b style="color:var(--text)">' + pct[t] + '%</b>' + (FN_CRIT === 'ours' ? ' → ' + TM_CAPS[k] + '칩' : '') + '</span>';
             }).join('')
       +   '</span>'
       + '</div>'
