@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_REVIEW_v210 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_REVIEW_v211 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21794,11 +21794,29 @@ document.addEventListener('DOMContentLoaded',function(){
     var cv = _dcpCustomView();
     var coreRows = cv ? [cv.core] : [DCP_CORE_1, DCP_CORE_2];
     var moodDefs = cv ? cv.moods : DCP_MOODS;
-    var core = '<div class="dcp-core">'
-      + '<div class="dcp-core-tag">CORE</div>'
-      + '<div class="dcp-core-rows">'
-      +   coreRows.map(function(r){ return '<div class="dcp-row">' + r.map(_dcpChip).join('') + '</div>'; }).join('')
-      + '</div></div>';
+    // 상단 판은 SEASONAL / ACCENT / CORE 로 재분류해서 보여준다.
+    // (무드 3종은 아래에 그대로 남는다)
+    var flat = [];
+    coreRows.forEach(function(r){ r.forEach(function(it){ if(it && !it.gap && it.hex) flat.push(it); }); });
+    var tiers = [
+      ['sub',   TM_GROUP_LABEL.sub,   'var(--blue)'],
+      ['key',   TM_GROUP_LABEL.key,   '#A090F0'],
+      ['basic', TM_GROUP_LABEL.basic, 'var(--gold)']
+    ];
+    var core = '<div style="margin-bottom:22px">'
+      + tiers.map(function(t){
+          var list = flat.filter(function(it){ return _tmClassify('#' + it.hex) === t[0]; });
+          if(!list.length) return '';
+          return '<div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:14px">'
+            + '<div style="flex:0 0 96px;padding-top:6px">'
+            +   '<div style="font-family:var(--mono);font-size:11px;font-weight:700;color:' + t[2]
+            +     ';letter-spacing:0.1em">' + t[1] + '</div>'
+            +   '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-top:2px">' + list.length + '색</div>'
+            + '</div>'
+            + '<div class="dcp-row" style="flex:1 1 auto;flex-wrap:wrap">' + list.map(_dcpChip).join('') + '</div>'
+            + '</div>';
+        }).join('')
+      + '</div>';
     var moods = '<div class="dcp-moods">' + moodDefs.map(function(m){
       return '<div class="dcp-mood">'
         + '<div class="dcp-mood-title">' + m.title + '</div>'
@@ -22941,8 +22959,7 @@ document.addEventListener('DOMContentLoaded',function(){
   function _rptSquare(hex, caption, accent){
     return '<span onclick="_rptSwPop(event,\'' + hex + '\')" title="' + hex + ' · 클릭하면 코드"'
       + ' style="display:inline-block;width:52px;cursor:pointer;margin:0 8px 8px 0;vertical-align:top">'
-      + '<span style="display:block;width:52px;height:52px;border-radius:12px;background:' + hex
-      +   ';border:1px solid ' + (accent || 'var(--border2)') + '"></span>'
+      + '<span style="display:block;width:52px;height:52px;border-radius:12px;background:' + hex + '"></span>'
       + (caption
           ? '<span style="display:block;font-family:var(--mono);font-size:8.5px;color:var(--text3);'
             + 'text-align:center;margin-top:4px;line-height:1.35">' + caption + '</span>'
