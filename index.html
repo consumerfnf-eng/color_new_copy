@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v238 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_STD_v241 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20520,7 +20520,20 @@ document.addEventListener('DOMContentLoaded',function(){
   //  ※ 매칭 실패한 마켓 컬러는 제외
   // ══════════════════════════════════════════════════════════════
   var TM_DIST   = 30;                                   // 매칭 임계값 (엄격)
-  var TM_CAPS   = { sub: 18, key: 8, basic: 18 };        // 그룹별 표시 상한
+  var TM_CAPS   = { sub: 18, key: 8, basic: 18 };        // 그룹별 표시 상한 (v239: 마켓 비율로 매번 재계산)
+  var TM_TOTAL  = 46;                                      // 표시 총량 — 마켓 등급 비율대로 나눈다
+  function _tmMarketCaps(market){
+    var w = { sub: 0, key: 0, basic: 0 };
+    market.forEach(function(m){ w[_tmClassify(m.hex)] += (m.freq || 1); });
+    var ks = ['basic','sub','key'];
+    var n = _fnAlloc(TM_TOTAL, ks.map(function(k){ return w[k]; }));
+    var out = {};
+    ks.forEach(function(k, i){ out[k] = (w[k] > 0) ? Math.max(1, n[i]) : 0; });
+    // 최소 1 보정으로 넘친 만큼 가장 큰 그룹에서 뺀다
+    var over = out.basic + out.sub + out.key - TM_TOTAL;
+    while(over > 0){ var big = ks.slice().sort(function(a, b){ return out[b] - out[a]; })[0]; out[big]--; over--; }
+    return out;
+  }
   var TM_BASIC_IVORY_N   = 3;   // BASIC 안 아이보리 목표 수 (부족하면 채우고, 넘치면 자름)
   var TM_BASIC_BROWN_MIN = 4;   // BASIC 안에서 최소한 확보할 브라운 계열 수
   var TM_MINDIST = { sub: 35, key: 48, basic: 35 };      // 그룹별 유사색 배제 거리 (03 pickByQuota 기준)
@@ -20767,6 +20780,11 @@ document.addEventListener('DOMContentLoaded',function(){
     var trend  = _tmTrendPool();
     var buckets = { sub: [], key: [], basic: [] };
     var totals  = { scanned: market.length, matched: 0, trendPool: trend.length, raw: {}, families: {} };
+    if(market.length){
+      var caps = _tmMarketCaps(market);
+      TM_CAPS.sub = caps.sub; TM_CAPS.key = caps.key; TM_CAPS.basic = caps.basic;
+      totals.caps = caps;
+    }
     if(!market.length || !trend.length || typeof rgbDist !== 'function') return { buckets: buckets, totals: totals };
 
     var usedTrend = {};
@@ -21369,7 +21387,8 @@ document.addEventListener('DOMContentLoaded',function(){
       + '</div>'
       + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-bottom:14px">'
       +   '마켓 ' + t.scanned + '색 · 트렌드 풀 ' + t.trendPool + '색 · 매칭 임계 ΔRGB ≤ ' + TM_DIST
-      +   ' · 채택 ' + matchedTotal + '색 · 계열 다양성 + 유사색 배제 · BASIC 아이보리 ' + TM_BASIC_IVORY_N + '개/브라운≥' + TM_BASIC_BROWN_MIN
+      +   ' · 채택 ' + matchedTotal + '색 (마켓 비율 × ' + TM_TOTAL + ' → ' + TM_GROUP_LABEL.basic + ' ' + TM_CAPS.basic
+      +   ' / ' + TM_GROUP_LABEL.sub + ' ' + TM_CAPS.sub + ' / ' + TM_GROUP_LABEL.key + ' ' + TM_CAPS.key + ') · 계열 다양성 + 유사색 배제 · BASIC 아이보리 ' + TM_BASIC_IVORY_N + '개/브라운≥' + TM_BASIC_BROWN_MIN
       +   ' · 분류 Lab 기준 BASIC C*<' + TM_BASIC_C + ' (뉴트럴 색상대 C*<' + TM_NEUTRAL_C + ', 쿨은 L<' + TM_COOL_MAX_L + ') / KEY C*≥' + TM_KEY_C + ' · 마켓 근접색 병합 Lab ΔE < ' + TM_CLUSTER_DE + ' · 브랜드 집계 Lab ΔE < ' + TM_NEAR_BRAND_DE
       + '</div>'
       + _fnMarketTierBar()
@@ -23911,9 +23930,12 @@ document.addEventListener('DOMContentLoaded',function(){
   // 최대 잔여 방식 — 합계가 정확히 total 이 되도록
   // 라이프스타일(카테고리)별 디커 등급 비중 — 해당 카테고리 브랜드의 마켓 컬러를 빈도 가중
   //  필터는 카테고리 분모(_gapCatTotals)와 동일: GLOBAL·KOREA · 브랜드 선택 · 품목 필터
-  var _fnCatCache = null, _fnCatKey = null;
-  function _fnCatRatios(){
-    if(_fnCatCache && _fnCatKey === _tmLastBuild) return _fnCatCache;
+  var _fnCatCache = {}, _fnCatKey = {};
+  var FN_OURS_MAP = { basic: 'Core', sub: 'Seasonal', key: 'Accent' };
+  // mode: 'disc'(기본, 04 비교용) | 'ours'(03 패널 — _tmClassify)
+  function _fnCatRatios(mode){
+    mode = mode || 'disc';
+    if(_fnCatCache[mode] && _fnCatKey[mode] === _tmLastBuild) return _fnCatCache[mode];
     var defs = _gapCatDefs();
     var bkn = window._brandKeyNorm || function(x){ return (x||'').toLowerCase().replace(/[\s._\-]+/g,'').trim(); };
     var sel = (typeof window._curMarketSel === 'function') ? window._curMarketSel() : null;
@@ -23933,7 +23955,7 @@ document.addEventListener('DOMContentLoaded',function(){
         if(typeof _passesCategoryFilter === 'function' && !_passesCategoryFilter(cd)) return;
         var h = String(cd.hex).toUpperCase();
         if(!/^#[0-9A-F]{6}$/.test(h)) return;
-        var t = tierMemo[h] || (tierMemo[h] = _stdTier(h));
+        var t = tierMemo[h] || (tierMemo[h] = (mode === 'ours' ? FN_OURS_MAP[_tmClassify(h)] : _stdTier(h)));
         var f = cd.freq || 1;
         maps.forEach(function(m){ if(m.set[k]){ m.w[t] += f; m.tot += f; m.hex[h] = 1; m.th[t][h] = (m.th[t][h] || 0) + f; } });
       });
@@ -23948,7 +23970,7 @@ document.addEventListener('DOMContentLoaded',function(){
                brands: m.def.brandShow || m.def.brandList || [],
                pct: pct, freq: m.tot, colors: Object.keys(m.hex).length, tierHex: m.th };
     });
-    _fnCatCache = out; _fnCatKey = _tmLastBuild;
+    _fnCatCache[mode] = out; _fnCatKey[mode] = _tmLastBuild;
     return out;
   }
   window._discCatTierRatios = _fnCatRatios;
@@ -23989,96 +24011,140 @@ document.addEventListener('DOMContentLoaded',function(){
     cl.forEach(function(c){ c.L = _tmLCh(c.hex).L; });
     return cl.sort(function(a, b){ return a.L - b.L; });      // 어두운 → 밝은
   }
+  // v240 — 01 Market Analysis 하단 컬러바 디자인으로 통일
   function _fnBigBar(c, target){
     var tiers = ['Core','Seasonal','Accent'];
     var pct = target ? FN_RP.target : c.pct;
     var detail = (FN_CAT_VIEW === 'detail') && !target;
-    return '<div style="display:flex;height:52px;gap:3px">'
+    return '<div style="display:flex;gap:2px;height:36px;border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);background:var(--bg2)">'
       + tiers.map(function(t){
           var v = pct[t];
           if(!v) return '';
           var inner;
           if(detail){
-            var cl = _fnCluster(c.tierHex[t] || {});
-            inner = cl.map(function(x){
-              return '<div title="' + t + ' · ' + x.hex + ' · 빈도 ' + x.f + '" style="flex:' + x.f + ';background:' + x.hex + '"></div>';
+            inner = _fnCluster(c.tierHex[t] || {}).map(function(x){
+              return '<div title="' + t + ' · ' + x.hex + ' · 빈도 ' + x.f + '" style="flex:' + x.f + ';min-width:1px;height:100%;background:' + x.hex + ';transition:opacity .15s"'
+                + ' onmouseenter="this.style.opacity=\'0.75\'" onmouseleave="this.style.opacity=\'1\'"></div>';
             }).join('');
           } else {
-            inner = '<div style="flex:1;background:' + FN_SOLID[t] + '"></div>';
+            inner = '<div style="flex:1;height:100%;background:' + FN_SOLID[t] + '"></div>';
           }
           var lbl = v >= 2.5
             ? '<span style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;'
-              + 'font-family:var(--mono);font-size:13px;font-weight:800;color:#fff;white-space:nowrap;'
-              + (detail ? 'padding:3px 9px;border-radius:12px;background:rgba(20,20,20,0.38);'
+              + 'font-family:var(--mono);font-size:10px;font-weight:800;color:#fff;white-space:nowrap;'
+              + (detail ? 'padding:2px 7px;border-radius:10px;background:rgba(20,20,20,0.38);'
                           + '-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);' : '')
               + '">' + (detail ? t + ' ' : '') + v + '%</span>'
             : '';
-          return '<div title="' + t + ' ' + v + '%" style="position:relative;flex:' + v + ';display:flex;overflow:hidden;'
-            + (detail ? 'border:2px solid ' + FN_SOLID[t] + ';border-radius:3px' : '') + '">'
-            + inner + lbl + '</div>';
+          return '<div title="' + t + ' ' + v + '%" style="position:relative;flex:' + v + ';display:flex;height:100%">' + inner + lbl + '</div>';
         }).join('')
       + '</div>';
   }
   function _fnCatPanel(){
-    var cats = _fnCatRatios();
+    var cats = _fnCatRatios('ours');
     if(!cats.some(function(c){ return c.pct; })) return '';
+    var ac = 'var(--gold)';
     var tab = function(k, l){
       var on = FN_CAT_VIEW === k;
-      return '<button onclick="_fnSetCatView(\'' + k + '\')" style="font-size:13px;font-weight:700;padding:8px 16px;cursor:pointer;'
-        + 'border:1px solid #111;background:' + (on ? '#111' : 'transparent') + ';color:' + (on ? '#fff' : 'var(--text)') + '">' + l + '</button>';
+      return '<button onclick="_fnSetCatView(\'' + k + '\')" style="font-family:var(--mono);font-size:10px;'
+        + 'padding:4px 11px;border-radius:4px;cursor:pointer;'
+        + 'border:1px solid ' + (on ? ac : 'var(--border)') + ';'
+        + 'background:' + (on ? 'rgba(160,120,64,0.16)' : 'transparent') + ';'
+        + 'color:' + (on ? ac : 'var(--text3)') + ';font-weight:' + (on ? '700' : '400') + '">' + l + '</button>';
     };
-    var row = function(label, sub, bar){
-      return '<div style="display:grid;grid-template-columns:230px 1fr;gap:14px;align-items:center;margin-bottom:12px">'
-        + '<div style="text-align:right"><div style="font-size:15px;font-weight:700;color:var(--text)">' + label + '</div>'
-        +   '<div style="font-family:var(--mono);font-size:10px;color:var(--text4);line-height:1.5">' + sub + '</div></div>'
+    var pctTxt = function(p){
+      return ['Core','Seasonal','Accent'].map(function(t){ return t + ' ' + (p[t] || 0) + '%'; }).join(' · ');
+    };
+    var card = function(title, sub, bar){
+      return '<div style="margin-top:12px;padding:16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px">'
+        + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">'
+        +   '<div style="width:3px;height:16px;background:' + ac + ';border-radius:2px"></div>'
+        +   '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + ac + ';letter-spacing:0.06em;text-transform:uppercase">' + title + '</span>'
+        +   '<span style="font-family:var(--mono);font-size:9px;color:var(--text3)">' + sub + '</span>'
+        + '</div>'
         + bar + '</div>';
     };
-    return '<div style="border:1px solid var(--border);border-radius:8px;padding:16px 18px;margin:0 0 22px">'
-      + '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-bottom:12px;border-bottom:2px solid var(--text);margin-bottom:16px">'
-      +   '<span style="font-size:15px;font-weight:700;color:var(--text)">라이프스타일별 컬러 구성비 — Core / Seasonal / Accent</span>'
-      +   '<span style="display:flex">' + tab('basic', '기본') + tab('detail', '컬러 구성 상세') + '</span>'
-      +   '<span style="margin-left:auto;display:flex;gap:14px;font-size:11px;color:var(--text2)">'
-      +     ['Core','Seasonal','Accent'].map(function(t){ return '<span><span style="display:inline-block;width:10px;height:10px;background:' + FN_SOLID[t] + ';margin-right:4px"></span>' + t + '</span>'; }).join('')
+    return '<div style="margin:0 0 22px">'
+      + '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+      +   '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text2);letter-spacing:0.06em">LIFESTYLE COLOR MIX · CORE / SEASONAL / ACCENT</span>'
+      +   '<span style="display:flex;gap:4px">' + tab('basic', '기본') + tab('detail', '컬러 구성 상세') + '</span>'
+      +   '<span style="margin-left:auto;display:flex;gap:12px;font-family:var(--mono);font-size:9px;color:var(--text3)">'
+      +     ['Core','Seasonal','Accent'].map(function(t){ return '<span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + FN_SOLID[t] + ';margin-right:4px"></span>' + t + '</span>'; }).join('')
       +   '</span>'
       + '</div>'
       + cats.map(function(c){
-          return row(c.emoji + ' ' + c.name,
-                     c.sub + ' · ' + c.colors + '색 · 빈도 ' + c.freq.toLocaleString() + '<br>' + c.brands.slice(0, 5).join(' · ') + (c.brands.length > 5 ? ' 외' : ''),
-                     c.pct ? _fnBigBar(c, false) : '<div class="spp-empty">데이터 없음</div>');
+          return card((c.emoji ? c.emoji + ' ' : '') + c.name + ' COLORS',
+                      c.sub + ' · ' + c.brands.length + ' Brands · ' + c.colors + ' colors · 빈도 ' + c.freq.toLocaleString()
+                        + (c.pct ? ' · ' + pctTxt(c.pct) : ''),
+                      c.pct ? _fnBigBar(c, false) : '<div class="spp-empty">데이터 없음</div>');
         }).join('')
-      + row('디커 제안 목표', '참고 브랜드 평균 · 레인지플랜 산출', _fnBigBar(null, true))
-      + '<div style="font-family:var(--mono);font-size:10px;color:var(--text4);padding-top:10px;border-top:1px solid var(--border)">'
-      +   '해당 라이프스타일 브랜드의 마켓 컬러를 디커 기준으로 나누고 빈도로 가중 · '
-      +   '컬러 구성 상세 = 등급 안에서 비슷한 색(ΔE < ' + FN_CLUSTER_DE + ')을 묶어 어두운 색부터 · 폭 = 빈도</div>'
+      + card('DISCOVERY TARGET', '참고 브랜드 평균 · 레인지플랜 산출 · ' + pctTxt(FN_RP.target), _fnBigBar(null, true))
+      + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:8px">'
+      +   '우리 기준 (Accent C*≥' + TM_KEY_C + ') · 해당 라이프스타일 브랜드의 마켓 컬러를 빈도 가중 · DISCOVERY TARGET 은 디스커버리팀 산출값(디커 기준) · 컬러 구성 상세 = 비슷한 색(ΔE < ' + FN_CLUSTER_DE + ') 묶음, 어두운 색부터</div>'
       + '</div>';
   }
   window._discCatPanel = _fnCatPanel;
 
   // ── 03 Trend-Matched 상단 — 마켓 전체 컬러바 (01 Market Analysis 하단 컬러바 디자인) v237 ──
+  // hex → { 브랜드: 빈도 } — 마켓 풀과 같은 필터
+  function _fnHexBrandMap(){
+    var out = {};
+    if(typeof compData === 'undefined' || !Array.isArray(compData)) return out;
+    var sel = (typeof window._curMarketSel === 'function') ? window._curMarketSel() : null;
+    var bkn = window._brandKeyNorm || function(x){ return (x||'').toLowerCase().replace(/[\s._\-]+/g,'').trim(); };
+    compData.forEach(function(co){
+      if(!co || !co.hex) return;
+      var src = co.source || '';
+      if(src.indexOf('gl') < 0 && src.indexOf('kr') < 0) return;
+      var bs = [];
+      if(co.brand) bs.push(co.brand);
+      if(Array.isArray(co.brands)) bs = bs.concat(co.brands);
+      if(Array.isArray(co.compBrands)) bs = bs.concat(co.compBrands);
+      bs = bs.filter(Boolean);
+      if(sel && sel.size > 0 && !bs.some(function(b){ return sel.has(bkn(b)); })) return;
+      if(typeof _passesCategoryFilter === 'function' && !_passesCategoryFilter(co)) return;
+      var h = String(co.hex).toUpperCase(), f = co.freq || 1;
+      var m = out[h] || (out[h] = {});
+      bs.forEach(function(b){ m[b] = (m[b] || 0) + f; });
+    });
+    return out;
+  }
+  var _fnBarIdx = {};
   function _fnMarketTierBar(){
     var mk = [];
     try{ mk = _tmMarketPool(); }catch(e){}
     if(!mk.length) return '';
-    var th = { Core: {}, Seasonal: {}, Accent: {} }, w = { Core: 0, Seasonal: 0, Accent: 0 }, tot = 0;
-    // v238 — 03 칩 행과 같은 '우리 기준'(_tmClassify)으로 분류
     var OURS = { basic: 'Core', sub: 'Seasonal', key: 'Accent' };
+    var groups = { Core: [], Seasonal: [], Accent: [] }, w = { Core: 0, Seasonal: 0, Accent: 0 }, tot = 0;
     mk.forEach(function(x){
       var t = OURS[_tmClassify(x.hex)], f = x.freq || 1;
-      th[t][x.hex] = (th[t][x.hex] || 0) + f; w[t] += f; tot += f;
+      groups[t].push(x); w[t] += f; tot += f;
     });
     var pct = {};
     Object.keys(w).forEach(function(t){ pct[t] = Math.round(w[t] / tot * 1000) / 10; });
-    var ac = 'var(--gold)';
-    var groups = ['Core','Seasonal','Accent'].map(function(t){
+    _fnBarIdx = {};
+    var seq = 0, ac = 'var(--gold)';
+    var html = ['Core','Seasonal','Accent'].map(function(t){
       if(!w[t]) return '';
-      var cl = _fnCluster(th[t]);
+      // 비슷한 대표색 묶기 — 멤버 hex 를 함께 들고 간다 (브랜드 집계용)
+      var cl = [];
+      groups[t].slice().sort(function(a, b){ return b.freq - a.freq; }).forEach(function(x){
+        var hx = (x.memberHexes && x.memberHexes.length) ? x.memberHexes : [x.hex];
+        var j = -1, bd = FN_CLUSTER_DE;
+        for(var i = 0; i < cl.length; i++){ var dd = _tmDeltaE(cl[i].hex, x.hex); if(dd < bd){ bd = dd; j = i; } }
+        if(j < 0 && cl.length >= FN_CLUSTER_MAX){
+          bd = 1e9; cl.forEach(function(c, i){ var dd = _tmDeltaE(c.hex, x.hex); if(dd < bd){ bd = dd; j = i; } });
+        }
+        if(j >= 0){ cl[j].f += x.freq || 1; cl[j].hexes = cl[j].hexes.concat(hx); }
+        else cl.push({ hex: x.hex, f: x.freq || 1, hexes: hx.slice() });
+      });
+      cl.forEach(function(c){ c.L = _tmLCh(c.hex).L; });
+      cl.sort(function(a, b){ return a.L - b.L; });
       var sw = cl.map(function(c){
-        var pt = '';
-        try{ pt = (typeof pantoneApprox === 'function' ? (pantoneApprox(c.hex) || '') : ''); }catch(e){}
-        pt = String(pt).replace(/ TCX$/i, '') || c.hex;
-        var sPt = pt.replace(/'/g, "\\'");
-        return '<div title="' + t + ' · ' + pt + ' · ' + c.hex + ' · 빈도 ' + c.f + '"'
-          + ' onclick="typeof openCompColorDetail===\'function\'&&openCompColorDetail(\'' + c.hex + '\',\'' + sPt + '\',' + c.f + ',\'\')"'
+        var id = 'b' + (seq++);
+        _fnBarIdx[id] = { tier: t, hex: c.hex, f: c.f, hexes: c.hexes };
+        return '<div title="' + t + ' · ' + c.hex + ' · 빈도 ' + c.f + ' — 클릭: 브랜드"'
+          + ' onclick="_fnOpenBarBrands(event,\'' + id + '\')"'
           + ' style="flex:' + c.f + ';min-width:2px;height:100%;background:' + c.hex + ';cursor:pointer;transition:opacity .15s"'
           + ' onmouseenter="this.style.opacity=\'0.75\'" onmouseleave="this.style.opacity=\'1\'"></div>';
       }).join('');
@@ -24087,7 +24153,7 @@ document.addEventListener('DOMContentLoaded',function(){
           + 'font-family:var(--mono);font-size:11px;font-weight:800;color:#fff;white-space:nowrap;padding:2px 8px;border-radius:10px;'
           + 'background:rgba(20,20,20,0.38);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)">' + pct[t] + '%</span>'
         : '';
-      return '<div title="' + t + ' ' + pct[t] + '%" style="position:relative;flex:' + w[t] + ';display:flex;height:100%;'
+      return '<div style="position:relative;flex:' + w[t] + ';display:flex;height:100%;'
         + 'border:2px solid ' + FN_SOLID[t] + ';border-radius:4px;overflow:hidden">' + sw + lbl + '</div>';
     }).join('');
     return '<div style="margin:0 0 16px;padding:16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px">'
@@ -24095,17 +24161,65 @@ document.addEventListener('DOMContentLoaded',function(){
       +   '<div style="width:3px;height:16px;background:' + ac + ';border-radius:2px"></div>'
       +   '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + ac + ';letter-spacing:0.06em;text-transform:uppercase">MARKET COLORS · CORE / SEASONAL / ACCENT</span>'
       +   '<span style="font-family:var(--mono);font-size:9px;color:var(--text3)">마켓 전체 ' + mk.length + '색 · 빈도 ' + tot.toLocaleString() + ' · 우리 기준 (Accent C*≥' + TM_KEY_C + ')</span>'
-      +   '<span style="font-family:var(--mono);font-size:8px;color:var(--text4)">Click swatch for Pantone</span>'
+      +   '<span style="font-family:var(--mono);font-size:8px;color:var(--text4)">Click swatch for brands</span>'
       +   '<span style="margin-left:auto;display:flex;gap:12px;font-family:var(--mono);font-size:9px;color:var(--text2)">'
       +     ['Core','Seasonal','Accent'].map(function(t){
+              var k = { Core: 'basic', Seasonal: 'sub', Accent: 'key' }[t];
               return '<span><span style="display:inline-block;width:9px;height:9px;border:2px solid ' + FN_SOLID[t] + ';margin-right:4px;vertical-align:-1px"></span>'
-                + t + ' <b style="color:var(--text)">' + pct[t] + '%</b></span>';
+                + t + ' <b style="color:var(--text)">' + pct[t] + '%</b> → ' + TM_CAPS[k] + '칩</span>';
             }).join('')
       +   '</span>'
       + '</div>'
-      + '<div style="display:flex;gap:3px;height:36px">' + groups + '</div>'
+      + '<div style="display:flex;gap:3px;height:36px">' + html + '</div>'
       + '</div>';
   }
+  window._fnOpenBarBrands = function(evt, id){
+    evt.stopPropagation();
+    var c = _fnBarIdx[id]; if(!c) return;
+    var map = _fnHexBrandMap(), cnt = {}, hexF = {};
+    c.hexes.forEach(function(h){
+      var m = map[String(h).toUpperCase()] || {};
+      Object.keys(m).forEach(function(b){ cnt[b] = (cnt[b] || 0) + m[b]; hexF[h] = (hexF[h] || 0) + m[b]; });
+    });
+    var brands = Object.keys(cnt).sort(function(a, b){ return cnt[b] - cnt[a]; });
+    var maxB = brands.length ? cnt[brands[0]] : 1;
+    var cats = [];
+    try{ cats = _gapCatDefs(); }catch(e){}
+    var bkn = window._brandKeyNorm || function(x){ return (x||'').toLowerCase().replace(/[\s._\-]+/g,'').trim(); };
+    var catOf = function(b){
+      for(var i = 0; i < cats.length; i++){
+        if((cats[i].brandList || []).some(function(x){ return bkn(x) === bkn(b); })) return cats[i].emoji || '';
+      }
+      return '';
+    };
+    var mem = Object.keys(hexF).sort(function(a, b){ return hexF[b] - hexF[a]; }).slice(0, 14);
+    var pt = '';
+    try{ pt = typeof pantoneApprox === 'function' ? String(pantoneApprox(c.hex) || '').replace(/ TCX$/i, '') : ''; }catch(e){}
+    var pop = _ccEnsurePop();
+    pop.innerHTML = '<div style="width:280px">'
+      + '<div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">'
+      +   '<span style="width:46px;height:46px;border-radius:5px;border:2px solid ' + FN_SOLID[c.tier] + ';background:' + c.hex + '"></span>'
+      +   '<div><div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text2)">' + c.tier.toUpperCase() + ' · 빈도 ' + c.f + '</div>'
+      +   '<div style="font-family:var(--mono);font-size:12px;color:var(--text)">' + c.hex + '</div>'
+      +   (pt ? '<div style="font-family:var(--mono);font-size:10px;color:var(--text3)">Pantone ≈ ' + pt + '</div>' : '')
+      +   '</div></div>'
+      + (mem.length > 1 ? '<div style="display:flex;height:14px;border-radius:3px;overflow:hidden;margin-bottom:4px">'
+          + mem.map(function(h){ return '<div title="' + h + ' · ' + hexF[h] + '" style="flex:' + hexF[h] + ';background:' + h + '"></div>'; }).join('') + '</div>'
+          + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-bottom:8px">묶인 색 ' + c.hexes.length + '개 (상위 ' + mem.length + ')</div>' : '')
+      + '<div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--gold);margin-bottom:4px">도출 브랜드 ' + brands.length + '</div>'
+      + (brands.length
+          ? brands.slice(0, 12).map(function(b){
+              return '<div style="display:grid;grid-template-columns:110px 1fr 34px;gap:6px;align-items:center;margin-bottom:3px">'
+                + '<span style="font-size:11px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + catOf(b) + ' ' + b + '</span>'
+                + '<span style="height:6px;background:var(--border);border-radius:3px;overflow:hidden"><span style="display:block;height:6px;width:'
+                +   Math.round(cnt[b] / maxB * 100) + '%;background:' + FN_SOLID[c.tier] + '"></span></span>'
+                + '<span style="font-family:var(--mono);font-size:10px;color:var(--text3);text-align:right">' + cnt[b] + '</span></div>';
+            }).join('')
+            + (brands.length > 12 ? '<div style="font-family:var(--mono);font-size:9px;color:var(--text4)">외 ' + (brands.length - 12) + '개 브랜드</div>' : '')
+          : '<div style="font-size:11px;color:var(--text4)">브랜드 정보 없음</div>')
+      + '</div>';
+    _dcpPopPlace(evt, pop);
+  };
   window._discMarketTierBar = _fnMarketTierBar;
 
   function _fnAlloc(total, weights){
