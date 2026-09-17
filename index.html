@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v227 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_STD_v228 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -23829,28 +23829,15 @@ document.addEventListener('DOMContentLoaded',function(){
   function _stdChip(x){
     var t = x.item.trend;
     var src = (t.sources && t.sources.length) ? t.sources.join('·') : '';
-    var nameEsc = String(t.name || t.hex).replace(/'/g, "\\'");
-    var OURS = { sub: TM_GROUP_LABEL.sub, key: TM_GROUP_LABEL.key, basic: TM_GROUP_LABEL.basic };
-    var a = _tmLCh(t.hex);
-    var moved = ({ sub:'Seasonal', key:'Accent', basic:'Core' })[x.ours] !== x.std;
+    var nameEsc = String(t.name || t.hex).replace(/'/g, "\\'").replace(/</g, '&lt;');
     return '<div class="dcp-chip" style="cursor:pointer" onclick="_tmOpenDetail(\'' + t.hex + '\',\'' + nameEsc + '\')"'
-      + ' title="' + t.hex + ' · C* ' + a.C.toFixed(0) + ' · L ' + a.L.toFixed(0)
-      +   ' · 색상군 ' + _stdHue(t.hex) + ' · 우리 기준 ' + OURS[x.ours] + ' → 디커 ' + x.std
-      +   ' · 마켓 빈도 ' + x.item.mkFreq + '">'
-      + '<div class="dcp-name" style="font-size:10px;font-weight:700;color:var(--text3)">' + (src || '&nbsp;') + '</div>'
-      + '<div class="dcp-card"' + (moved ? ' style="border-color:var(--gold)"' : '') + '>'
+      + ' title="' + (t.name || '') + ' ' + t.hex + ' · 마켓 빈도 ' + x.item.mkFreq + '">'
+      + '<div class="dcp-name" style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:0.04em">' + (src || '&nbsp;') + '</div>'
+      + '<div class="dcp-card">'
       +   _tmCodeLineHtml(t)
-      +   '<div class="dcp-fill" style="background:' + t.hex + '">'
-      +     '<span style="font-family:var(--mono);font-size:8px;font-weight:800;color:'
-      +       _dcpTextOn(t.hex.slice(1)) + '">C*' + a.C.toFixed(0) + '</span>'
-      +   '</div>'
+      +   '<div class="dcp-fill" style="background:' + t.hex + '"></div>'
       +   '<div class="dcp-hex">' + t.hex + '</div>'
       + '</div>'
-      + (moved
-          ? '<div style="font-family:var(--mono);font-size:8px;color:var(--gold);text-align:center;margin-top:3px">'
-            + OURS[x.ours].slice(0,3) + '→' + x.std.slice(0,3) + '</div>'
-          : '<div style="height:14px"></div>')
-      + _stdMatchStrip(t.hex)
       + '</div>';
   }
 
@@ -24056,49 +24043,21 @@ document.addEventListener('DOMContentLoaded',function(){
         + '<div style="margin-top:30px;padding-top:24px;border-top:1px solid var(--border)">' + _stdLibBar() + '</div>';
       return;
     }
-    var OURS = { sub: TM_GROUP_LABEL.sub, key: TM_GROUP_LABEL.key, basic: TM_GROUP_LABEL.basic };
+    // v228 — 03 Trend-Matched 표시 44색을 디커 기준으로만 나눠 보여준다 (비교 표시 제거)
     var head = ''
-      + '<div class="spp-trend-market-hd" style="margin-bottom:6px">'
+      + '<div class="spp-trend-market-hd" style="margin-bottom:16px">'
       +   '<span class="spp-trend-market-flame" style="color:var(--gold)">◇ DISC STANDARD</span>'
       +   '<span class="spp-trend-market-title">디스커버리 등급 기준</span>'
-      +   '<span class="spp-trend-market-sub">03 에 표시된 제안 컬러를 디스커버리팀 기준(rev v3.0)으로 재분류</span>'
-      + '</div>'
-      + '<div style="font-family:var(--mono);font-size:12px;color:var(--text4);line-height:1.9;margin-bottom:8px">'
-      +   '① 형광 또는 C*≥' + STD_CUT.accent_chroma + ' → Accent · ② 무채·네이비 → Core · '
-      +   '③ 베이지·브라운 C*<' + STD_CUT.core_warm_chroma + ' & L*<' + STD_CUT.core_warm_light + ' → Core · ④ 나머지 → Seasonal'
-      + '</div>'
-      + '<div style="font-family:var(--mono);font-size:12px;color:var(--text4);margin-bottom:14px">'
-      +   '대상 ' + r.all.length + '색 (03 Trend-Matched 표시분과 동일) · 우리 기준과 다르게 분류된 색 '
-      +   '<span style="color:var(--gold)">' + r.diff.length + '색</span> — 칩 테두리가 금색'
-      + '</div>'
-      + (function(){
-          var hit = r.all.filter(function(x){ return _stdNearChip(x.item.trend.hex).chip; });
-          var pal = _gapPaletteList();
-          var palHit = pal.filter(function(pp){ return _stdNearChip(pp.hex).chip; });
-          return '<div style="font-family:var(--mono);font-size:12px;color:var(--text4);line-height:1.9;margin-bottom:16px">'
-            + '표준 75칩 대조 (ΔE ≤ ' + STD_MATCH_DE + ') — 제안 ' + r.all.length + '색 중 '
-            + '<span style="color:#5FA85F">' + hit.length + '색</span>은 표준칩으로 대체 가능, '
-            + (r.all.length - hit.length) + '색은 표준칩에 없습니다. '
-            + '27FW 확정 팔레트 ' + pal.length + '색 중에서는 '
-            + '<span style="color:#5FA85F">' + palHit.length + '색</span>이 표준칩, '
-            + (pal.length - palHit.length) + '색이 표준칩에 없습니다.'
-            + '</div>';
-        })();
+      +   '<span class="spp-trend-market-sub">03 Trend-Matched 제안 ' + r.all.length + '색 · Seasonal / Accent / Core</span>'
+      + '</div>';
 
     var body = STD_TIERS.map(function(t){
       var list = r.groups[t[0]];
       return '<div style="margin-bottom:22px">'
         + '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">'
         +   '<span style="font-family:var(--mono);font-size:14px;font-weight:700;color:' + t[1]
-        +     ';letter-spacing:0.1em">' + t[0] + '</span>'
+        +     ';letter-spacing:0.1em">' + t[0].toUpperCase() + '</span>'
         +   '<span style="font-family:var(--mono);font-size:12px;color:var(--text3)">' + list.length + '색</span>'
-        +   (list.length
-              ? '<span style="font-family:var(--mono);font-size:11px;color:var(--text4)">· 우리 기준으로는 '
-                + (function(){
-                    var c = {}; list.forEach(function(x){ c[OURS[x.ours]] = (c[OURS[x.ours]] || 0) + 1; });
-                    return Object.keys(c).map(function(k){ return k + ' ' + c[k]; }).join(' · ');
-                  })() + '</span>'
-              : '')
         + '</div>'
         + (list.length
             ? '<div class="dcp-mood-row" style="justify-content:flex-start;flex-wrap:wrap;gap:6px">'
