@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v241 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_STD_v242 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20747,7 +20747,12 @@ document.addEventListener('DOMContentLoaded',function(){
   var TM_DARK_C      = 20;
   var TM_KEY_C       = 36;    // KEY 판정 채도 하한 (Lab C*) — 37.8(#0086BB)·36.1(#EC9ABE) 포함
   var TM_KEY_L       = [25, 80];
-  var TM_WARM_H      = [40, 110];    // 베이지·아이보리·크림·카키 (H105 대 크림까지 포함)
+  var TM_WARM_H      = [40, 110];
+  var TM_BLACK_L     = 15;   // v242 거의 검정
+  var TM_BLACK_C     = 12;
+  var TM_BROWN_H     = [20, 95];   // v242 브라운 계열 기본색
+  var TM_BROWN_C     = 30;
+  var TM_BROWN_L     = 75;    // 베이지·아이보리·크림·카키 (H105 대 크림까지 포함)
   var TM_COOL_H      = [230, 310];   // 블루그레이·네이비·차콜
   var TM_COOL_MAX_L  = 70;    // 쿨 뉴트럴은 이보다 밝으면 파우더블루로 읽혀 SUB
                               //  (#708497 L54 = 슬레이트 → BASIC / #ADBED3 L76 = 파우더블루 → SUB)
@@ -20763,6 +20768,8 @@ document.addEventListener('DOMContentLoaded',function(){
   function _tmClassify(hex){
     var a = _tmLCh(hex);
     if(a.C < TM_BASIC_C) return 'basic';                                   // 순수 무채
+    // v242 — 거의 검정: 색상각과 무관하게 CORE (#2B1A1B 같은 레드빛 블랙)
+    if(a.L < TM_BLACK_L && a.C < TM_BLACK_C) return 'basic';
     var warmH = (a.H >= TM_WARM_H[0] && a.H <= TM_WARM_H[1]);
     var coolH = (a.H >= TM_COOL_H[0] && a.H <= TM_COOL_H[1]);
     // 어두운 저채도라도 색상이 뉴트럴대일 때만 BASIC.
@@ -20770,6 +20777,8 @@ document.addEventListener('DOMContentLoaded',function(){
     if(a.L < TM_DARK_L && a.C < TM_DARK_C && (warmH || coolH)) return 'basic';
     var cool = coolH && a.L < TM_COOL_MAX_L;
     if(a.C < TM_NEUTRAL_C && (warmH || cool)) return 'basic';              // 뉴트럴로 읽히는 색상대
+    // v242 — 브라운 계열 기본색: 초콜릿·카키·탠 등. C*30 이상(카멜·러스트)은 시즌/포인트로 둔다
+    if(a.H >= TM_BROWN_H[0] && a.H <= TM_BROWN_H[1] && a.C < TM_BROWN_C && a.L < TM_BROWN_L) return 'basic';
     if(a.C >= TM_KEY_C && a.L >= TM_KEY_L[0] && a.L <= TM_KEY_L[1]) return 'key';
     return 'sub';
   }
