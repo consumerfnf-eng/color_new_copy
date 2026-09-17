@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v220 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_STD_v221 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -23849,7 +23849,6 @@ document.addEventListener('DOMContentLoaded',function(){
                sku: used.reduce(function(n,c){ return n + c.sku; }, 0),
                qty: used.reduce(function(n,c){ return n + c.qty; }, 0) };
     });
-    var maxChips = Math.max.apply(null, rows.map(function(r){ return r.all.length; })) || 1;
     var totQty = rows.reduce(function(n,r){ return n + r.qty; }, 0) || 1;
     return ''
       + '<div class="spp-trend-market-hd" style="margin-bottom:6px">'
@@ -23863,21 +23862,23 @@ document.addEventListener('DOMContentLoaded',function(){
       +   ' · 수량 ' + totQty.toLocaleString()
       + '</div>'
       + rows.map(function(r){
-          var wAll  = Math.round(r.all.length / maxChips * 100);
-          var wUsed = Math.round(r.used.length / maxChips * 100);
+          var rate = r.all.length ? Math.round(r.used.length / r.all.length * 100) : 0;
           return '<div style="margin-bottom:18px">'
             + '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px">'
             +   '<span style="font-family:var(--mono);font-size:14px;font-weight:700;color:' + r.color
             +     ';letter-spacing:0.1em;min-width:96px">' + r.tier + '</span>'
             +   '<span style="font-family:var(--mono);font-size:12px;color:var(--text3)">보유 ' + r.all.length
             +     '칩 · 실사용 ' + r.used.length + '칩</span>'
+            +   '<span style="font-family:var(--mono);font-size:12px;font-weight:700;color:'
+            +     (rate ? r.color : 'var(--text4)') + '">사용률 ' + rate + '%</span>'
             +   '<span style="font-family:var(--mono);font-size:12px;color:var(--text4);margin-left:auto">'
             +     'SKU ' + r.sku.toLocaleString() + ' · 수량 ' + r.qty.toLocaleString()
             +     ' (' + Math.round(r.qty / totQty * 100) + '%)</span>'
             + '</div>'
+            // 보유·실사용·빈 트랙 3겹은 읽기 어려워 '사용률' 한 겹으로 바꿨다.
+            // (Accent 는 실사용 0 이라 막대가 비어 그 사실이 바로 보인다)
             + '<div style="position:relative;height:14px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:3px">'
-            +   '<div style="position:absolute;inset:0 auto 0 0;width:' + wAll + '%;background:' + r.color + ';opacity:0.28"></div>'
-            +   '<div style="position:absolute;inset:0 auto 0 0;width:' + wUsed + '%;background:' + r.color + '"></div>'
+            +   '<div style="position:absolute;inset:0 auto 0 0;width:' + rate + '%;background:' + r.color + '"></div>'
             + '</div>'
             + '<div class="dcp-mood-row" style="justify-content:flex-start;flex-wrap:wrap;gap:4px;margin-top:6px">'
             +   r.all.map(function(c){
@@ -23898,7 +23899,7 @@ document.addEventListener('DOMContentLoaded',function(){
             + '</div>';
         }).join('')
       + '<div style="font-family:var(--mono);font-size:11px;color:var(--text4);line-height:1.8;margin-top:10px">'
-      +   '진한 막대 = 실사용 · 옅은 막대 = 보유. 칩 우상단 점이 SKU 가 붙은 실사용 표시. '
+      +   '막대 = 보유 칩 대비 실사용 비율 · 칩 우상단 점이 SKU 가 붙은 실사용 표시. '
       +   'Accent 17칩은 전부 미사용(SKU 0)입니다.'
       + '</div>';
   }
