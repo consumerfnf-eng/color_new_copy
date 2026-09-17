@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_CONTEMP_v204 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_REVIEW_v205 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21785,8 +21785,9 @@ document.addEventListener('DOMContentLoaded',function(){
     var foot = it.pantone
       ? '<div class="dcp-pnote"><b>PANTONE&reg;</b>' + it.pantone + (it.pname ? '<br>' + it.pname : '') + '</div>'
       : '<div class="dcp-hex">#' + it.hex + '</div>';
-    return '<div class="dcp-chip" title="' + it.name + ' · #' + it.hex + '">'
-      + head + '<div class="dcp-card">' + codeLine + fill + foot + '</div></div>';
+    return '<div class="dcp-chip" style="' + _dcpChipDim('#' + it.hex) + '" title="' + it.name + ' · #' + it.hex + '">'
+      + head + '<div class="dcp-card">' + codeLine + fill + foot + '</div>'
+      + _dcpStatusStrip('#' + it.hex) + '</div>';
   }
 
   function _dcpBodyHtml(){
@@ -21805,7 +21806,7 @@ document.addEventListener('DOMContentLoaded',function(){
         +   m.rows.map(function(r){ return '<div class="dcp-mood-row">' + r.map(_dcpChip).join('') + '</div>'; }).join('')
         + '</div></div>';
     }).join('') + '</div>';
-    return '<div class="dcp-body">' + _dcpUploadPanel() + core + moods
+    return '<div class="dcp-body">' + _dcpUploadPanel() + _dcpTabBar() + core + moods
       + (cv ? '' : '<div class="dcp-note">' + DCP_NOTE + '</div>') + '</div>';
   }
 
@@ -23048,6 +23049,7 @@ document.addEventListener('DOMContentLoaded',function(){
           tag: '추가', title: famLabel + ' 계열을 채울지 결정한다',
           why: famLabel + ' 계열이 마켓에서 ' + _rptWeakNote(strong)
              + ' 로 관측되는데 팔레트에는 한 색도 없습니다. 의도적으로 뺀 것이 아니라면 공백입니다.',
+          extra: (missFam.indexOf('green') >= 0 || missFam.indexOf('teal') >= 0) ? _greenAdviceHtml() : '',
           items: strong.slice(0, 6)
         });
       } else if(cands.length){
@@ -23057,6 +23059,7 @@ document.addEventListener('DOMContentLoaded',function(){
           why: famLabel + ' 계열이 마켓에서 ' + _rptWeakNote(cands) + ' 로만 잡힙니다. '
              + '빈도 ' + RPT_MIN_FREQ + ' 이상 · ' + RPT_MIN_BRANDS + '개 브랜드 이상 조건에 못 미쳐 '
              + '공백으로 볼지는 판단이 필요합니다.',
+          extra: (missFam.indexOf('green') >= 0 || missFam.indexOf('teal') >= 0) ? _greenAdviceHtml() : '',
           items: cands.slice(0, 6)
         });
       }
@@ -23110,6 +23113,7 @@ document.addEventListener('DOMContentLoaded',function(){
             +   '<span style="font-size:16px;font-weight:700;color:var(--text)">' + (i+1) + '. ' + a.title + '</span>'
             + '</div>'
             + '<div style="font-size:14px;color:var(--text2);line-height:1.75;margin-bottom:' + ((a.items&&a.items.length)||(a.pals&&a.pals.length) ? '10px' : '0') + '">' + a.why + '</div>'
+            + (a.extra ? a.extra : '')
             + (a.items && a.items.length
                 ? '<div style="display:flex;flex-wrap:wrap;gap:8px">'
                   + a.items.map(function(e){
@@ -23137,6 +23141,207 @@ document.addEventListener('DOMContentLoaded',function(){
             + '</div>';
         }).join('')
       + '</div>';
+  }
+
+
+  // ══════════════════════════════════════════════════════════════
+  //  04 — 팔레트 판 위에 검증 상태 표시 (유지 / 보완 / 위험)
+  //  ────────────────────────────────────────────────────────────
+  //  리포트의 1번 결과를 확정 팔레트 칩에 그대로 얹는다.
+  //   유지 : 마켓과 Lab ΔE 5 이내      — 시장이 쓰는 색
+  //   보완 : ΔE 5~10                  — 같은 계열이나 톤 차이
+  //   위험 : ΔE 10 초과               — 마켓 근거 없음
+  // ══════════════════════════════════════════════════════════════
+  var DCP_TAB = 'all';            // all | keep | watch | risk
+  var DCP_TABS = [
+    ['all',   '전체',  'var(--text3)'],
+    ['keep',  '유지',  '#5FA85F'],
+    ['watch', '보완',  'var(--gold)'],
+    ['risk',  '위험',  'var(--warn)']
+  ];
+  var _dcpStatus = null, _dcpStatusKey = null;
+
+  function _dcpStatusMap(){
+    var key = (typeof _tmLastBuild !== 'undefined' ? _tmLastBuild : null);
+    if(_dcpStatus && _dcpStatusKey === key) return _dcpStatus;
+    var map = {}, r = null;
+    try { r = _rptBuild(); } catch(e){ r = null; }
+    if(r){
+      r.verified.forEach(function(x){
+        map[String(x.pal.hex).toUpperCase()] =
+          { tier: (x.tier === 'solid' ? 'keep' : 'watch'), de: x.de, freq: x.freq, mkHex: x.mkHex };
+      });
+      r.weak.forEach(function(x){
+        map[String(x.pal.hex).toUpperCase()] = { tier: 'risk', de: x.de, freq: 0, mkHex: x.mkHex };
+      });
+    }
+    _dcpStatus = map; _dcpStatusKey = key;
+    return map;
+  }
+  window._dcpSetTab = function(t){
+    DCP_TAB = t;
+    _dcpRender();
+    try{ _discOrderSections(); }catch(e){}
+  };
+  function _dcpTabBar(){
+    var m = _dcpStatusMap(), cnt = { all: 0, keep: 0, watch: 0, risk: 0 };
+    Object.keys(m).forEach(function(h){ cnt[m[h].tier]++; cnt.all++; });
+    return '<div style="display:flex;gap:6px;margin:0 0 14px;flex-wrap:wrap">'
+      + DCP_TABS.map(function(t){
+          var on = (DCP_TAB === t[0]);
+          return '<button onclick="_dcpSetTab(\'' + t[0] + '\')" style="font-family:var(--mono);font-size:11px;'
+            + 'padding:5px 13px;border-radius:4px;cursor:pointer;'
+            + 'border:1px solid ' + (on ? t[2] : 'var(--border)') + ';'
+            + 'background:' + (on ? 'rgba(160,120,64,0.14)' : 'transparent') + ';'
+            + 'color:' + (on ? t[2] : 'var(--text3)') + ';font-weight:' + (on ? '700' : '400') + '">'
+            + t[1] + ' ' + (cnt[t[0]] || 0) + '</button>';
+        }).join('')
+      + '<span style="font-family:var(--mono);font-size:10px;color:var(--text4);align-self:center;margin-left:6px">'
+      +   '유지 = 마켓 ΔE 5 이내 · 보완 = 5~10 · 위험 = 10 초과</span>'
+      + '</div>';
+  }
+  // 칩 아래에 붙는 상태 띠 (앞장 세일즈 칩과 같은 형태)
+  function _dcpStatusStrip(hex){
+    if(DCP_TAB === 'all') return '';
+    var st = _dcpStatusMap()[String(hex).toUpperCase()];
+    if(!st || st.tier !== DCP_TAB) return '';
+    var meta = DCP_TABS.filter(function(t){ return t[0] === st.tier; })[0];
+    return '<div style="margin-top:4px;border:1px solid ' + meta[2] + ';border-radius:4px;overflow:hidden"'
+      + ' title="' + meta[1] + ' · 가장 가까운 마켓 컬러 ' + (st.mkHex || '-') + ' · ΔE ' + st.de + '">'
+      +   (st.mkHex
+            ? '<div style="height:22px;background:' + st.mkHex + '"></div>'
+            : '<div style="height:22px;background-image:repeating-linear-gradient(45deg,var(--border) 0 4px,transparent 4px 8px)"></div>')
+      +   '<div style="font-family:var(--mono);font-size:8.5px;text-align:center;padding:2px;color:' + meta[2] + '">'
+      +     meta[1] + ' ΔE' + st.de + '</div>'
+      + '</div>';
+  }
+  function _dcpChipDim(hex){
+    if(DCP_TAB === 'all') return '';
+    var st = _dcpStatusMap()[String(hex).toUpperCase()];
+    return (st && st.tier === DCP_TAB) ? '' : ';opacity:0.22';
+  }
+
+  // ── 계열 분포를 한 줄 컬러바로 ───────────────────────────────
+  //  색 47개를 CORE → SEASONAL → ACCENT 순으로 이어 붙여, 구성이 한눈에 보이게.
+  function _rptGroupBar(r){
+    var G = [
+      ['basic', TM_GROUP_LABEL.basic, 'var(--gold)'],
+      ['sub',   TM_GROUP_LABEL.sub,   'var(--blue)'],
+      ['key',   TM_GROUP_LABEL.key,   '#A090F0']
+    ];
+    var buckets = { basic: [], sub: [], key: [] };
+    r.pal.forEach(function(p){ buckets[_tmClassify(p.hex)].push(p); });
+    var total = r.pal.length || 1;
+    var bar = '<div style="display:flex;height:40px;border-radius:6px;overflow:hidden;border:1px solid var(--border)">'
+      + G.map(function(g){
+          return buckets[g[0]].map(function(p){
+            return '<div title="' + p.name + ' ' + p.hex + ' · ' + g[1] + '" style="flex:1 1 0;background:' + p.hex + '"></div>';
+          }).join('');
+        }).join('')
+      + '</div>';
+    // 구간 라벨 — 각 그룹이 차지하는 폭만큼
+    var labels = '<div style="display:flex;margin-top:6px">'
+      + G.map(function(g){
+          var n = buckets[g[0]].length;
+          if(!n) return '';
+          return '<div style="flex:' + n + ' 1 0;font-family:var(--mono);font-size:11px;color:' + g[2]
+            + ';border-top:2px solid ' + g[2] + ';padding-top:5px;text-align:center">'
+            + g[1] + ' <strong>' + n + '</strong>'
+            + '<span style="color:var(--text4)"> · ' + Math.round(n / total * 100) + '%</span></div>';
+        }).join('')
+      + '</div>';
+    return '<div style="margin:12px 0 20px">' + bar + labels + '</div>';
+  }
+
+  // ── 그린 방향 분석 ───────────────────────────────────────────
+  //  "그린을 넣어라"만으로는 쓸 수 없다. 마켓·트렌드에 실제로 잡히는
+  //  그린의 Lab 좌표를 보고 어느 그린인지(포레스트/올리브/세이지/에메랄드)
+  //  판단해 방향을 제시한다.
+  var GREEN_TONES = [
+    { key:'forest',   name:'포레스트 그린',  H:[125,165], L:[15,40],  C:[10,35],
+      why:'어둡고 채도가 낮은 딥 그린. 아우터 본판에 얹어도 무겁지 않고 브라운·베이지와 붙습니다.' },
+    { key:'olive',    name:'올리브·카키',    H:[95,130],  L:[25,55],  C:[10,35],
+      why:'옐로우 기가 도는 그린. 밀리터리·아웃도어 문맥이 강해 27FW 다운과 결이 맞습니다.' },
+    { key:'sage',     name:'세이지 그린',    H:[125,175], L:[55,85],  C:[5,20],
+      why:'밝고 탁한 그린. 뉴트럴처럼 쓰여 기존 베이지·그레이지와 충돌이 적습니다.' },
+    { key:'emerald',  name:'에메랄드·제이드', H:[145,185], L:[35,65], C:[30,80],
+      why:'채도가 높은 선명한 그린. 포인트로는 강하지만 면적이 커지면 부담이 큽니다.' },
+    { key:'mint',     name:'민트·틸',        H:[165,200], L:[55,85],  C:[10,35],
+      why:'청록 기가 도는 밝은 그린. 스포츠·애슬레저 쪽에서 자주 쓰입니다.' }
+  ];
+  function _greenTone(hex){
+    var a = _tmLCh(hex);
+    var hit = GREEN_TONES.filter(function(t){
+      return a.H >= t.H[0] && a.H <= t.H[1] && a.L >= t.L[0] && a.L <= t.L[1] && a.C >= t.C[0] && a.C <= t.C[1];
+    });
+    return hit.length ? hit[0] : null;
+  }
+  // 그린 계열로 볼 Lab 색상 범위 (틸·민트 포함)
+  function _isGreenish(hex){
+    var a = _tmLCh(hex);
+    return a.C >= 6 && a.H >= 95 && a.H <= 200;
+  }
+  function _greenDirection(){
+    var market = [], trend = [];
+    try { _rptMarketPool().forEach(function(m){ if(_isGreenish(m.hex)) market.push(m); }); } catch(e){}
+    try { _tmTrendPool().forEach(function(t){ if(_isGreenish(t.hex)) trend.push(t); }); } catch(e){}
+    if(!market.length && !trend.length) return null;
+
+    // 톤별 집계 — 마켓은 빈도 가중, 트렌드는 색 수
+    var tally = {};
+    GREEN_TONES.forEach(function(t){ tally[t.key] = { tone: t, mkFreq: 0, mkN: 0, trN: 0, samples: [] }; });
+    market.forEach(function(m){
+      var t = _greenTone(m.hex); if(!t) return;
+      tally[t.key].mkFreq += (m.freq || 1); tally[t.key].mkN++;
+      if(tally[t.key].samples.length < 5) tally[t.key].samples.push({ hex: m.hex, freq: m.freq || 1 });
+    });
+    trend.forEach(function(t2){
+      var t = _greenTone(t2.hex); if(!t) return;
+      tally[t.key].trN++;
+      if(tally[t.key].samples.length < 5) tally[t.key].samples.push({ hex: t2.hex, freq: 0 });
+    });
+    var ranked = Object.keys(tally).map(function(k){ return tally[k]; })
+      .filter(function(x){ return x.mkN || x.trN; })
+      // 마켓 빈도를 우선하되, 트렌드에만 있는 톤도 살린다
+      .sort(function(a,b){ return (b.mkFreq + b.trN * 3) - (a.mkFreq + a.trN * 3); });
+    if(!ranked.length) return null;
+    return { ranked: ranked, marketN: market.length, trendN: trend.length };
+  }
+  function _greenAdviceHtml(){
+    var g = _greenDirection();
+    if(!g) return '';
+    var top = g.ranked[0], rest = g.ranked.slice(1, 3);
+    var sw = function(h, n){
+      return '<span title="' + h + (n ? ' · 빈도 ' + n : '') + '" style="display:inline-block;width:26px;height:26px;'
+        + 'border-radius:4px;background:' + h + ';border:1px solid var(--border2);margin-right:4px;vertical-align:-6px"></span>';
+    };
+    var html = '<div style="font-size:14px;color:var(--text2);line-height:1.8;margin-top:8px">'
+      + '마켓에서 잡히는 그린 계열은 ' + g.marketN + '색, 트렌드(WGSN·Peclers)는 ' + g.trendN + '색입니다. '
+      + '그중 비중이 가장 큰 방향은 <strong style="color:var(--text)">' + top.tone.name + '</strong> 입니다'
+      + (top.mkN ? ' (마켓 ' + top.mkN + '색 · 합산 빈도 ' + top.mkFreq + (top.trN ? ' · 트렌드 ' + top.trN + '색' : '') + ')' : ' (트렌드 ' + top.trN + '색)')
+      + '. ' + top.tone.why
+      + '</div>'
+      + '<div style="margin:8px 0 4px">' + top.samples.map(function(s){ return sw(s.hex, s.freq); }).join('') + '</div>';
+    if(rest.length){
+      html += '<div style="font-size:13px;color:var(--text3);line-height:1.8;margin-top:10px">'
+        + '다음 후보는 ' + rest.map(function(x){
+            return '<strong style="color:var(--text2)">' + x.tone.name + '</strong>'
+              + '(' + (x.mkN ? '마켓 ' + x.mkN + '색·빈도 ' + x.mkFreq : '트렌드 ' + x.trN + '색') + ')';
+          }).join(', ') + ' 입니다.'
+        + '</div>'
+        + '<div style="margin:6px 0 0">'
+        + rest.map(function(x){ return x.samples.slice(0,3).map(function(s){ return sw(s.hex, s.freq); }).join(''); }).join('<span style="display:inline-block;width:10px"></span>')
+        + '</div>';
+    }
+    var missing = GREEN_TONES.filter(function(t){
+      return !g.ranked.some(function(x){ return x.tone.key === t.key; });
+    });
+    if(missing.length){
+      html += '<div style="font-family:var(--mono);font-size:11px;color:var(--text4);margin-top:10px;line-height:1.7">'
+        + '관측되지 않은 방향 — ' + missing.map(function(t){ return t.name; }).join(' · ')
+        + '. 이쪽으로 가면 시장 근거 없이 앞서 나가는 선택이 됩니다.</div>';
+    }
+    return html;
   }
 
   function _rptHtml(){
@@ -23212,39 +23417,13 @@ document.addEventListener('DOMContentLoaded',function(){
                 : TM_GROUP_LABEL.key + ' 비중은 시장과 큰 차이가 없습니다(' + r.palR.p.key + '% 대 ' + r.mkR.p.key + '%).')
           : '비교할 매칭 결과가 없어 시장 구성비는 산출하지 못했습니다.'));
 
-    html += H('3. 색상 계열 분포');
-    html += P('확정 팔레트의 계열 구성은 '
-      + Object.keys(r.palFam).sort(function(a,b){ return r.palFam[b]-r.palFam[a]; })
-          .map(function(k){ return (famNames[k]||k) + ' ' + r.palFam[k]; }).join(' · ') + ' 입니다.'
+    html += H('3. 구성 — ' + TM_GROUP_LABEL.basic + ' / ' + TM_GROUP_LABEL.sub + ' / ' + TM_GROUP_LABEL.key);
+    html += _rptGroupBar(r);
+    html += P('확정 팔레트를 ' + TM_GROUP_LABEL.basic + ' → ' + TM_GROUP_LABEL.sub + ' → ' + TM_GROUP_LABEL.key
+      + ' 순으로 이어 붙인 것입니다. 색 하나가 막대 한 칸이고, 마우스를 올리면 이름과 HEX 가 뜹니다.'
       + (missFam.length
-          ? ' 시장에서는 잡히는데 팔레트에 없는 계열은 ' + B(missFam.map(function(k){ return famNames[k]||k; }).join(' · '))
-            + ' 입니다. 해당 계열을 의도적으로 뺀 것인지 확인해볼 만합니다.'
-          : ' 시장에서 관측되는 계열은 모두 팔레트에 포함돼 있습니다.')
-      + (onlyPal.length
-          ? ' 반대로 ' + B(onlyPal.map(function(k){ return famNames[k]||k; }).join(' · '))
-            + ' 계열은 팔레트에만 있고 매칭 결과에는 없습니다.' : ''));
-    // 계열별로 실제 어떤 색이 묶였는지 — 숫자만 보면 'ㅇㅇ 13색' 이 무엇인지 알 수 없다
-    (function(){
-      var byFam = {};
-      r.pal.forEach(function(p){ var k = _tmFamily(p.hex); (byFam[k] = byFam[k] || []).push(p); });
-      var order = Object.keys(byFam).sort(function(a,b){ return byFam[b].length - byFam[a].length; });
-      html += '<div style="display:flex;flex-direction:column;gap:10px;margin:12px 0 18px">'
-        + order.map(function(k){
-            return '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
-              + '<span style="font-family:var(--mono);font-size:12px;color:var(--text3);min-width:110px">'
-              +   (famNames[k] || k) + ' <strong style="color:var(--text)">' + byFam[k].length + '</strong></span>'
-              + byFam[k].map(function(p){
-                  return '<span title="' + p.name + ' ' + p.hex + ' ' + (_rptPalMeta(p.hex) || '')
-                    + '" style="display:inline-flex;align-items:center;gap:4px;'
-                    + 'padding:2px 6px 2px 2px;border:1px solid var(--border);border-radius:4px">'
-                    + '<span style="width:20px;height:20px;border-radius:3px;background:' + p.hex + '"></span>'
-                    + '<span style="font-family:var(--mono);font-size:10px;color:var(--text3)">' + p.name + '</span>'
-                    + '</span>';
-                }).join('')
-              + '</div>';
-          }).join('')
-        + '</div>';
-    })();
+          ? ' 시장에서는 잡히는데 팔레트에 없는 계열은 ' + B(missFam.map(function(k){ return famNames[k]||k; }).join(' · ')) + ' 입니다.'
+          : ' 시장에서 관측되는 계열은 모두 포함돼 있습니다.'));
 
     if(r.gap && r.gap.items.length){
       html += H('4. 추가 검토 대상 — 보완 후보 ' + r.gap.items.length + '색');
@@ -23290,6 +23469,7 @@ document.addEventListener('DOMContentLoaded',function(){
       + '</div>';
     return html;
   }
+
 
   // ── 진단: 카테고리별 마켓 데이터 규모 ────────────────────────
   //  콘솔에서 _discDataAudit() 로 호출. 모듈 스코프에서 실행되므로
