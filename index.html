@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v214 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_STD_v217 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -23086,6 +23086,26 @@ document.addEventListener('DOMContentLoaded',function(){
     return list.length + '색 · 합산 빈도 ' + f;
   }
 
+  // 기준에 못 미친 후보 — 03 GAP 에는 떠 있으므로 참고용으로 같이 보여준다
+  function _rptSubCands(list){
+    if(!list.length) return '';
+    return '<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--border)">'
+      + '<div style="font-family:var(--mono);font-size:11px;color:var(--text4);margin-bottom:8px">'
+      +   '기준 미달 ' + list.length + '색 — 03 보완 후보에는 있지만 빈도·브랜드가 모자랍니다</div>'
+      + '<div class="dcp-mood-row" style="justify-content:flex-start;flex-wrap:wrap;gap:6px;opacity:0.75">'
+      +   list.slice(0, 10).map(function(e){
+            var t = e.item.trend, nb = _rptBrands(e);
+            return '<span onclick="_rptSwPop(event,\'' + t.hex + '\')"'
+              + ' title="' + t.hex + ' · 빈도 ' + e.item.mkFreq + (nb.length ? ' · ' + nb.length + '브랜드' : '') + '"'
+              + ' style="display:inline-block;width:40px;cursor:pointer;margin:0 6px 6px 0;vertical-align:top">'
+              + '<span style="display:block;width:40px;height:40px;border-radius:8px;background:' + t.hex + '"></span>'
+              + '<span style="display:block;font-family:var(--mono);font-size:8px;color:var(--text4);'
+              +   'text-align:center;margin-top:3px">×' + e.item.mkFreq + (nb.length ? '·' + nb.length + '브' : '') + '</span>'
+              + '</span>';
+          }).join('')
+      + '</div></div>';
+  }
+
   function _rptConclusion(r, famNames){
     var acts = [];
     var vRate = Math.round(r.verified.length / r.pal.length * 100);
@@ -23167,11 +23187,18 @@ document.addEventListener('DOMContentLoaded',function(){
       var strong = cands.filter(_rptStrong);
       var famLabel = missFam.map(function(k){ return famNames[k] || k; }).join(' · ');
       if(strong.length){
+        var weakCands = cands.filter(function(e){ return !_rptStrong(e); });
         acts.push({
           tag: '추가', title: famLabel + ' 계열을 채울지 결정한다',
           why: famLabel + ' 계열이 마켓에서 ' + _rptWeakNote(strong)
-             + ' 로 관측되는데 팔레트에는 한 색도 없습니다. 의도적으로 뺀 것이 아니라면 공백입니다.',
-          extra: (missFam.indexOf('green') >= 0 || missFam.indexOf('teal') >= 0) ? _greenAdviceHtml() : '',
+             + ' 로 관측되는데 팔레트에는 한 색도 없습니다. 의도적으로 뺀 것이 아니라면 공백입니다.'
+             + (weakCands.length
+                 ? ' 03 보완 후보에는 ' + cands.length + '색이 올라와 있고, 그중 기준(빈도 '
+                   + RPT_MIN_FREQ + ' 이상 · ' + RPT_MIN_BRANDS + '개 브랜드 이상)을 통과한 것이 '
+                   + strong.length + '색입니다.'
+                 : ''),
+          extra: ((missFam.indexOf('green') >= 0 || missFam.indexOf('teal') >= 0) ? _greenAdviceHtml() : '')
+               + (weakCands.length ? _rptSubCands(weakCands) : ''),
           chipStyle: 'pantone',
           items: strong.slice(0, 6)
         });
@@ -23727,9 +23754,11 @@ document.addEventListener('DOMContentLoaded',function(){
   function _stdBuild(){
     if(!_tmLastBuild){ try { _tmBuild(); } catch(e){ return null; } }
     if(!_tmLastBuild || !_tmLastBuild.raw) return null;
+    // 03 과 같은 대상으로 맞춘다 — 유사색 배제·계열 배분을 거쳐 화면에 표시된 색.
+    // (raw 전량을 쓰면 거의 같은 색이 여러 개 깔려 두 기준을 나란히 비교할 수 없다)
     var all = [];
     ['key','sub','basic'].forEach(function(k){
-      (_tmLastBuild.raw[k] || []).forEach(function(it){ all.push({ item: it, ours: k }); });
+      (_tmLastBuild.buckets[k] || []).forEach(function(it){ all.push({ item: it, ours: k }); });
     });
     var g = { Seasonal: [], Accent: [], Core: [] };
     all.forEach(function(x){
@@ -23743,6 +23772,42 @@ document.addEventListener('DOMContentLoaded',function(){
     var OURS = { sub: 'Seasonal', key: 'Accent', basic: 'Core' };
     var diff = all.filter(function(x){ return OURS[x.ours] !== x.std; });
     return { groups: g, all: all, diff: diff, oursMap: OURS };
+  }
+
+  // 표준 75칩과 대조 — ΔE 5 이내면 그 칩으로 대체 가능한 색으로 본다
+  var STD_MATCH_DE = 5;
+  var _stdNearCache = {};
+  function _stdNearChip(hex){
+    var key = String(hex).toUpperCase();
+    if(_stdNearCache[key] !== undefined) return _stdNearCache[key];
+    var lib = (typeof DISC_STD75 !== 'undefined') ? DISC_STD75 : [];
+    var best = null, bd = 1e9;
+    for(var i = 0; i < lib.length; i++){
+      var dd = _tmDeltaE(hex, lib[i].hex);
+      if(dd < bd){ bd = dd; best = lib[i]; }
+    }
+    var out = (best && bd <= STD_MATCH_DE)
+      ? { chip: best, de: Math.round(bd * 10) / 10 }
+      : { chip: null, de: best ? Math.round(bd * 10) / 10 : null };
+    _stdNearCache[key] = out;
+    return out;
+  }
+  // 칩 아래 붙는 표준칩 표시
+  function _stdMatchStrip(hex){
+    var m = _stdNearChip(hex);
+    if(m.chip){
+      return '<div title="표준칩 ' + m.chip.code + ' ' + m.chip.nm + ' ' + m.chip.hex
+        +   ' · ΔE ' + m.de + (m.chip.sku ? ' · SKU ' + m.chip.sku : ' · 미사용') + '"'
+        + ' style="margin-top:3px;border:1px solid #5FA85F;border-radius:4px;overflow:hidden">'
+        +   '<div style="height:16px;background:' + m.chip.hex + '"></div>'
+        +   '<div style="font-family:var(--mono);font-size:7.5px;text-align:center;padding:2px;color:#5FA85F;'
+        +     'white-space:nowrap;overflow:hidden">' + m.chip.code.replace('STD-', '') + ' ΔE' + m.de + '</div>'
+        + '</div>';
+    }
+    return '<div title="표준 75칩에 ΔE ' + STD_MATCH_DE + ' 이내로 맞는 칩이 없습니다'
+      +   (m.de != null ? ' (최근접 ΔE ' + m.de + ')' : '') + '"'
+      + ' style="margin-top:3px;border:1px dashed var(--border2);border-radius:4px;padding:3px 2px;'
+      + 'font-family:var(--mono);font-size:7.5px;text-align:center;color:var(--text4)">신규</div>';
   }
 
   function _stdChip(x){
@@ -23769,6 +23834,7 @@ document.addEventListener('DOMContentLoaded',function(){
           ? '<div style="font-family:var(--mono);font-size:8px;color:var(--gold);text-align:center;margin-top:3px">'
             + OURS[x.ours].slice(0,3) + '→' + x.std.slice(0,3) + '</div>'
           : '<div style="height:14px"></div>')
+      + _stdMatchStrip(t.hex)
       + '</div>';
   }
 
@@ -23837,6 +23903,122 @@ document.addEventListener('DOMContentLoaded',function(){
       + '</div>';
   }
 
+
+  // ── 디커 축 교차표 — 색상군 / 채도대 / 명도대 ─────────────────
+  //  03·04 는 우리 Lab 계열을 쓰고, 여기서만 디스커버리팀 축으로 본다.
+  //  한 줄에 [우리 제안 / 디커 보유 / 디커 실사용] 을 나란히 놓아
+  //  "보유는 많은데 안 쓰고, 우리도 제안 안 한" 구간이 드러나게 한다.
+  var STD_HUE_ORDER = ['무채','네이비','베이지','브라운','옐로','오렌지','레드핑크','그린','틸','블루','퍼플'];
+  var STD_CHROMA_BANDS = [[10,'무채'],[25,'뮤트'],[50,'클리어'],[1e9,'비비드']];
+  var STD_VALUE_BANDS  = [[40,'다크'],[70,'미드'],[1e9,'라이트']];
+  var STD_ACHRO_BANDS  = [[15,'블랙'],[30,'차콜'],[45,'딥그레이'],[72,'미드그레이'],[90,'라이트그레이'],[1e9,'화이트']];
+
+  function _stdChromaBand(hex){
+    var c = _tmLCh(hex).C;
+    for(var i = 0; i < STD_CHROMA_BANDS.length; i++) if(c < STD_CHROMA_BANDS[i][0]) return STD_CHROMA_BANDS[i][1];
+    return '비비드';
+  }
+  function _stdValueBand(hex){
+    var a = _tmLCh(hex);
+    var bands = (a.C < STD_CUT.achro_gate) ? STD_ACHRO_BANDS : STD_VALUE_BANDS;
+    for(var i = 0; i < bands.length; i++) if(a.L < bands[i][0]) return bands[i][1];
+    return bands[bands.length - 1][1];
+  }
+
+  //  ours = 우리 제안색 hex 배열,  lib = 75칩
+  function _stdAxisTable(title, desc, keyOf, order, ours, lib, accent){
+    var oursC = {}, libC = {}, usedC = {}, seen = {};
+    ours.forEach(function(h){ var k = keyOf(h); oursC[k] = (oursC[k] || 0) + 1; seen[k] = 1; });
+    lib.forEach(function(c){
+      var k = c._axis;
+      libC[k] = (libC[k] || 0) + 1; seen[k] = 1;
+      if(c.sku > 0) usedC[k] = (usedC[k] || 0) + 1;
+    });
+    var keys = (order || []).filter(function(k){ return seen[k]; })
+      .concat(Object.keys(seen).filter(function(k){ return (order || []).indexOf(k) < 0; }));
+    var maxV = 1;
+    keys.forEach(function(k){ maxV = Math.max(maxV, oursC[k] || 0, libC[k] || 0); });
+    var bar = function(n, col, op){
+      return '<span style="display:inline-block;height:10px;border-radius:2px;vertical-align:middle;'
+        + 'width:' + Math.max(2, Math.round((n || 0) / maxV * 100)) + '%;background:' + col
+        + (op ? ';opacity:' + op : '') + '"></span>';
+    };
+    return '<div style="margin-bottom:26px">'
+      + '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">'
+      +   '<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:' + accent
+      +     ';letter-spacing:0.1em">' + title + '</span>'
+      +   '<span style="font-family:var(--mono);font-size:9px;color:var(--text4)">' + desc + '</span>'
+      + '</div>'
+      + '<div style="display:flex;font-family:var(--mono);font-size:9px;color:var(--text4);'
+      +   'border-bottom:1px solid var(--border);padding-bottom:4px;margin-bottom:6px">'
+      +   '<span style="flex:0 0 96px">구간</span>'
+      +   '<span style="flex:1 1 0">우리 제안</span>'
+      +   '<span style="flex:1 1 0">디커 보유 / 실사용</span>'
+      + '</div>'
+      + keys.map(function(k){
+          var o = oursC[k] || 0, l = libC[k] || 0, u = usedC[k] || 0;
+          var flag = (l >= 5 && u === 0 && o === 0);   // 보유는 많은데 안 쓰고 제안도 없음
+          return '<div style="display:flex;align-items:center;padding:4px 0;'
+            + (flag ? 'background:rgba(200,120,60,0.06);' : '') + '">'
+            + '<span style="flex:0 0 96px;font-family:var(--mono);font-size:10px;color:'
+            +   (flag ? 'var(--warn)' : 'var(--text2)') + '">' + k + '</span>'
+            + '<span style="flex:1 1 0;display:flex;align-items:center;gap:6px;padding-right:12px">'
+            +   bar(o, accent) + '<span style="font-family:var(--mono);font-size:10px;color:var(--text3);'
+            +     'flex:0 0 auto">' + (o ? o + '색' : '—') + '</span></span>'
+            + '<span style="flex:1 1 0;display:flex;align-items:center;gap:6px">'
+            +   '<span style="flex:1 1 0;position:relative;height:10px">'
+            +     '<span style="position:absolute;inset:0 auto 0 0;height:10px;border-radius:2px;width:'
+            +       Math.max(2, Math.round(l / maxV * 100)) + '%;background:var(--text4);opacity:0.3"></span>'
+            +     '<span style="position:absolute;inset:0 auto 0 0;height:10px;border-radius:2px;width:'
+            +       Math.max(0, Math.round(u / maxV * 100)) + '%;background:var(--text3)"></span>'
+            +   '</span>'
+            +   '<span style="font-family:var(--mono);font-size:10px;color:var(--text3);flex:0 0 auto">'
+            +     l + ' / ' + u + '</span></span>'
+            + '</div>';
+        }).join('')
+      + '</div>';
+  }
+
+  function _stdAxisSection(){
+    var lib = (typeof DISC_STD75 !== 'undefined') ? DISC_STD75 : [];
+    var r = _stdBuild();
+    if(!lib.length || !r) return '';
+    var ours = r.all.map(function(x){ return x.item.trend.hex; });
+
+    function withAxis(fn){ return lib.map(function(c){ var o = {}; for(var k in c) o[k] = c[k]; o._axis = fn(c); return o; }); }
+    // 라이브러리는 파일에 적힌 값을 그대로 쓰고, 우리 제안색만 같은 기준으로 계산한다
+    var libHue    = withAxis(function(c){ return c.hue; });
+    var libChroma = withAxis(function(c){ return c.chroma; });
+    var libValue  = withAxis(function(c){ return c.value; });
+
+    var flagged = [];
+    STD_HUE_ORDER.forEach(function(k){
+      var l = lib.filter(function(c){ return c.hue === k; });
+      var u = l.filter(function(c){ return c.sku > 0; });
+      var o = ours.filter(function(h){ return _stdHue(h) === k; });
+      if(l.length >= 5 && !u.length && !o.length) flagged.push(k + ' ' + l.length + '칩');
+    });
+
+    return ''
+      + '<div class="spp-trend-market-hd" style="margin-bottom:6px">'
+      +   '<span class="spp-trend-market-flame" style="color:var(--gold)">◫ AXIS</span>'
+      +   '<span class="spp-trend-market-title">디커 축으로 본 분포</span>'
+      +   '<span class="spp-trend-market-sub">색상군 · 채도대 · 명도대 — 우리 제안과 디커 라이브러리를 같은 축에서</span>'
+      + '</div>'
+      + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);line-height:1.7;margin-bottom:18px">'
+      +   '우리 제안 ' + ours.length + '색 · 디커 보유 ' + lib.length + '칩 · 실사용 '
+      +   lib.filter(function(c){ return c.sku > 0; }).length + '칩. '
+      +   '디커 열의 옅은 막대가 보유, 진한 막대가 실사용입니다.'
+      +   (flagged.length ? ' 보유는 있으나 쓰지도 제안하지도 않은 구간 — ' + flagged.join(' · ') : '')
+      + '</div>'
+      + _stdAxisTable('색상군', '11군 · 디커 정의', _stdHue, STD_HUE_ORDER, ours, libHue, 'var(--blue)')
+      + _stdAxisTable('채도대', '무채<10 · 뮤트<25 · 클리어<50 · 비비드', _stdChromaBand,
+                      ['무채','뮤트','클리어','비비드'], ours, libChroma, '#A090F0')
+      + _stdAxisTable('명도대', '무채 6단 · 유채 3단', _stdValueBand,
+                      ['블랙','차콜','딥그레이','미드그레이','라이트그레이','화이트','다크','미드','라이트'],
+                      ours, libValue, 'var(--gold)');
+  }
+
   function _stdRender(){
     var pane = document.getElementById('tab-' + STD_TAB_KEY);
     if(!pane) return;
@@ -23857,16 +24039,29 @@ document.addEventListener('DOMContentLoaded',function(){
       + '<div class="spp-trend-market-hd" style="margin-bottom:6px">'
       +   '<span class="spp-trend-market-flame" style="color:var(--gold)">◇ DISC STANDARD</span>'
       +   '<span class="spp-trend-market-title">디스커버리 등급 기준</span>'
-      +   '<span class="spp-trend-market-sub">Trend-Matched 매칭 결과를 디스커버리팀 기준(rev v3.0)으로 재분류</span>'
+      +   '<span class="spp-trend-market-sub">03 에 표시된 제안 컬러를 디스커버리팀 기준(rev v3.0)으로 재분류</span>'
       + '</div>'
       + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);line-height:1.8;margin-bottom:6px">'
       +   '① 형광 또는 C*≥' + STD_CUT.accent_chroma + ' → Accent · ② 무채·네이비 → Core · '
       +   '③ 베이지·브라운 C*<' + STD_CUT.core_warm_chroma + ' & L*<' + STD_CUT.core_warm_light + ' → Core · ④ 나머지 → Seasonal'
       + '</div>'
       + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-bottom:14px">'
-      +   '대상 ' + r.all.length + '색 (Trend-Matched 매칭 전량) · 우리 기준과 다르게 분류된 색 '
+      +   '대상 ' + r.all.length + '색 (03 Trend-Matched 표시분과 동일) · 우리 기준과 다르게 분류된 색 '
       +   '<span style="color:var(--gold)">' + r.diff.length + '색</span> — 칩 테두리가 금색'
-      + '</div>';
+      + '</div>'
+      + (function(){
+          var hit = r.all.filter(function(x){ return _stdNearChip(x.item.trend.hex).chip; });
+          var pal = _gapPaletteList();
+          var palHit = pal.filter(function(pp){ return _stdNearChip(pp.hex).chip; });
+          return '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);line-height:1.8;margin-bottom:14px">'
+            + '표준 75칩 대조 (ΔE ≤ ' + STD_MATCH_DE + ') — 제안 ' + r.all.length + '색 중 '
+            + '<span style="color:#5FA85F">' + hit.length + '색</span>은 표준칩으로 대체 가능, '
+            + (r.all.length - hit.length) + '색은 신규. '
+            + '27FW 확정 팔레트 ' + pal.length + '색 중에서는 '
+            + '<span style="color:#5FA85F">' + palHit.length + '색</span>이 표준칩, '
+            + (pal.length - palHit.length) + '색이 신규입니다.'
+            + '</div>';
+        })();
 
     var body = STD_TIERS.map(function(t){
       var list = r.groups[t[0]];
@@ -23891,7 +24086,8 @@ document.addEventListener('DOMContentLoaded',function(){
     }).join('');
 
     wrap.innerHTML = head + body
-      + '<div style="margin-top:30px;padding-top:24px;border-top:1px solid var(--border)">' + _stdLibBar() + '</div>';
+      + '<div style="margin-top:30px;padding-top:24px;border-top:1px solid var(--border)">' + _stdLibBar() + '</div>'
+      + '<div style="margin-top:30px;padding-top:24px;border-top:1px solid var(--border)">' + _stdAxisSection() + '</div>';
   }
   window._discRenderStd = _stdRender;
 
