@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v232 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_STD_v235 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21837,7 +21837,8 @@ document.addEventListener('DOMContentLoaded',function(){
         + '</div></div>';
     }).join('') + '</div>';
     _dcpInMood = false;
-    if(DCP_TAB === 'final'){ core = _dcpFinalHtml(); moods = ''; }
+    if(DCP_TAB === 'final'){ core = _fnHtml() + _dcpFinalHtml(); moods = ''; }
+    if(DCP_TAB === 'watch'){ core = _dcpAddRow() + core; }
     return '<div class="dcp-body">' + _dcpUploadPanel() + _dcpTabBar() + core + moods
       + (cv ? '' : '<div class="dcp-note">' + DCP_NOTE + '</div>') + '</div>';
   }
@@ -21890,7 +21891,7 @@ document.addEventListener('DOMContentLoaded',function(){
       +     '<span class="spp-trend-market-title" style="font-size:22px">팔레트 분석</span>'
       +     '<span class="spp-trend-market-sub" style="font-size:13px">확정 팔레트를 마켓·트렌드 데이터에 비춰 계산한 결과</span>'
       +   '</div>'
-      +   _rptHtml()
+      +   _rvHtml()
       + '</div>';
   }
   window._discRender27fwPalette = _dcpRender;
@@ -22640,9 +22641,14 @@ document.addEventListener('DOMContentLoaded',function(){
         + '</div>'
         // 이 카테고리에 속한 브랜드 (별칭은 빼고 대표 표기만)
         + ((d.brandShow || d.brandList || []).length
-            ? '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);line-height:1.5;margin-bottom:10px">'
+            ? '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);line-height:1.5;margin-bottom:6px">'
               + _ccBrandLabel(d.brandShow || d.brandList) + '</div>'
-            : '<div style="margin-bottom:10px"></div>')
+            : '<div style="margin-bottom:6px"></div>')
+        // 라이프스타일별 등급 비중 (v235)
+        + (k === CC_ETC ? '' : (function(){
+            var c = _fnCatRatios().filter(function(x){ return x.key === k; })[0];
+            return _fnMiniBar(c ? c.pct : null);
+          })())
         + (box.list.length
             ? '<div class="dcp-mood-row" style="justify-content:flex-start;gap:10px">'
               + box.list.map(function(e){ return _ccChip(e, k); }).join('') + '</div>'
@@ -23377,7 +23383,9 @@ document.addEventListener('DOMContentLoaded',function(){
     return '<div style="display:flex;gap:6px;margin:0 0 14px;flex-wrap:wrap">'
       + DCP_TABS.map(function(t){
           var on = (DCP_TAB === t[0]);
-          var n = (t[0] === 'final') ? cnt.final : (cnt[t[0]] || 0);
+          var n = (t[0] === 'final') ? cnt.final
+                : (t[0] === 'watch') ? (cnt.watch + ' + 추가 ' + _dcpAddList().length)
+                : (cnt[t[0]] || 0);
           return '<button onclick="_dcpSetTab(\'' + t[0] + '\')" style="font-family:var(--mono);font-size:11px;'
             + 'padding:5px 13px;border-radius:4px;cursor:pointer;'
             + 'border:1px solid ' + (on ? t[2] : 'var(--border)') + ';'
@@ -23386,7 +23394,7 @@ document.addEventListener('DOMContentLoaded',function(){
             + t[1] + (n !== '' ? ' ' + n : '') + '</button>';
         }).join('')
       + '<span style="font-family:var(--mono);font-size:10px;color:var(--text4);align-self:center;margin-left:6px">'
-      +   '03 Trend-Matched 표시 칩 기준 · 유지 = ΔE ' + DCP_KEEP_DE + ' 이내 · 보완 = ' + DCP_KEEP_DE + '~' + DCP_WATCH_DE + '</span>'
+      +   '03 Trend-Matched 기준 · 유지 = 트렌드와 같은 색 · 보완 = 톤 조정 필요 + 추가할 색 · 띠 왼쪽 확정색 / 오른쪽 트렌드</span>'
       + '</div>';
   }
   function _dcpPantoneOf(hex){
@@ -23490,17 +23498,28 @@ document.addEventListener('DOMContentLoaded',function(){
     _dcpPopPlace(evt, pop);
   };
 
+  function _dcpShortDir(palHex, tHex){
+    var x = _dcpReason(palHex, tHex).parts[0];
+    if(x.key === 'L') return (_tmLCh(tHex).L > _tmLCh(palHex).L) ? '명도↑' : '명도↓';
+    if(x.key === 'C') return (_tmLCh(tHex).C > _tmLCh(palHex).C) ? '채도↑' : '채도↓';
+    var dh = ((_tmLCh(tHex).H - _tmLCh(palHex).H + 540) % 360) - 180;
+    return '→' + _dcpHueWord(_tmLCh(palHex).H + (dh > 0 ? 25 : -25));
+  }
   function _dcpStatusStrip(hex){
     if(DCP_TAB !== 'keep' && DCP_TAB !== 'watch') return '';
     var st = _dcpStatusMap()[String(hex).toUpperCase()];
     if(!st || st.tier !== DCP_TAB) return '';
     var meta = DCP_TIER_META[st.tier];
+    var label = st.tier === 'watch' ? _dcpShortDir(hex, st.tHex) + ' ⓘ' : '같은 색';
     return '<div onclick="_dcpOpenStatus(event,\'' + hex + '\')" style="margin-top:4px;cursor:pointer;'
       + 'border:1px solid ' + meta[1] + ';border-radius:4px;overflow:hidden"'
-      + ' title="클릭 — ' + (st.tier === 'watch' ? '보완 사유 · ' : '') + 'HEX·Pantone 확인 · ΔE ' + st.de + '">'
-      +   '<div style="height:22px;background:' + st.tHex + '"></div>'
-      +   '<div style="font-family:var(--mono);font-size:8.5px;text-align:center;padding:2px;color:' + meta[1] + '">'
-      +     meta[0] + ' ΔE' + st.de + (st.tier === 'watch' ? ' ⓘ' : '') + '</div>'
+      + ' title="클릭 — 왼쪽 확정색 · 오른쪽 트렌드 칩 · ΔE ' + st.de + '">'
+      +   '<div style="display:flex;height:30px">'
+      +     '<div style="flex:1;background:' + hex + '"></div>'
+      +     '<div style="flex:1;background:' + st.tHex + '"></div>'
+      +   '</div>'
+      +   '<div style="font-family:var(--mono);font-size:8.5px;text-align:center;padding:2px;color:' + meta[1] + ';white-space:nowrap">'
+      +     label + ' · ΔE' + st.de + '</div>'
       + '</div>';
   }
   function _dcpChipDim(hex){
@@ -23548,6 +23567,571 @@ document.addEventListener('DOMContentLoaded',function(){
       + '</div>';
   }
   window._dcpFinalHtml = _dcpFinalHtml;
+
+  // ── 보완 ② 추가 후보 — Trend-Matched ACCENT 8색 전부 + 팔레트에 없는 SEASONAL·CORE ──
+  function _dcpAddList(){
+    var pal = _dcpPalUnique(), out = [];
+    _dcpTrendChips().forEach(function(c){
+      var best = null, bd = 1e9;
+      pal.forEach(function(p){ var dd = _tmDeltaE(p.hex, c.item.trend.hex); if(dd < bd){ bd = dd; best = p; } });
+      var covered = bd <= DCP_WATCH_DE;
+      if(c.group !== 'key' && covered) return;
+      out.push({ item: c.item, group: c.group, near: best, de: Math.round(bd * 10) / 10, covered: covered });
+    });
+    var ord = { key: 0, sub: 1, basic: 2 };
+    out.sort(function(a, b){ return (ord[a.group] - ord[b.group]) || (b.item.mkFreq - a.item.mkFreq); });
+    return out;
+  }
+  var _dcpAddIdx = {};
+  function _dcpAddRow(){
+    var list = _dcpAddList();
+    _dcpAddIdx = {};
+    if(!list.length) return '';
+    var palKey = _dcpPalUnique().filter(function(p){ return _tmClassify(p.hex) === 'key'; }).length;
+    var col = { key: '#A090F0', sub: 'var(--blue)', basic: 'var(--gold)' };
+    var chips = list.map(function(x){
+      var t = x.item.trend;
+      _dcpAddIdx[t.hex] = x;
+      return '<div onclick="_dcpOpenAdd(event,\'' + t.hex + '\')" style="width:74px;flex:0 0 auto;cursor:pointer"'
+        + ' title="클릭 — 추가 이유">'
+        + '<div style="font-family:var(--mono);font-size:9px;font-weight:700;text-align:center;color:' + col[x.group] + '">'
+        +   TM_GROUP_LABEL[x.group] + '</div>'
+        + '<div style="border:1px ' + (x.covered ? 'dashed' : 'solid') + ' ' + col[x.group] + ';border-radius:6px;overflow:hidden;background:var(--surface)">'
+        +   '<div style="height:52px;background:' + t.hex + ';display:flex;align-items:center;justify-content:center">'
+        +     '<span style="font-family:var(--mono);font-size:14px;font-weight:800;color:' + _dcpTextOn(t.hex.slice(1)) + '">+</span></div>'
+        +   '<div style="font-family:var(--mono);font-size:8.5px;text-align:center;padding:2px;color:var(--text3)">' + t.hex + '</div>'
+        +   '<div style="font-family:var(--mono);font-size:8.5px;text-align:center;padding:0 2px 3px;color:var(--text4)">빈도 ' + x.item.mkFreq + '</div>'
+        + '</div></div>';
+    }).join('');
+    return '<div style="margin:0 0 22px;padding:12px 14px;border:1px solid var(--border);border-radius:8px">'
+      + '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px;flex-wrap:wrap">'
+      +   '<span style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--gold);letter-spacing:0.08em">+ 추가할 색 ' + list.length + '</span>'
+      +   '<span style="font-family:var(--mono);font-size:10px;color:var(--text4)">'
+      +     '확정 팔레트 ACCENT ' + palKey + '색 → Trend-Matched ACCENT 전부 후보 · SEASONAL·CORE 는 팔레트에 ΔE ' + DCP_WATCH_DE + ' 이내 색이 없는 것만 · 점선 = 비슷한 확정색 있음</span>'
+      + '</div>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap">' + chips + '</div>'
+      + '</div>';
+  }
+  window._dcpOpenAdd = function(evt, hex){
+    evt.stopPropagation();
+    var x = _dcpAddIdx[hex]; if(!x) return;
+    var t = x.item.trend, pop = _ccEnsurePop();
+    var palKey = _dcpPalUnique().filter(function(p){ return _tmClassify(p.hex) === 'key'; }).length;
+    var src = (t.sources && t.sources.length) ? t.sources.join('·') : '';
+    var why = [];
+    if(x.group === 'key'){
+      why.push('확정 팔레트 ' + TM_GROUP_LABEL.key + ' ' + palKey + '색 — 포인트 컬러 보강이 필요');
+      why.push('03 Trend-Matched ' + TM_GROUP_LABEL.key + ' 선발색 (마켓 빈도 ' + x.item.mkFreq + ')');
+    } else {
+      why.push('확정 팔레트에 ΔE ' + DCP_WATCH_DE + ' 이내 색이 없음 — 이 톤이 비어 있음');
+      why.push('03 Trend-Matched ' + TM_GROUP_LABEL[x.group] + ' 선발색 (마켓 빈도 ' + x.item.mkFreq + ')');
+    }
+    if(x.item.brands && x.item.brands.length) why.push('사용 브랜드 ' + x.item.brands.slice(0, 4).join(', ') + (x.item.brands.length > 4 ? ' 외' : ''));
+    why.push(x.covered ? '비슷한 확정색 ' + x.near.name + ' (ΔE ' + x.de + ') — 대체 여부 검토'
+                       : '가장 가까운 확정색 ' + x.near.name + '도 ΔE ' + x.de + ' 로 다른 색');
+    pop.innerHTML = '<div style="width:270px">'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+      +   '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--gold);border:1px solid var(--gold);border-radius:3px;padding:2px 7px">추가</span>'
+      +   '<span style="font-family:var(--mono);font-size:11px;color:var(--text3)">' + TM_GROUP_LABEL[x.group] + '</span>'
+      + '</div>'
+      + '<div style="display:flex;gap:10px;align-items:center">'
+      +   '<span style="width:48px;height:48px;border-radius:5px;border:1px solid var(--border2);background:' + t.hex + '"></span>'
+      +   '<div><div style="font-size:13px;font-weight:700;color:var(--text)">' + (src || 'Trend') + '</div>'
+      +   '<div style="font-family:var(--mono);font-size:11px;color:var(--text2)">' + t.hex + '</div>'
+      +   '<div style="font-family:var(--mono);font-size:10px;color:var(--text3)">' + _rptTrendCode(t) + '</div></div>'
+      + '</div>'
+      + '<div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--gold);margin:10px 0 4px">추가 이유</div>'
+      + why.map(function(w){ return '<div style="font-size:11.5px;color:var(--text2);line-height:1.55;padding-left:10px;text-indent:-10px">· ' + w + '</div>'; }).join('')
+      + '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">'
+      +   '<span style="width:28px;height:28px;border-radius:4px;border:1px solid var(--border2);background:' + x.near.hex + '"></span>'
+      +   '<span style="font-family:var(--mono);font-size:10px;color:var(--text3)">가장 가까운 확정색 ' + x.near.name + ' · ' + x.near.hex + ' · ΔE ' + x.de + '</span>'
+      + '</div></div>';
+    _dcpPopPlace(evt, pop);
+  };
+
+  // ══════════════════════════════════════════════════════════════
+  //  ✎ REVIEW — 그래프·칩 중심 (v233)
+  // ══════════════════════════════════════════════════════════════
+  var RV_FAM_COLOR = { neutral:'#B8B2A8', red:'#C0392B', pink:'#E89AB0', purple:'#8E6BB5', blue:'#3F6FB0',
+                       teal:'#3AA5A0', green:'#5E9A5A', yellow:'#D9B53A', orange:'#B97A4A' };
+  var RV_FAM_NAME = { neutral:'뉴트럴', red:'레드', pink:'핑크', purple:'퍼플', blue:'블루·네이비',
+                      teal:'틸·민트', green:'그린', yellow:'옐로', orange:'브라운·오렌지' };
+  var RV_GRP = [['sub', 'var(--blue)', '#5B8DD6'], ['key', '#A090F0', '#A090F0'], ['basic', 'var(--gold)', '#A07840']];
+
+  function _rvDonut(parts, size, center, sub){
+    var tot = parts.reduce(function(n, x){ return n + x.v; }, 0);
+    var R = size / 2, r0 = R * 0.58, a0 = -Math.PI / 2, paths = '';
+    if(!tot){
+      paths = '<circle cx="' + R + '" cy="' + R + '" r="' + (R - 1) + '" fill="var(--border)"/>';
+    }
+    parts.forEach(function(x){
+      if(!x.v) return;
+      var a1 = a0 + x.v / tot * Math.PI * 2;
+      if(x.v === tot){
+        paths += '<circle cx="' + R + '" cy="' + R + '" r="' + ((R + r0) / 2) + '" fill="none" stroke="' + x.c + '" stroke-width="' + (R - r0) + '"><title>' + x.l + ' ' + x.v + '</title></circle>';
+      } else {
+        var big = (a1 - a0) > Math.PI ? 1 : 0;
+        var p = function(rr, a){ return (R + rr * Math.cos(a)).toFixed(2) + ' ' + (R + rr * Math.sin(a)).toFixed(2); };
+        paths += '<path d="M' + p(R, a0) + ' A' + R + ' ' + R + ' 0 ' + big + ' 1 ' + p(R, a1)
+          + ' L' + p(r0, a1) + ' A' + r0 + ' ' + r0 + ' 0 ' + big + ' 0 ' + p(r0, a0) + 'Z" fill="' + x.c + '">'
+          + '<title>' + x.l + ' ' + x.v + ' (' + Math.round(x.v / tot * 100) + '%)</title></path>';
+      }
+      a0 = a1;
+    });
+    return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" style="display:block">'
+      + paths
+      + '<text x="' + R + '" y="' + (R + 2) + '" text-anchor="middle" font-family="var(--mono)" font-size="' + Math.round(size / 7) + '" font-weight="700" fill="var(--text)">' + center + '</text>'
+      + (sub ? '<text x="' + R + '" y="' + (R + size / 7) + '" text-anchor="middle" font-family="var(--mono)" font-size="' + Math.round(size / 13) + '" fill="var(--text4)">' + sub + '</text>' : '')
+      + '</svg>';
+  }
+  function _rvLegend(parts){
+    var tot = parts.reduce(function(n, x){ return n + x.v; }, 0) || 1;
+    return '<div style="display:flex;flex-direction:column;gap:3px">' + parts.filter(function(x){ return x.v; }).map(function(x){
+      return '<div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text2)">'
+        + '<span style="width:9px;height:9px;border-radius:2px;background:' + x.c + '"></span>'
+        + x.l + ' <b style="color:var(--text)">' + Math.round(x.v / tot * 100) + '%</b></div>';
+    }).join('') + '</div>';
+  }
+  function _rvCard(title, inner){
+    return '<div style="border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px">'
+      + '<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--gold);letter-spacing:0.08em;margin-bottom:12px">' + title + '</div>'
+      + inner + '</div>';
+  }
+  function _rvSw(hex, w, h, tip){
+    return '<span title="' + (tip || hex) + '" style="display:inline-block;width:' + w + 'px;height:' + h + 'px;border-radius:3px;'
+      + 'background:' + hex + ';border:1px solid var(--border)"></span>';
+  }
+  function _rvTile(v, l, c){
+    return '<div style="flex:1 1 120px;border:1px solid var(--border);border-radius:8px;padding:10px 12px">'
+      + '<div style="font-family:var(--mono);font-size:24px;font-weight:800;color:' + (c || 'var(--text)') + '">' + v + '</div>'
+      + '<div style="font-family:var(--mono);font-size:10px;color:var(--text4)">' + l + '</div></div>';
+  }
+
+  function _rvHtml(){
+    var m = _dcpStatusMap(), keys = Object.keys(m);
+    var pal = _dcpPalUnique(), chips = _dcpTrendChips();
+    if(!pal.length || !chips.length)
+      return '<div class="spp-empty">분석할 데이터가 없습니다. 01·02 에서 데이터를 먼저 로드하세요.</div>';
+    var by = { keep: [], watch: [], risk: [] };
+    keys.forEach(function(h){ by[m[h].tier].push(h); });
+    var add = _dcpAddList();
+    var html = '';
+
+    // 0) KPI
+    html += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">'
+      + _rvTile(Math.round((by.keep.length + by.watch.length) / keys.length * 100) + '%', '트렌드 적중률 (유지+보완)', '#5FA85F')
+      + _rvTile(by.keep.length, '유지 — 트렌드와 같은 색', '#5FA85F')
+      + _rvTile(by.watch.length, '보완 — 톤 조정', 'var(--gold)')
+      + _rvTile(add.length, '추가 후보 — 빠진 톤', 'var(--gold)')
+      + _rvTile(by.risk.length, '위험 — 트렌드 근거 없음', 'var(--warn)')
+      + '</div>';
+
+    // 1) 등급 구성 — 확정 vs Trend-Matched
+    var grpCnt = function(list){
+      var c = { sub: 0, key: 0, basic: 0 };
+      list.forEach(function(h){ c[_tmClassify(h)]++; });
+      return RV_GRP.map(function(g){ return { l: TM_GROUP_LABEL[g[0]], v: c[g[0]], c: g[2], k: g[0] }; });
+    };
+    var gP = grpCnt(pal.map(function(p){ return p.hex; }));
+    // Trend-Matched 는 03 에서 배정된 그룹을 그대로 쓴다 (ACCENT 8 = 03 ACCENT 8)
+    var gT = RV_GRP.map(function(g){
+      return { l: TM_GROUP_LABEL[g[0]], v: chips.filter(function(c){ return c.group === g[0]; }).length, c: g[2], k: g[0] };
+    });
+    var accP = gP[1].v, accT = gT[1].v;
+    var accChips = chips.filter(function(c){ return c.group === 'key'; });
+    html += _rvCard('1. 등급 구성 — 확정 팔레트 vs Trend-Matched',
+      '<div style="display:flex;gap:28px;flex-wrap:wrap;align-items:center">'
+      + ['확정 팔레트|' + pal.length + '색|P', 'Trend-Matched|' + chips.length + '색|T'].map(function(x){
+          var a = x.split('|'), parts = a[2] === 'P' ? gP : gT;
+          return '<div style="display:flex;gap:12px;align-items:center">'
+            + _rvDonut(parts, 120, a[1], a[0]) + _rvLegend(parts) + '</div>';
+        }).join('')
+      + '<div style="flex:1 1 260px;min-width:0">'
+      +   '<div style="font-family:var(--mono);font-size:11px;color:' + (accP < accT ? 'var(--warn)' : 'var(--text2)') + ';font-weight:700;margin-bottom:6px">'
+      +     TM_GROUP_LABEL.key + ' ' + accP + '색 → 트렌드 ' + accT + '색' + (accP < accT ? ' · ' + (accT - accP) + '색 부족' : '') + '</div>'
+      +   '<div style="display:flex;gap:4px;flex-wrap:wrap">'
+      +     accChips.map(function(c){ return _rvSw(c.item.trend.hex, 30, 30, c.item.trend.hex + ' · 빈도 ' + c.item.mkFreq); }).join('')
+      +   '</div>'
+      +   '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-top:4px">채울 ' + TM_GROUP_LABEL.key + ' 후보 = 03 Trend-Matched ' + TM_GROUP_LABEL.key + '</div>'
+      + '</div></div>');
+
+    // 2) 계열 방향성 — 확정 / Trend-Matched / 마켓(빈도 가중)
+    var FAMS = TM_FAMILY_ORDER;
+    var famOf = function(list, hexOf, wOf){
+      var c = {}; FAMS.forEach(function(f){ c[f] = 0; });
+      list.forEach(function(x){ c[_tmFamily(hexOf(x))] += (wOf ? wOf(x) : 1); });
+      return c;
+    };
+    var market = [];
+    try{ market = _tmMarketPool(); }catch(e){}
+    var fP = famOf(pal, function(p){ return p.hex; });
+    var fT = famOf(chips, function(c){ return c.item.trend.hex; });
+    var fM = famOf(market, function(x){ return x.hex; }, function(x){ return x.freq || 1; });
+    var toParts = function(c){ return FAMS.map(function(f){ return { l: RV_FAM_NAME[f], v: c[f], c: RV_FAM_COLOR[f] }; }); };
+    var sum = function(c){ return FAMS.reduce(function(n, f){ return n + c[f]; }, 0) || 1; };
+    var sP = sum(fP), sT = sum(fT), sM = sum(fM);
+    // 유채색 계열만 방향 판단 (뉴트럴 제외)
+    var rows = FAMS.filter(function(f){ return f !== 'neutral'; }).map(function(f){
+      var pp = fP[f] / sP * 100, mm = fM[f] / sM * 100, tt = fT[f] / sT * 100;
+      return { f: f, pp: pp, mm: mm, tt: tt, gap: ((mm + tt) / 2) - pp };
+    });
+    var maxPct = Math.max.apply(null, rows.map(function(r){ return Math.max(r.pp, r.mm, r.tt); }).concat([1]));
+    var bar = function(v, c){
+      return '<div style="height:7px;border-radius:2px;background:' + c + ';width:' + Math.max(1, v / maxPct * 100) + '%"></div>';
+    };
+    var famRows = rows.map(function(r){
+      var dir = r.gap >= 3 ? ['채우기 ▲', 'var(--warn)'] : (r.gap <= -3 ? ['과다 ▼', 'var(--blue)'] : ['적정', 'var(--text4)']);
+      var tops = chips.filter(function(c){ return _tmFamily(c.item.trend.hex) === r.f; })
+        .sort(function(a, b){ return b.item.mkFreq - a.item.mkFreq; }).slice(0, 5);
+      return '<div style="display:grid;grid-template-columns:96px 1fr 70px 150px;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">'
+        + '<div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--text)">'
+        +   '<span style="width:10px;height:10px;border-radius:2px;background:' + RV_FAM_COLOR[r.f] + '"></span>' + RV_FAM_NAME[r.f] + '</div>'
+        + '<div style="display:flex;flex-direction:column;gap:2px" title="확정 ' + r.pp.toFixed(0) + '% · 트렌드 ' + r.tt.toFixed(0) + '% · 마켓 ' + r.mm.toFixed(0) + '%">'
+        +   bar(r.pp, '#A07840') + bar(r.tt, '#A090F0') + bar(r.mm, '#8A8A8A')
+        + '</div>'
+        + '<div style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + dir[1] + '">' + dir[0] + '</div>'
+        + '<div style="display:flex;gap:2px">' + (tops.length && r.gap >= 3
+            ? tops.map(function(c){ return _rvSw(c.item.trend.hex, 26, 20, c.item.trend.hex + ' · 빈도 ' + c.item.mkFreq); }).join('')
+            : '') + '</div>'
+        + '</div>';
+    }).join('');
+    html += _rvCard('2. 계열 방향성 — 확정 팔레트 vs Trend-Matched vs 마켓',
+      '<div style="display:flex;gap:26px;flex-wrap:wrap;margin-bottom:14px">'
+      + [['확정 팔레트', fP, pal.length + '색'], ['Trend-Matched', fT, chips.length + '색'], ['마켓 (빈도)', fM, market.length + '색']].map(function(x){
+          return '<div style="display:flex;gap:10px;align-items:center">' + _rvDonut(toParts(x[1]), 110, x[2], x[0]) + _rvLegend(toParts(x[1])) + '</div>';
+        }).join('')
+      + '</div>'
+      + '<div style="display:flex;gap:14px;font-family:var(--mono);font-size:9px;color:var(--text4);margin-bottom:4px">'
+      +   '<span><span style="display:inline-block;width:10px;height:6px;background:#A07840"></span> 확정</span>'
+      +   '<span><span style="display:inline-block;width:10px;height:6px;background:#A090F0"></span> Trend-Matched</span>'
+      +   '<span><span style="display:inline-block;width:10px;height:6px;background:#8A8A8A"></span> 마켓</span>'
+      +   '<span>· 채우기 = 트렌드·마켓 평균이 확정보다 3%p 이상 높음 → 오른쪽 칩 방향</span>'
+      + '</div>'
+      + famRows);
+
+    // 3) 등급별 적중도 — SEASONAL 중심
+    var tierRows = RV_GRP.map(function(g){
+      var list = pal.filter(function(p){ return _tmClassify(p.hex) === g[0]; });
+      if(!list.length) return '';
+      var c = { keep: [], watch: [], risk: [] };
+      list.forEach(function(p){ var st = m[String(p.hex).toUpperCase()]; if(st) c[st.tier].push(p); });
+      var hit = Math.round((c.keep.length + c.watch.length) / list.length * 100);
+      var seg = ['keep','watch','risk'].map(function(k){
+        if(!c[k].length) return '';
+        return '<div style="flex:' + c[k].length + ';display:flex;gap:1px;padding:2px;background:' + DCP_TIER_META[k][1] + '">'
+          + c[k].map(function(p){ return '<span title="' + p.name + ' ' + p.hex + ' · ' + DCP_TIER_META[k][0] + '" style="flex:1;min-width:6px;height:26px;border-radius:2px;background:' + p.hex + '"></span>'; }).join('')
+          + '</div>';
+      }).join('');
+      return '<div style="display:grid;grid-template-columns:96px 1fr 120px;gap:10px;align-items:center;margin-bottom:8px">'
+        + '<div style="font-family:var(--mono);font-size:11px;font-weight:700;color:' + g[1] + '">' + TM_GROUP_LABEL[g[0]] + ' <span style="color:var(--text4);font-weight:400">' + list.length + '</span></div>'
+        + '<div style="display:flex;border-radius:5px;overflow:hidden;border:1px solid var(--border)">' + seg + '</div>'
+        + '<div style="font-family:var(--mono);font-size:11px;color:var(--text2)">적중 <b style="font-size:15px;color:var(--text)">' + hit + '%</b>'
+        +   ' <span style="color:var(--text4)">/ 미적중 ' + (100 - hit) + '%</span></div>'
+        + '</div>';
+    }).join('');
+    html += _rvCard('3. 등급별 트렌드 적중도',
+      tierRows
+      + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4)">'
+      +   '<span style="color:#5FA85F">■</span> 유지 · <span style="color:var(--gold)">■</span> 보완 · <span style="color:var(--warn)">■</span> 위험 · 적중 = 유지+보완 · 칩에 마우스를 올리면 이름</div>');
+
+    // 4) 보완 — 톤 조정 페어
+    if(by.watch.length){
+      html += _rvCard('4. 보완 — 톤 조정 ' + by.watch.length + '색',
+        '<div style="display:flex;gap:10px;flex-wrap:wrap">'
+        + by.watch.map(function(h){
+            var st = m[h];
+            return '<div onclick="_dcpOpenStatus(event,\'' + h + '\')" style="cursor:pointer;width:74px" title="클릭 — 보완 사유">'
+              + '<div style="font-size:10px;font-weight:700;color:var(--text2);height:14px;overflow:hidden;white-space:nowrap">' + (st.name || '') + '</div>'
+              + '<div style="display:flex;height:44px;border-radius:5px;overflow:hidden;border:1px solid var(--border)">'
+              +   '<div style="flex:1;background:' + h + '"></div><div style="flex:1;background:' + st.tHex + '"></div></div>'
+              + '<div style="font-family:var(--mono);font-size:9px;color:var(--gold);text-align:center;margin-top:2px">' + _dcpShortDir(h, st.tHex) + ' · ΔE' + st.de + '</div>'
+              + '</div>';
+          }).join('')
+        + '</div>'
+        + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-top:6px">왼쪽 확정색 · 오른쪽 트렌드 칩 · 클릭하면 사유</div>');
+    }
+
+    // 5) 추가 후보
+    if(add.length){
+      html += _rvCard('5. 추가 후보 — ' + add.length + '색',
+        '<div style="display:flex;gap:4px;flex-wrap:wrap">'
+        + add.map(function(x){
+            var t = x.item.trend;
+            _dcpAddIdx[t.hex] = x;
+            return '<div onclick="_dcpOpenAdd(event,\'' + t.hex + '\')" style="cursor:pointer;text-align:center">'
+              + _rvSw(t.hex, 44, 44, t.hex + ' · ' + TM_GROUP_LABEL[x.group] + ' · 빈도 ' + x.item.mkFreq)
+              + '<div style="font-family:var(--mono);font-size:8px;color:' + (x.group === 'key' ? '#A090F0' : 'var(--text4)') + '">' + TM_GROUP_LABEL[x.group].slice(0, 3) + '</div></div>';
+          }).join('')
+        + '</div>');
+    }
+
+    // 6) 위험
+    if(by.risk.length){
+      html += _rvCard('6. 위험 — 트렌드 근거 없음 ' + by.risk.length + '색',
+        '<div style="display:flex;gap:6px;flex-wrap:wrap">'
+        + by.risk.map(function(h){
+            var st = m[h];
+            return '<div onclick="_dcpOpenStatus(event,\'' + h + '\')" style="cursor:pointer;text-align:center" title="' + (st.name || '') + ' · 클릭">'
+              + '<div style="width:44px;height:34px;border-radius:4px 4px 0 0;background:' + h + ';border:1px solid var(--border)"></div>'
+              + '<div style="width:44px;height:10px;border-radius:0 0 4px 4px;background:' + st.tHex + ';border:1px solid var(--border);border-top:0"></div>'
+              + '<div style="font-family:var(--mono);font-size:8px;color:var(--warn)">ΔE' + st.de + '</div></div>';
+          }).join('')
+        + '</div>');
+    }
+    return html;
+  }
+  window._discReviewHtml = _rvHtml;
+
+  // ══════════════════════════════════════════════════════════════
+  //  최종 컬러 도출 (v234) — 디스커버리 레인지플랜 결과와 연결
+  //   1) 마켓 컬러를 디커 기준으로 나눠 빈도 가중 → 목표 비율 검증
+  //   2) 목표 비율 × 714 SKU → 등급별 SKU
+  //   3) 등급 칸을 우리 칩으로 채움 (04 유지·보완·추가 + 05 선발색, 디커 기준으로 배정)
+  //   4) 등급 안에서 마켓 빈도 비율로 SKU 배분
+  //  ※ 레인지플랜 수치는 디스커버리팀 결과(1차 품평 기준)를 상수로 둔다.
+  // ══════════════════════════════════════════════════════════════
+  var FN_RP = {
+    sku: 714,
+    cur:    { Core: 84.3, Color: 15.7 },            // 현재 — Seasonal·Accent 는 합계만 공개됨
+    prev:   { Core: 89.1 },                          // 26FW
+    target: { Core: 72.5, Seasonal: 23.6, Accent: 3.9 }
+  };
+  var FN_TIERS = [['Core', '#1A1A1A', '#A07840'], ['Seasonal', '#6E6E6E', 'var(--blue)'], ['Accent', '#D98A2B', '#A090F0']];
+  var FN_DEDUP_DE = 5;
+  var FN_TARGET = 'disc';     // disc = 디커 제안 목표 / market = 우리 마켓 검증값
+  window._fnSetTarget = function(t){ FN_TARGET = t; _dcpRender(); try{ _discOrderSections(); }catch(e){} };
+
+  function _fnMarketRatio(){
+    var mk = [];
+    try{ mk = _tmMarketPool(); }catch(e){}
+    var w = { Core: 0, Seasonal: 0, Accent: 0 }, n = { Core: 0, Seasonal: 0, Accent: 0 }, tot = 0;
+    mk.forEach(function(x){ var t = _stdTier(x.hex), f = x.freq || 1; w[t] += f; n[t]++; tot += f; });
+    if(!tot) return null;
+    var pct = {};
+    Object.keys(w).forEach(function(k){ pct[k] = Math.round(w[k] / tot * 1000) / 10; });
+    return { pct: pct, colors: mk.length, freq: tot, n: n };
+  }
+  // 최대 잔여 방식 — 합계가 정확히 total 이 되도록
+  // 라이프스타일(카테고리)별 디커 등급 비중 — 해당 카테고리 브랜드의 마켓 컬러를 빈도 가중
+  //  필터는 카테고리 분모(_gapCatTotals)와 동일: GLOBAL·KOREA · 브랜드 선택 · 품목 필터
+  var _fnCatCache = null, _fnCatKey = null;
+  function _fnCatRatios(){
+    if(_fnCatCache && _fnCatKey === _tmLastBuild) return _fnCatCache;
+    var defs = _gapCatDefs();
+    var bkn = window._brandKeyNorm || function(x){ return (x||'').toLowerCase().replace(/[\s._\-]+/g,'').trim(); };
+    var sel = (typeof window._curMarketSel === 'function') ? window._curMarketSel() : null;
+    var maps = defs.map(function(d){
+      var set = {}; (d.brandList || []).forEach(function(b){ set[bkn(b)] = 1; });
+      return { def: d, set: set, w: { Core: 0, Seasonal: 0, Accent: 0 }, tot: 0, hex: {} };
+    });
+    var tierMemo = {};
+    if(typeof compData !== 'undefined' && Array.isArray(compData)){
+      compData.forEach(function(cd){
+        if(!cd || !cd.brand || !cd.hex) return;
+        var src = cd.source || '';
+        if(src.indexOf('gl') < 0 && src.indexOf('kr') < 0) return;
+        var k = bkn(cd.brand);
+        if(sel && sel.size > 0 && !sel.has(k)) return;
+        if(typeof _passesCategoryFilter === 'function' && !_passesCategoryFilter(cd)) return;
+        var h = String(cd.hex).toUpperCase();
+        if(!/^#[0-9A-F]{6}$/.test(h)) return;
+        var t = tierMemo[h] || (tierMemo[h] = _stdTier(h));
+        var f = cd.freq || 1;
+        maps.forEach(function(m){ if(m.set[k]){ m.w[t] += f; m.tot += f; m.hex[h] = 1; } });
+      });
+    }
+    var out = maps.map(function(m){
+      var pct = null;
+      if(m.tot){
+        pct = {};
+        Object.keys(m.w).forEach(function(t){ pct[t] = Math.round(m.w[t] / m.tot * 1000) / 10; });
+      }
+      return { key: m.def.key, name: m.def.name, emoji: m.def.emoji || '', sub: m.def.subLabel || '',
+               pct: pct, freq: m.tot, colors: Object.keys(m.hex).length };
+    });
+    _fnCatCache = out; _fnCatKey = _tmLastBuild;
+    return out;
+  }
+  window._discCatTierRatios = _fnCatRatios;
+  // 03 카드용 미니 막대
+  function _fnMiniBar(pct){
+    if(!pct) return '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-bottom:8px">등급 비중 — 데이터 없음</div>';
+    return '<div style="margin:0 0 10px" title="디커 기준 · 마켓 빈도 가중">'
+      + '<div style="display:flex;height:8px;border-radius:2px;overflow:hidden;border:1px solid var(--border)">'
+      + FN_TIERS.map(function(t){ return pct[t[0]] ? '<div style="flex:' + pct[t[0]] + ';background:' + t[1] + '"></div>' : ''; }).join('')
+      + '</div>'
+      + '<div style="display:flex;gap:10px;font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:2px">'
+      + FN_TIERS.map(function(t){ return '<span><span style="display:inline-block;width:7px;height:7px;background:' + t[1] + '"></span> ' + t[0] + ' <b style="color:var(--text)">' + pct[t[0]] + '%</b></span>'; }).join('')
+      + '</div></div>';
+  }
+  window._discCatMiniBar = _fnMiniBar;
+
+  function _fnAlloc(total, weights){
+    var sw = weights.reduce(function(a, b){ return a + b; }, 0) || 1;
+    var raw = weights.map(function(w){ return total * w / sw; });
+    var out = raw.map(Math.floor), left = total - out.reduce(function(a, b){ return a + b; }, 0);
+    raw.map(function(v, i){ return { i: i, r: v - Math.floor(v) }; })
+       .sort(function(a, b){ return b.r - a.r; })
+       .slice(0, left).forEach(function(x){ out[x.i]++; });
+    return out;
+  }
+  function _fnBuild(){
+    var m = _dcpStatusMap(), std = null;
+    try{ std = _stdBuild(); }catch(e){}
+    if(!std || !Object.keys(m).length) return null;
+    var mr = _fnMarketRatio();
+    var target = (FN_TARGET === 'market' && mr) ? mr.pct : FN_RP.target;
+    var tierSku = _fnAlloc(FN_RP.sku, FN_TIERS.map(function(t){ return target[t[0]]; }));
+    var bins = { Core: [], Seasonal: [], Accent: [] };
+    function push(hex, name, w, src, note){
+      var t = _stdTier(hex);
+      var all = bins.Core.concat(bins.Seasonal, bins.Accent);
+      for(var i = 0; i < all.length; i++) if(_tmDeltaE(all[i].hex, hex) < FN_DEDUP_DE) return;
+      bins[t].push({ hex: hex, name: name, w: Math.max(1, w || 1), src: src, note: note || '' });
+    }
+    // 우선순위: 04 유지(확정색) → 04 보완(트렌드 톤으로) → 05 선발 → 04 추가 후보
+    Object.keys(m).forEach(function(h){ if(m[h].tier === 'keep') push(h, m[h].name, m[h].freq, '유지', '확정색 유지'); });
+    Object.keys(m).forEach(function(h){ if(m[h].tier === 'watch') push(m[h].tHex, m[h].name, m[h].freq, '보완', m[h].name + ' → 트렌드 톤으로 조정'); });
+    ['Core','Seasonal','Accent'].forEach(function(t){
+      (std.groups[t] || []).forEach(function(it){ push(it.trend.hex, (it.trend.sources || []).join('·') || 'Trend', it.mkFreq, '05', 'Trend-Matched 디커 ' + t); });
+    });
+    _dcpAddList().forEach(function(x){ push(x.item.trend.hex, (x.item.trend.sources || []).join('·') || 'Trend', x.item.mkFreq, '추가', '04 추가 후보'); });
+    FN_TIERS.forEach(function(t, i){
+      var list = bins[t[0]].sort(function(a, b){ return b.w - a.w; });
+      var sk = _fnAlloc(tierSku[i], list.map(function(x){ return x.w; }));
+      list.forEach(function(x, j){ x.sku = sk[j]; });
+    });
+    return { mr: mr, target: target, tierSku: tierSku, bins: bins };
+  }
+
+  function _fnStackBar(label, sub, segs, h){
+    return '<div style="display:grid;grid-template-columns:170px 1fr;gap:12px;align-items:center;margin-bottom:8px">'
+      + '<div style="text-align:right"><div style="font-size:13px;font-weight:700;color:var(--text)">' + label + '</div>'
+      +   '<div style="font-family:var(--mono);font-size:9px;color:var(--text4)">' + sub + '</div></div>'
+      + '<div style="display:flex;height:' + (h || 30) + 'px;border-radius:4px;overflow:hidden;border:1px solid var(--border)">'
+      + segs.map(function(x){
+          if(!x.v) return '';
+          return '<div title="' + x.l + ' ' + x.v + '%" style="flex:' + x.v + ';background:' + x.c + ';display:flex;align-items:center;justify-content:center;'
+            + 'font-family:var(--mono);font-size:11px;font-weight:700;color:#fff;overflow:hidden;white-space:nowrap' + (x.st || '') + '">'
+            + (x.v >= 3 ? x.v + '%' : '') + '</div>';
+        }).join('')
+      + '</div></div>';
+  }
+
+  function _fnHtml(){
+    var r = _fnBuild();
+    if(!r) return '';
+    var T = FN_RP.target, mr = r.mr, html = '';
+    var seg = function(o){ return FN_TIERS.map(function(t){ return { l: t[0], v: o[t[0]] || 0, c: t[1] }; }); };
+
+    // 1) 목표 비율 검증
+    var diff = mr ? FN_TIERS.map(function(t){
+      var d = Math.round((mr.pct[t[0]] - T[t[0]]) * 10) / 10;
+      return '<span style="margin-right:14px">' + t[0] + ' <b style="color:' + (Math.abs(d) <= 5 ? '#5FA85F' : 'var(--warn)') + '">'
+        + (d > 0 ? '+' : '') + d + '%p</b></span>';
+    }).join('') : '';
+    var close = mr && FN_TIERS.every(function(t){ return Math.abs(mr.pct[t[0]] - T[t[0]]) <= 5; });
+    html += _rvCard('① 목표 비율 검증 — 디스커버리 레인지플랜 vs 우리 마켓 데이터',
+        _fnStackBar('자사 27FW · 현재', FN_RP.sku + ' SKU · 26FW Core ' + FN_RP.prev.Core + '%',
+          [{ l: 'Core', v: FN_RP.cur.Core, c: '#1A1A1A' }, { l: 'Seasonal+Accent', v: FN_RP.cur.Color, c: '#8A8A8A' }])
+      + _fnStackBar('디커 제안 목표', '참고 브랜드 평균 · 디스커버리 산출', seg(T))
+      + (mr ? _fnStackBar('우리 마켓 검증', mr.colors + '색 · 빈도 ' + mr.freq.toLocaleString() + ' · 디커 기준', seg(mr.pct))
+            : '<div class="spp-empty">마켓 데이터가 없습니다.</div>')
+      + '<div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text3);margin:12px 0 6px 182px;letter-spacing:0.06em">라이프스타일별 — 해당 브랜드 마켓 컬러 · 디커 기준 · 빈도 가중</div>'
+      + _fnCatRatios().map(function(c){
+          return c.pct
+            ? _fnStackBar(c.emoji + ' ' + c.name, c.sub + ' · ' + c.colors + '색 · 빈도 ' + c.freq.toLocaleString(), seg(c.pct), 22)
+            : _fnStackBar(c.emoji + ' ' + c.name, c.sub + ' · 데이터 없음', [], 22);
+        }).join('')
+      + '<div style="display:flex;gap:14px;font-family:var(--mono);font-size:10px;color:var(--text4);margin:4px 0 0 182px;flex-wrap:wrap">'
+      +   FN_TIERS.map(function(t){ return '<span><span style="display:inline-block;width:9px;height:9px;background:' + t[1] + '"></span> ' + t[0] + '</span>'; }).join('')
+      +   '<span>현재 Seasonal·Accent 는 합계만 공개</span>'
+      + '</div>'
+      + (function(){
+          var cats = _fnCatRatios().filter(function(c){ return c.pct; });
+          if(!cats.length) return '';
+          var cell = 'padding:5px 10px;border-bottom:1px solid var(--border);text-align:right';
+          return '<table style="margin:12px 0 0 182px;border-collapse:collapse;font-family:var(--mono);font-size:11px;color:var(--text2)">'
+            + '<tr><th style="' + cell + ';text-align:left;color:var(--text4)">라이프스타일</th>'
+            + FN_TIERS.map(function(t){ return '<th style="' + cell + ';color:var(--text4)">' + t[0] + '</th>'; }).join('')
+            + '<th style="' + cell + ';color:var(--text4)">Core − 목표</th></tr>'
+            + cats.map(function(c){
+                var d = Math.round((c.pct.Core - T.Core) * 10) / 10;
+                return '<tr><td style="' + cell + ';text-align:left;color:var(--text)">' + c.emoji + ' ' + c.name + '</td>'
+                  + FN_TIERS.map(function(t){ return '<td style="' + cell + '">' + c.pct[t[0]] + '%</td>'; }).join('')
+                  + '<td style="' + cell + ';font-weight:700;color:' + (Math.abs(d) <= 5 ? '#5FA85F' : 'var(--warn)') + '">' + (d > 0 ? '+' : '') + d + '%p</td></tr>';
+              }).join('')
+            + '<tr><td style="' + cell + ';text-align:left;color:var(--text4)">디커 목표</td>'
+            + FN_TIERS.map(function(t){ return '<td style="' + cell + ';color:var(--text4)">' + T[t[0]] + '%</td>'; }).join('')
+            + '<td style="' + cell + '"></td></tr>'
+            + '</table>';
+        })()
+      + (mr ? '<div style="margin:10px 0 0 182px;font-family:var(--mono);font-size:11px;color:var(--text2)">마켓 − 디커 목표 : ' + diff
+            + '<span style="font-weight:700;color:' + (close ? '#5FA85F' : 'var(--warn)') + '">'
+            + (close ? '→ ±5%p 이내, 두 분석이 서로 뒷받침' : '→ ±5%p 초과 구간 있음, 차이 검토 필요') + '</span></div>' : ''));
+
+    // 2) SKU 배분
+    var tgtTabs = [['disc', '디커 제안 목표'], ['market', '우리 마켓 검증값']].map(function(x){
+      var on = FN_TARGET === x[0], dis = (x[0] === 'market' && !mr);
+      return '<button ' + (dis ? 'disabled ' : '') + 'onclick="_fnSetTarget(\'' + x[0] + '\')" style="font-family:var(--mono);font-size:10px;padding:4px 11px;border-radius:4px;cursor:pointer;'
+        + 'border:1px solid ' + (on ? 'var(--gold)' : 'var(--border)') + ';background:' + (on ? 'rgba(160,120,64,0.16)' : 'transparent') + ';'
+        + 'color:' + (on ? 'var(--gold)' : 'var(--text3)') + ';font-weight:' + (on ? 700 : 400) + '">' + x[1] + '</button>';
+    }).join(' ');
+    html += _rvCard('② SKU 배분 — ' + FN_RP.sku + ' SKU × 목표 비율',
+        '<div style="display:flex;gap:6px;margin-bottom:12px;align-items:center">'
+      +   '<span style="font-family:var(--mono);font-size:10px;color:var(--text4)">목표 기준</span>' + tgtTabs + '</div>'
+      + '<div style="display:flex;gap:10px;flex-wrap:wrap">'
+      + FN_TIERS.map(function(t, i){
+          var n = r.bins[t[0]].filter(function(x){ return x.sku > 0; }).length;
+          return '<div style="flex:1 1 150px;border:1px solid var(--border);border-left:4px solid ' + t[1] + ';border-radius:8px;padding:10px 12px">'
+            + '<div style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--text2)">' + t[0] + ' · ' + r.target[t[0]] + '%</div>'
+            + '<div style="font-family:var(--mono);font-size:26px;font-weight:800;color:var(--text)">' + r.tierSku[i] + '<span style="font-size:11px;color:var(--text4)"> SKU</span></div>'
+            + '<div style="font-family:var(--mono);font-size:10px;color:var(--text4)">' + n + '색 · 색당 평균 ' + (n ? (r.tierSku[i] / n).toFixed(1) : '—') + '</div>'
+            + '</div>';
+        }).join('')
+      + '</div>');
+
+    // 3·4) 색 채우기 + 색별 비중
+    var allSeg = [];
+    FN_TIERS.forEach(function(t){ r.bins[t[0]].forEach(function(x){ if(x.sku) allSeg.push({ x: x, t: t[0] }); }); });
+    var bigBar = '<div style="display:flex;height:46px;border-radius:4px;overflow:hidden;border:1px solid var(--border);margin-bottom:4px">'
+      + allSeg.map(function(o, i){
+          var edge = (i > 0 && allSeg[i - 1].t !== o.t) ? ';border-left:2px solid var(--surface)' : '';
+          return '<div title="' + o.t + ' · ' + o.x.name + ' ' + o.x.hex + ' · ' + o.x.sku + ' SKU" style="flex:' + o.x.sku + ';background:' + o.x.hex + edge + '"></div>';
+        }).join('')
+      + '</div>'
+      + '<div style="display:flex;font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:16px">'
+      + FN_TIERS.map(function(t, i){ return '<div style="flex:' + r.tierSku[i] + ';text-align:center">' + t[0] + ' ' + r.target[t[0]] + '%</div>'; }).join('')
+      + '</div>';
+    var srcCol = { '유지': '#5FA85F', '보완': 'var(--gold)', '05': '#A090F0', '추가': 'var(--warn)' };
+    var tierBlocks = FN_TIERS.map(function(t, i){
+      var list = r.bins[t[0]].filter(function(x){ return x.sku > 0; });
+      var cut = r.bins[t[0]].length - list.length;
+      return '<div style="margin-bottom:16px">'
+        + '<div style="font-family:var(--mono);font-size:11px;font-weight:700;color:' + t[2] + ';margin-bottom:6px">'
+        +   t[0].toUpperCase() + ' <span style="color:var(--text4);font-weight:400">' + list.length + '색 · ' + r.tierSku[i] + ' SKU'
+        +   (cut ? ' · 후보 ' + cut + '색은 배분 0 SKU 라 제외' : '') + '</span></div>'
+        + (list.length ? '<div style="display:flex;gap:6px;flex-wrap:wrap">' + list.map(function(x){
+            return '<div title="' + x.note + ' · 빈도 ' + x.w + '" style="width:62px;text-align:center">'
+              + '<div style="height:40px;border-radius:4px;background:' + x.hex + ';border:1px solid var(--border)"></div>'
+              + '<div style="font-family:var(--mono);font-size:12px;font-weight:800;color:var(--text)">' + x.sku + '</div>'
+              + '<div style="font-family:var(--mono);font-size:8px;color:' + srcCol[x.src] + '">' + x.src + '</div>'
+              + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);white-space:nowrap;overflow:hidden">' + x.hex + '</div>'
+              + '</div>';
+          }).join('') + '</div>'
+          : '<div class="spp-empty" style="font-size:10px">채울 색 없음</div>')
+        + '</div>';
+    }).join('');
+    html += _rvCard('③④ 최종 컬러 · 색별 권장 SKU (검토용 추정)',
+        bigBar + tierBlocks
+      + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);line-height:1.7">'
+      +   '칩 아래 숫자 = 권장 SKU · 출처 <span style="color:#5FA85F">유지</span>(확정색 그대로) · '
+      +   '<span style="color:var(--gold)">보완</span>(확정색을 트렌드 톤으로) · <span style="color:#A090F0">05</span>(Trend-Matched 디커 선발) · '
+      +   '<span style="color:var(--warn)">추가</span>(04 추가 후보) · 등급은 디커 기준으로 재배정 · ΔE ' + FN_DEDUP_DE + ' 이내 중복은 앞 순위만 · '
+      +   '색별 비중 = 마켓 빈도 비율 · 세일즈 반영은 다음 단계</div>');
+    return html;
+  }
+  window._discFinalDerive = _fnHtml;
 
   // ── 계열 분포를 한 줄 컬러바로 ───────────────────────────────
   //  색 47개를 CORE → SEASONAL → ACCENT 순으로 이어 붙여, 구성이 한눈에 보이게.
