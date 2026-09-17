@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v217 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_STD_v218 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -23804,10 +23804,10 @@ document.addEventListener('DOMContentLoaded',function(){
         +     'white-space:nowrap;overflow:hidden">' + m.chip.code.replace('STD-', '') + ' ΔE' + m.de + '</div>'
         + '</div>';
     }
-    return '<div title="표준 75칩에 ΔE ' + STD_MATCH_DE + ' 이내로 맞는 칩이 없습니다'
+    return '<div title="주신 표준 75칩에 ΔE ' + STD_MATCH_DE + ' 이내로 맞는 칩이 없습니다'
       +   (m.de != null ? ' (최근접 ΔE ' + m.de + ')' : '') + '"'
       + ' style="margin-top:3px;border:1px dashed var(--border2);border-radius:4px;padding:3px 2px;'
-      + 'font-family:var(--mono);font-size:7.5px;text-align:center;color:var(--text4)">신규</div>';
+      + 'font-family:var(--mono);font-size:7.5px;text-align:center;color:var(--text4)">표준칩 없음</div>';
   }
 
   function _stdChip(x){
@@ -23953,7 +23953,7 @@ document.addEventListener('DOMContentLoaded',function(){
       +   'border-bottom:1px solid var(--border);padding-bottom:4px;margin-bottom:6px">'
       +   '<span style="flex:0 0 96px">구간</span>'
       +   '<span style="flex:1 1 0">우리 제안</span>'
-      +   '<span style="flex:1 1 0">디커 보유 / 실사용</span>'
+      +   '<span style="flex:1 1 0">디커 보유 · 실사용</span>'
       + '</div>'
       + keys.map(function(k){
           var o = oursC[k] || 0, l = libC[k] || 0, u = usedC[k] || 0;
@@ -23972,8 +23972,9 @@ document.addEventListener('DOMContentLoaded',function(){
             +     '<span style="position:absolute;inset:0 auto 0 0;height:10px;border-radius:2px;width:'
             +       Math.max(0, Math.round(u / maxV * 100)) + '%;background:var(--text3)"></span>'
             +   '</span>'
-            +   '<span style="font-family:var(--mono);font-size:10px;color:var(--text3);flex:0 0 auto">'
-            +     l + ' / ' + u + '</span></span>'
+            +   '<span style="font-family:var(--mono);font-size:10px;color:var(--text3);flex:0 0 auto;white-space:nowrap"'
+            +     ' title="디커 보유 ' + l + '칩 중 실제 SKU 가 붙은 칩 ' + u + '개">'
+            +     '보유 ' + l + ' · 사용 ' + u + '</span></span>'
             + '</div>';
         }).join('')
       + '</div>';
@@ -24056,10 +24057,10 @@ document.addEventListener('DOMContentLoaded',function(){
           return '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);line-height:1.8;margin-bottom:14px">'
             + '표준 75칩 대조 (ΔE ≤ ' + STD_MATCH_DE + ') — 제안 ' + r.all.length + '색 중 '
             + '<span style="color:#5FA85F">' + hit.length + '색</span>은 표준칩으로 대체 가능, '
-            + (r.all.length - hit.length) + '색은 신규. '
+            + (r.all.length - hit.length) + '색은 표준칩에 없습니다. '
             + '27FW 확정 팔레트 ' + pal.length + '색 중에서는 '
             + '<span style="color:#5FA85F">' + palHit.length + '색</span>이 표준칩, '
-            + (pal.length - palHit.length) + '색이 신규입니다.'
+            + (pal.length - palHit.length) + '색이 표준칩에 없습니다.'
             + '</div>';
         })();
 
