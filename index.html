@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v258 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_STD_v259 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -23811,75 +23811,7 @@ document.addEventListener('DOMContentLoaded',function(){
       + '</div>'
       + famRows);
 
-    // 3) 등급별 적중도 — SEASONAL 중심
-    var tierRows = RV_GRP.map(function(g){
-      var list = pal.filter(function(p){ return _tmClassify(p.hex) === g[0]; });
-      if(!list.length) return '';
-      var c = { keep: [], watch: [], risk: [] };
-      list.forEach(function(p){ var st = m[String(p.hex).toUpperCase()]; if(st) c[st.tier].push(p); });
-      var hit = Math.round((c.keep.length + c.watch.length) / list.length * 100);
-      var seg = ['keep','watch','risk'].map(function(k){
-        if(!c[k].length) return '';
-        return '<div style="flex:' + c[k].length + ';display:flex;gap:1px;padding:2px;background:' + DCP_TIER_META[k][1] + '">'
-          + c[k].map(function(p){ return '<span title="' + p.name + ' ' + p.hex + ' · ' + DCP_TIER_META[k][0] + '" style="flex:1;min-width:6px;height:26px;border-radius:2px;background:' + p.hex + '"></span>'; }).join('')
-          + '</div>';
-      }).join('');
-      return '<div style="display:grid;grid-template-columns:96px 1fr 120px;gap:10px;align-items:center;margin-bottom:8px">'
-        + '<div style="font-family:var(--mono);font-size:11px;font-weight:700;color:' + g[1] + '">' + TM_GROUP_LABEL[g[0]] + ' <span style="color:var(--text4);font-weight:400">' + list.length + '</span></div>'
-        + '<div style="display:flex;border-radius:5px;overflow:hidden;border:1px solid var(--border)">' + seg + '</div>'
-        + '<div style="font-family:var(--mono);font-size:11px;color:var(--text2)">적중 <b style="font-size:15px;color:var(--text)">' + hit + '%</b>'
-        +   ' <span style="color:var(--text4)">/ 미적중 ' + (100 - hit) + '%</span></div>'
-        + '</div>';
-    }).join('');
-    html += _rvCard('3. 등급별 트렌드 적중도',
-      tierRows
-      + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4)">'
-      +   '<span style="color:#5FA85F">■</span> 유지 · <span style="color:var(--gold)">■</span> 보완 · <span style="color:var(--warn)">■</span> 위험 · 적중 = 유지+보완 · 칩에 마우스를 올리면 이름</div>');
-
-    // 4) 보완 — 톤 조정 페어
-    if(by.watch.length){
-      html += _rvCard('4. 보완 — 톤 조정 ' + by.watch.length + '색',
-        '<div style="display:flex;gap:10px;flex-wrap:wrap">'
-        + by.watch.map(function(h){
-            var st = m[h];
-            return '<div onclick="_dcpOpenStatus(event,\'' + h + '\')" style="cursor:pointer;width:74px" title="클릭 — 보완 사유">'
-              + '<div style="font-size:10px;font-weight:700;color:var(--text2);height:14px;overflow:hidden;white-space:nowrap">' + (st.name || '') + '</div>'
-              + '<div style="display:flex;height:44px;border-radius:5px;overflow:hidden;border:1px solid var(--border)">'
-              +   '<div style="flex:1;background:' + h + '"></div><div style="flex:1;background:' + st.tHex + '"></div></div>'
-              + '<div style="font-family:var(--mono);font-size:9px;color:var(--gold);text-align:center;margin-top:2px">' + _dcpShortDir(h, st.tHex) + ' · ΔE' + st.de + '</div>'
-              + '</div>';
-          }).join('')
-        + '</div>'
-        + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-top:6px">왼쪽 확정색 · 오른쪽 트렌드 칩 · 클릭하면 사유</div>');
-    }
-
-    // 5) 추가 후보
-    if(add.length){
-      html += _rvCard('5. 추가 후보 — ' + add.length + '색',
-        '<div style="display:flex;gap:4px;flex-wrap:wrap">'
-        + add.map(function(x){
-            var t = x.item.trend;
-            _dcpAddIdx[t.hex] = x;
-            return '<div onclick="_dcpOpenAdd(event,\'' + t.hex + '\')" style="cursor:pointer;text-align:center">'
-              + _rvSw(t.hex, 44, 44, t.hex + ' · ' + TM_GROUP_LABEL[x.group] + ' · 빈도 ' + x.item.mkFreq)
-              + '<div style="font-family:var(--mono);font-size:8px;color:' + (x.group === 'key' ? '#A090F0' : 'var(--text4)') + '">' + TM_GROUP_LABEL[x.group].slice(0, 3) + '</div></div>';
-          }).join('')
-        + '</div>');
-    }
-
-    // 6) 위험
-    if(by.risk.length){
-      html += _rvCard('6. 위험 — 트렌드 근거 없음 ' + by.risk.length + '색',
-        '<div style="display:flex;gap:6px;flex-wrap:wrap">'
-        + by.risk.map(function(h){
-            var st = m[h];
-            return '<div onclick="_dcpOpenStatus(event,\'' + h + '\')" style="cursor:pointer;text-align:center" title="' + (st.name || '') + ' · 클릭">'
-              + '<div style="width:44px;height:34px;border-radius:4px 4px 0 0;background:' + h + ';border:1px solid var(--border)"></div>'
-              + '<div style="width:44px;height:10px;border-radius:0 0 4px 4px;background:' + st.tHex + ';border:1px solid var(--border);border-top:0"></div>'
-              + '<div style="font-family:var(--mono);font-size:8px;color:var(--warn)">ΔE' + st.de + '</div></div>';
-          }).join('')
-        + '</div>');
-    }
+    // v259 — 3·4·5·6 섹션 삭제 (최종 컬러 제안으로 통합)
     return html;
   }
   window._discReviewHtml = _rvHtml;
