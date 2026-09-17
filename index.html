@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v227 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_STD_v223 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -22855,40 +22855,19 @@ document.addEventListener('DOMContentLoaded',function(){
     var market = _rptMarketPool();
     var trend  = _tmTrendPool();
 
-    // 1) 확정색별 마켓 근거 — 마켓 컬러 하나가 여러 확정색에 붙지 않게 1:1 로 배정한다.
-    //    (각자 최근접을 찾으면 크림 계열 CRS·CRD·IVM·WHS 가 전부 같은 마켓 색을 물고 온다)
-    var pairs = [];
-    pal.forEach(function(p, pi){
-      market.forEach(function(m, mi){
-        var dd = _tmDeltaE(p.hex, m.hex);
-        if(dd <= RPT_VERIFY_DE) pairs.push({ pi: pi, mi: mi, de: dd });
-      });
-    });
-    pairs.sort(function(a, b){ return a.de - b.de; });          // 가까운 쌍부터 확정
-    var takenPal = {}, takenMk = {}, matched = {};
-    pairs.forEach(function(x){
-      if(takenPal[x.pi] || takenMk[x.mi]) return;
-      takenPal[x.pi] = 1; takenMk[x.mi] = 1;
-      matched[x.pi] = { m: market[x.mi], de: x.de };
-    });
+    // 1) 확정색별 마켓 근거
     var verified = [], weak = [];
-    pal.forEach(function(p, pi){
-      var hit = matched[pi];
-      if(hit){
-        verified.push({ pal: p, de: Math.round(hit.de * 10) / 10, freq: hit.m.freq,
-                        mkHex: hit.m.hex, mkName: hit.m.name || '',
-                        tier: (hit.de <= 5 ? 'solid' : 'ok') });
-      } else {
-        // 배정받지 못한 색 — 참고용으로 최근접 거리만 남긴다
-        var best = null, bd = 1e9;
-        market.forEach(function(m){
-          var dd = _tmDeltaE(p.hex, m.hex);
-          if(dd < bd){ bd = dd; best = m; }
-        });
-        weak.push({ pal: p, de: Math.round(bd * 10) / 10, freq: 0,
-                    mkHex: best ? best.hex : null, mkName: best ? (best.name || '') : '',
-                    tier: 'weak' });
-      }
+    pal.forEach(function(p){
+      var best = null, bd = 1e9;
+      market.forEach(function(m){
+        var dd = _tmDeltaE(p.hex, m.hex);
+        if(dd < bd){ bd = dd; best = m; }
+      });
+      var rec = { pal: p, de: Math.round(bd * 10) / 10, freq: best ? best.freq : 0,
+                  mkHex: best ? best.hex : null, mkName: best ? (best.name || '') : '',
+                  // 확실히 맞음(ΔE 5 이내) / 맞는 편(5~10) — 정도를 구분한다
+                  tier: (bd <= 5 ? 'solid' : 'ok') };
+      (bd <= RPT_VERIFY_DE && best) ? verified.push(rec) : weak.push(rec);
     });
     verified.sort(function(a,b){ return b.freq - a.freq; });
     weak.sort(function(a,b){ return a.de - b.de; });
@@ -23092,7 +23071,7 @@ document.addEventListener('DOMContentLoaded',function(){
   //  판단 근거는 아래 1~4 섹션에 그대로 남는다.
   //  권고에 올릴 색의 최소 조건 — 빈도만 보면 한 브랜드 쏠림을 못 거른다.
   //  (빈도는 브랜드 구분 없이 합산된 값이라 '한 곳이 5번'과 '5곳이 1번씩'이 같은 5로 나온다)
-  var RPT_MIN_FREQ = 3;
+  var RPT_MIN_FREQ = 5;
   var RPT_MIN_BRANDS = 2;
   function _rptBrands(e){
     var nb = _tmNearBrands(e.item.trend.hex);
@@ -23229,6 +23208,7 @@ document.addEventListener('DOMContentLoaded',function(){
                  : ''),
           extra: ((missFam.indexOf('green') >= 0 || missFam.indexOf('teal') >= 0) ? _greenAdviceHtml() : '')
                + (weakCands.length ? _rptSubCands(weakCands) : ''),
+          chipStyle: 'pantone',
           items: strong.slice(0, 6)
         });
       } else if(cands.length){
@@ -23239,6 +23219,7 @@ document.addEventListener('DOMContentLoaded',function(){
              + '빈도 ' + RPT_MIN_FREQ + ' 이상 · ' + RPT_MIN_BRANDS + '개 브랜드 이상 조건에 못 미쳐 '
              + '공백으로 볼지는 판단이 필요합니다.',
           extra: (missFam.indexOf('green') >= 0 || missFam.indexOf('teal') >= 0) ? _greenAdviceHtml() : '',
+          chipStyle: 'pantone',
           items: cands.slice(0, 6)
         });
       }
@@ -23911,6 +23892,7 @@ document.addEventListener('DOMContentLoaded',function(){
             + '<div class="dcp-mood-row" style="justify-content:flex-start;flex-wrap:wrap;gap:4px;margin-top:6px">'
             +   r.all.map(function(c){
                   var on = c.sku > 0;
+                  // 색은 전부 선명하게 두고, 실사용만 우상단에 점을 찍는다
                   return '<span title="' + c.code + ' ' + c.nm + ' ' + c.hex + ' · C* ' + c.C
                     + (on ? ' · SKU ' + c.sku + ' · 수량 ' + c.qty.toLocaleString() : ' · 미사용')
                     + (c.coloro ? ' · COLORO ' + c.coloro : '') + '"'
@@ -24113,34 +24095,6 @@ document.addEventListener('DOMContentLoaded',function(){
             ? '<div class="dcp-mood-row" style="justify-content:flex-start;flex-wrap:wrap;gap:6px">'
               + list.slice(0, 40).map(_stdChip).join('') + '</div>'
             : '<div class="spp-empty" style="font-size:10px">해당 없음</div>')
-        // 같은 등급의 디커 표준칩 전량 — 우리 제안과 바로 대조하도록 아래에 붙인다
-        + (function(){
-            var lib = (typeof DISC_STD75 !== 'undefined') ? DISC_STD75 : [];
-            var g = lib.filter(function(c){ return c.tier === t[0]; });
-            if(!g.length) return '';
-            var used = g.filter(function(c){ return c.sku > 0; }).length;
-            return '<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--border)">'
-              + '<div style="font-family:var(--mono);font-size:12px;color:var(--text4);margin-bottom:8px">'
-              +   '디커 표준칩 ' + g.length + '칩 · 실사용 ' + used + '칩 — 점이 SKU 가 붙은 칩</div>'
-              + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:10px">'
-              +   g.map(function(c){
-                    var on = c.sku > 0;
-                    return '<div title="' + c.code + ' ' + c.nm + ' ' + c.hex + ' · C* ' + c.C + ' · L ' + c.L
-                      + (on ? ' · SKU ' + c.sku + ' · 수량 ' + c.qty.toLocaleString() : ' · 미사용')
-                      + (c.coloro ? ' · COLORO ' + c.coloro : '') + '"'
-                      + ' style="border:1px solid var(--border);border-radius:9px;padding:6px;text-align:center;'
-                      + 'background:var(--surface)">'
-                      +   '<div style="position:relative;height:52px;border-radius:6px;margin-bottom:5px;background:' + c.hex + '">'
-                      +     (on ? '<span style="position:absolute;top:-4px;right:-4px;width:11px;height:11px;'
-                                + 'border-radius:50%;background:' + t[1] + ';border:2px solid var(--surface)"></span>' : '')
-                      +   '</div>'
-                      +   '<div style="font-size:11px;font-weight:700;color:var(--text);line-height:1.3">' + c.nm + '</div>'
-                      +   '<div style="font-family:var(--mono);font-size:9px;color:var(--text4)">' + c.code.replace('STD-', '') + '</div>'
-                      +   '<div style="font-family:var(--mono);font-size:9px;color:var(--text3)">' + c.hex + '</div>'
-                      + '</div>';
-                  }).join('')
-              + '</div></div>';
-          })()
         + '</div>';
     }).join('');
 
