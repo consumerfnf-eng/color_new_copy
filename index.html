@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v223 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_STD_v227 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21889,6 +21889,13 @@ document.addEventListener('DOMContentLoaded',function(){
       +     '<span class="spp-trend-market-sub" style="font-size:13px">확정 팔레트를 마켓·트렌드 데이터에 비춰 계산한 결과</span>'
       +   '</div>'
       +   _rptHtml()
+      + '</div>'
+      // 04 → 05 이동 버튼 (v227)
+      + '<div style="margin-top:34px;padding:26px 0 8px;border-top:1px solid var(--border);text-align:center">'
+      +   '<button type="button" onclick="window._discGoStd && window._discGoStd()"'
+      +   ' style="font-family:var(--mono);font-size:14px;font-weight:700;letter-spacing:0.08em;cursor:pointer;'
+      +   'padding:14px 28px;border-radius:10px;border:1px solid var(--gold);background:transparent;color:var(--gold)">'
+      +   '05 Disc Standard 보기 →</button>'
       + '</div>';
   }
   window._discRender27fwPalette = _dcpRender;
@@ -24044,7 +24051,9 @@ document.addEventListener('DOMContentLoaded',function(){
     }
     var r = _stdBuild();
     if(!r){
-      wrap.innerHTML = '<div class="spp-empty">Trend-Matched 결과가 없습니다. 01·02 에서 데이터를 먼저 로드하세요.</div>';
+      // 75칩은 파일 내장 데이터라 03 결과와 무관하게 항상 보여준다 (v227)
+      wrap.innerHTML = '<div class="spp-empty">Trend-Matched 결과가 없어 상단 재분류는 비어 있습니다. 01·02 에서 데이터를 로드하면 채워집니다.</div>'
+        + '<div style="margin-top:30px;padding-top:24px;border-top:1px solid var(--border)">' + _stdLibBar() + '</div>';
       return;
     }
     var OURS = { sub: TM_GROUP_LABEL.sub, key: TM_GROUP_LABEL.key, basic: TM_GROUP_LABEL.basic };
@@ -24093,7 +24102,7 @@ document.addEventListener('DOMContentLoaded',function(){
         + '</div>'
         + (list.length
             ? '<div class="dcp-mood-row" style="justify-content:flex-start;flex-wrap:wrap;gap:6px">'
-              + list.slice(0, 40).map(_stdChip).join('') + '</div>'
+              + list.map(_stdChip).join('') + '</div>'
             : '<div class="spp-empty" style="font-size:10px">해당 없음</div>')
         + '</div>';
     }).join('');
@@ -24103,6 +24112,16 @@ document.addEventListener('DOMContentLoaded',function(){
       + '<div style="margin-top:30px;padding-top:24px;border-top:1px solid var(--border)">' + _stdAxisSection() + '</div>';
   }
   window._discRenderStd = _stdRender;
+  window._discGoStd = function(){
+    try{
+      if(!_inScope() || !_stdEnsureTab()) return;
+      if(typeof switchTab === 'function') switchTab(STD_TAB_KEY, _stdTabEls && _stdTabEls.btn);
+      _stdRender();
+      var w = document.getElementById(STD_SECT_ID);
+      if(w) w.scrollTop = 0;
+      window.scrollTo(0, 0);
+    }catch(e){ console.warn('[std] 이동 오류:', e); }
+  };
 
   // ── 진단: 카테고리별 마켓 데이터 규모 ────────────────────────
   //  콘솔에서 _discDataAudit() 로 호출. 모듈 스코프에서 실행되므로
