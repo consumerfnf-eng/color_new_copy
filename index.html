@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_REVIEW_v207 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_REVIEW_v208 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -22936,6 +22936,37 @@ document.addEventListener('DOMContentLoaded',function(){
   }
   // 리포트 전용 칩 — 앞장 Trend-Matched 와 같은 dcp 형태로 통일한다.
   //  위: 코드 / 색면(라벨) / HEX   아래: 대응하는 색 띠 (있을 때만)
+  // 정사각 스와치 클릭 팝업 — 코드가 필요할 때만 꺼내 본다
+  window._rptSwPop = function(evt, hex){
+    evt.stopPropagation();
+    var pop = _ccEnsurePop();
+    var cc = (window.hexToColoro && window.hexToColoro(hex)) || null;
+    var pal = _gapPaletteList().filter(function(p){ return String(p.hex).toUpperCase() === String(hex).toUpperCase(); })[0];
+    var lines = [];
+    if(pal) lines.push(['확정 팔레트', pal.name + (_rptPalMeta(pal.hex) ? ' · ' + _rptPalMeta(pal.hex) : '')]);
+    if(cc && cc.pantone) lines.push(['Pantone', '≈ ' + _tmPantoneCode(cc.pantone) + ' TCX']);
+    if(cc && cc.coloro)  lines.push(['COLORO',  '≈ ' + cc.coloro]);
+    var a = _tmLCh(hex);
+    lines.push(['Lab', 'L ' + a.L.toFixed(0) + ' · C* ' + a.C.toFixed(0) + ' · H ' + a.H.toFixed(0) + '°']);
+    pop.innerHTML = ''
+      + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
+      +   '<span style="width:44px;height:44px;border-radius:6px;background:' + hex + ';border:1px solid var(--border2)"></span>'
+      +   '<span style="font-family:var(--mono);font-size:13px;color:var(--text)">' + hex + '</span>'
+      + '</div>'
+      + lines.map(function(l){
+          return '<div style="display:flex;justify-content:space-between;gap:16px;font-family:var(--mono);font-size:10px;padding:3px 0">'
+            + '<span style="color:var(--text4)">' + l[0] + '</span><span style="color:var(--text2)">' + l[1] + '</span></div>';
+        }).join('')
+      + (cc ? '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-top:6px">≈ 는 HEX 기반 근사 매핑</div>' : '');
+    pop.style.display = 'block';
+    var r = evt.currentTarget.getBoundingClientRect();
+    var top = r.bottom + 6, left = r.left;
+    if(left + 230 > window.innerWidth - 8) left = window.innerWidth - 238;
+    if(top + pop.offsetHeight > window.innerHeight - 8) top = Math.max(8, r.top - pop.offsetHeight - 6);
+    pop.style.top = top + 'px'; pop.style.left = left + 'px';
+    document.getElementById('cc-move-ov').style.display = 'block';
+  };
+
   function _rptChip(main, sub, accent){
     // main = { hex, code, label, name }  sub = { hex, label } | null
     var lab = main.label || '';
@@ -23147,23 +23178,29 @@ document.addEventListener('DOMContentLoaded',function(){
             + '<div style="font-size:14px;color:var(--text2);line-height:1.75;margin-bottom:' + ((a.items&&a.items.length)||(a.pals&&a.pals.length) ? '10px' : '0') + '">' + a.why + '</div>'
             + (a.extra ? a.extra : '')
             + (a.items && a.items.length
-                ? '<div class="dcp-mood-row" style="justify-content:flex-start;flex-wrap:wrap;gap:8px">'
+                ? '<div style="display:flex;flex-wrap:wrap;gap:8px">'
                   + a.items.map(function(e){
                       var nb = _rptBrands(e);
-                      return _rptChip(
-                        { hex: e.item.trend.hex, code: _rptTrendCode(e.item.trend),
-                          label: '×' + e.item.mkFreq, name: e.item.trend.name || '' },
-                        { hex: null, label: '빈도 ' + e.item.mkFreq + (nb.length ? ' · ' + nb.length + '브' : '') },
-                        'var(--gold)');
+                      return '<span onclick="_rptSwPop(event,\'' + e.item.trend.hex + '\')" title="클릭 — 코드 확인"'
+                        + ' style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;'
+                        + 'padding:3px 9px 3px 3px;border:1px solid var(--border);border-radius:20px">'
+                        + '<span style="width:22px;height:22px;border-radius:50%;background:' + e.item.trend.hex + '"></span>'
+                        + '<span style="font-family:var(--mono);font-size:11px;color:var(--text2)">'
+                        +   (_tmPantoneCode(e.item.trend.pantone) || e.item.trend.hex)
+                        +   ' · 빈도 ' + e.item.mkFreq
+                        +   (nb.length ? ' · ' + nb.length + '브랜드' : '')
+                        +   '</span></span>';
                     }).join('') + '</div>'
                 : '')
             + (a.pals && a.pals.length
-                ? '<div class="dcp-mood-row" style="justify-content:flex-start;flex-wrap:wrap;gap:8px">'
+                ? '<div style="display:flex;flex-wrap:wrap;gap:8px">'
                   + a.pals.map(function(x){
-                      return _rptChip(
-                        { hex: x.pal.hex, code: _rptPalMeta(x.pal.hex) || '', label: x.pal.name, name: x.pal.name },
-                        { hex: x.mkHex, label: 'ΔE' + x.de },
-                        (a.tag === '유지' ? '#5FA85F' : 'var(--warn)'));
+                      return '<span onclick="_rptSwPop(event,\'' + x.pal.hex + '\')" title="클릭 — 코드 확인"'
+                        + ' style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;'
+                        + 'padding:3px 9px 3px 3px;border:1px solid var(--border);border-radius:20px">'
+                        + '<span style="width:22px;height:22px;border-radius:50%;background:' + x.pal.hex + '"></span>'
+                        + '<span style="font-family:var(--mono);font-size:11px;color:var(--text2)">'
+                        +   x.pal.name + ' ΔE' + x.de + '</span></span>';
                     }).join('') + '</div>'
                 : '')
             + '</div>';
@@ -23387,8 +23424,9 @@ document.addEventListener('DOMContentLoaded',function(){
     if(!g) return '';
     var top = g.ranked[0], rest = g.ranked.slice(1, 3);
     var sw = function(h, n){
-      return '<span title="' + h + (n ? ' · 빈도 ' + n : '') + '" style="display:inline-block;width:26px;height:26px;'
-        + 'border-radius:4px;background:' + h + ';border:1px solid var(--border2);margin-right:4px;vertical-align:-6px"></span>';
+      return '<span onclick="_rptSwPop(event,\'' + h + '\')" title="' + h + (n ? ' · 빈도 ' + n : '') + ' · 클릭하면 코드"'
+        + ' style="display:inline-block;width:38px;height:38px;cursor:pointer;'
+        + 'background:' + h + ';border:1px solid var(--border2);margin:0 5px 5px 0;vertical-align:top"></span>';
     };
     var html = '<div style="font-size:14px;color:var(--text2);line-height:1.8;margin-top:8px">'
       + '마켓에서 잡히는 그린 계열은 ' + g.marketN + '색, 트렌드(WGSN·Peclers)는 ' + g.trendN + '색입니다. '
@@ -23457,12 +23495,10 @@ document.addEventListener('DOMContentLoaded',function(){
         html += '<div style="font-family:var(--mono);font-size:12px;color:var(--text2);margin:14px 0 2px">'
           + '<strong style="color:var(--text)">' + t[0] + ' ' + t[2].length + '색</strong>'
           + ' <span style="color:var(--text4)">· ' + t[1] + '</span></div>';
-        html += _rptChipRow(
-          t[2].slice(0, 16).map(function(x){
-            return _rptChip(
-              { hex: x.pal.hex, code: _rptPalMeta(x.pal.hex) || '', label: x.pal.name, name: x.pal.name },
-              { hex: x.mkHex, label: 'ΔE' + x.de + ' ×' + x.freq },
-              '#5FA85F');
+        html += _rptPairRow(
+          t[2].slice(0, 12).map(function(x){
+            return _rptPair(x.pal.hex, x.pal.name, x.mkHex, '×' + x.freq, 'ΔE ' + x.de, false,
+              { topCode: _rptPalMeta(x.pal.hex) || x.pal.hex, botCode: x.mkHex || '' });
           }).join(''), '');
       });
       html += '<div style="font-family:var(--mono);font-size:11px;color:var(--text4);margin:-10px 0 18px">'
@@ -23473,14 +23509,12 @@ document.addEventListener('DOMContentLoaded',function(){
       html += P(B(r.weak.length + '색') + '은 마켓에서 근거가 잡히지 않았습니다. '
         + '선행 제안이라면 의도된 결과지만, 근거를 두고 넣은 색이라면 재검토가 필요합니다. '
         + '가장 가까운 마켓 컬러와의 거리가 ΔE ' + r.weak[0].de + ' ~ ' + r.weak[r.weak.length-1].de + ' 범위입니다.');
-      html += _rptChipRow(
-        r.weak.slice(0, 16).map(function(x){
-          return _rptChip(
-            { hex: x.pal.hex, code: _rptPalMeta(x.pal.hex) || '', label: x.pal.name, name: x.pal.name },
-            { hex: x.mkHex, label: x.mkHex ? 'ΔE' + x.de : '없음' },
-            'var(--warn)');
+      html += _rptPairRow(
+        r.weak.slice(0, 12).map(function(x){
+          return _rptPair(x.pal.hex, x.pal.name, x.mkHex, x.mkHex ? 'ΔE' + x.de : '없음', '근거 약함', true,
+            { topCode: _rptPalMeta(x.pal.hex) || x.pal.hex, botCode: x.mkHex || '' });
         }).join(''),
-        '칩 = 확정 팔레트 · 아래 띠 = 가장 가까운 마켓 컬러(거리 밖)');
+        '위 = 확정 팔레트 · 아래 = 마켓·트렌드(가장 가까운 색이지만 거리 밖)');
     }
 
     html += H('2. 구성비 — ' + TM_GROUP_LABEL.basic + ' / ' + TM_GROUP_LABEL.sub + ' / ' + TM_GROUP_LABEL.key);
@@ -23510,16 +23544,17 @@ document.addEventListener('DOMContentLoaded',function(){
       html += P('마켓과 트렌드(WGSN·Peclers) 양쪽에서 잡히는데 확정 팔레트에는 없는 색이 '
         + B(r.gap.items.length + '색') + ' 있습니다. '
         + '가장 가까운 확정색과의 거리가 ΔE ' + top[0].nearDe + ' 이상이라 팔레트가 덮지 못하는 영역입니다.');
-      html += _rptChipRow(
+      html += _rptPairRow(
         r.gap.items.slice(0, 16).map(function(e){
           var t = e.item.trend;
-          return _rptChip(
-            { hex: t.hex, code: _rptTrendCode(t), label: '×' + e.item.mkFreq, name: t.name || '' },
-            { hex: e.near ? e.near.hex : null,
-              label: (e.near ? e.near.name + ' ' : '') + 'ΔE' + e.nearDe },
-            'var(--gold)');
+          return _rptPair(
+            e.near ? e.near.hex : null, e.near ? e.near.name : '없음',
+            t.hex, '×' + e.item.mkFreq,
+            'ΔE ' + e.nearDe, true,
+            { topCode: e.near ? (_rptPalMeta(e.near.hex) || e.near.hex) : '',
+              botCode: _rptTrendCode(t) });
         }).join(''),
-        '칩 = 마켓·트렌드(추가 후보) · 아래 띠 = 확정 팔레트에서 가장 가까운 색 · 마켓 빈도순');
+        '위 = 확정 팔레트(가장 가까운 색) · 아래 = 마켓·트렌드(추가 후보) · ΔE 가 작을수록 같은 색 · 마켓 빈도순');
       if(r.gap.byCat && r.gap.byCat.cats){
         var per = r.gap.byCat.cats.filter(function(m){ return m.list.length; })
           .map(function(m){ return m.def.name + ' ' + m.list.length + '색'; });
