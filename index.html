@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v250 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_STD_v253 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21873,7 +21873,7 @@ document.addEventListener('DOMContentLoaded',function(){
         + '</div></div>';
     }).join('') + '</div>';
     _dcpInMood = false;
-    if(DCP_TAB === 'final'){ core = _fnHtml() + _dcpFinalHtml(); moods = ''; }
+    if(DCP_TAB === 'final') DCP_TAB = 'all';
     if(DCP_TAB === 'watch'){ core = _dcpAddRow() + core; }
     return '<div class="dcp-body">' + _dcpUploadPanel() + _dcpTabBar() + core + moods
       + (cv ? '' : '<div class="dcp-note">' + DCP_NOTE + '</div>') + '</div>';
@@ -23356,9 +23356,8 @@ document.addEventListener('DOMContentLoaded',function(){
   var DCP_TABS = [
     ['all',   '전체',  'var(--text3)'],
     ['keep',  '유지',  '#5FA85F'],
-    ['watch', '보완',  'var(--gold)'],
-    ['final', '최종',  '#A090F0']
-  ];
+    ['watch', '보완',  'var(--gold)']
+  ];   // v252: '최종' 탭 제거 — 최종 제안은 ✎ REVIEW 맨 아래
   var DCP_TIER_META = { keep: ['유지', '#5FA85F'], watch: ['보완', 'var(--gold)'], risk: ['위험', 'var(--warn)'] };
   var _dcpStatus = null, _dcpStatusKey = null;
 
@@ -23747,7 +23746,7 @@ document.addEventListener('DOMContentLoaded',function(){
     var by = { keep: [], watch: [], risk: [] };
     keys.forEach(function(h){ by[m[h].tier].push(h); });
     var add = _dcpAddList();
-    var html = _rvTopChips();
+    var html = _rvTopChips() + _finHtml();   // v253: 최종 제안을 KPI 위로
 
     // 0) KPI
     html += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">'
@@ -23910,7 +23909,6 @@ document.addEventListener('DOMContentLoaded',function(){
           }).join('')
         + '</div>');
     }
-    html += _finHtml();
     return html;
   }
   window._discReviewHtml = _rvHtml;
@@ -23959,7 +23957,7 @@ document.addEventListener('DOMContentLoaded',function(){
   function _cmpRow(tag, label, sub, d){
     return '<div style="display:grid;grid-template-columns:200px 1fr;gap:12px;align-items:center;margin-bottom:8px">'
       + '<div style="text-align:right">'
-      +   '<div style="font-size:12px;font-weight:700;color:var(--text)">'
+      +   '<div style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--text);letter-spacing:0.02em">'
       +     (tag ? (/^[A-Z0-9]+$/.test(tag)
                 ? '<span style="font-family:var(--mono);font-size:8px;border:1px solid var(--text3);border-radius:2px;padding:0 4px;margin-right:5px;vertical-align:1px">' + tag + '</span>'
                 : tag + ' ') : '')
@@ -24026,14 +24024,14 @@ document.addEventListener('DOMContentLoaded',function(){
   }
   // 한 줄 칩 — 묶음마다 위에 라벨, 사이에 세로 구분선
   function _rvLine(groups){
-    return '<div style="display:flex;align-items:flex-end;gap:0;flex-wrap:wrap;margin-top:8px">'
+    return '<div style="display:flex;align-items:flex-start;flex-wrap:wrap;row-gap:10px;margin-top:8px;max-width:100%">'
       + groups.filter(function(g){ return g.items.length; }).map(function(g, gi){
-          return '<div style="' + (gi ? 'border-left:2px solid var(--border2);margin-left:6px;padding-left:6px;' : '') + '">'
+          return '<div style="flex:0 1 auto;min-width:0;max-width:100%;' + (gi ? 'border-left:2px solid var(--border2);margin-left:6px;padding-left:6px;' : '') + '">'
             + '<div style="font-family:var(--mono);font-size:9px;font-weight:700;color:' + g.color + ';margin-bottom:3px;white-space:nowrap">'
             +   g.label + ' <span style="color:var(--text4);font-weight:400">' + g.items.length + '</span></div>'
-            + '<div style="display:flex;gap:3px">' + g.items.map(function(x){
-                return '<div style="text-align:center;width:40px" title="' + x.tip + '">'
-                  + _rvMini(x.hex, '', ';width:36px;height:26px')
+            + '<div style="display:flex;flex-wrap:wrap;gap:0">' + g.items.map(function(x){
+                return '<div style="text-align:center;width:38px" title="' + x.tip + '">'
+                  + _rvMini(x.hex, '', ';width:38px;height:26px;border-radius:0;border:0')
                   + '<div style="font-family:var(--mono);font-size:8px;color:var(--text3);white-space:nowrap;overflow:hidden">' + x.l1 + '</div>'
                   + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4)">' + x.l2 + '</div></div>';
               }).join('') + '</div></div>';
@@ -24127,14 +24125,15 @@ document.addEventListener('DOMContentLoaded',function(){
     var i = _finIdx.length; _finIdx.push(f);
     var k = FIN_KIND[f.kind];
     var border = f.kind === 'watch' ? '3px solid var(--gold)' : (f.kind === 'add' ? '2px dashed var(--warn)' : (f.kind === 'sales' ? '3px solid #3E8ED0' : '1px solid var(--border)'));
-    return '<div onclick="_finOpen(event,' + i + ')" style="width:62px;cursor:pointer;text-align:center' + (f.kind === 'out' ? ';opacity:0.45' : '') + '" title="클릭 — 선정 사유">'
-      + '<div style="position:relative;height:48px;border-radius:6px;background:' + f.hex + ';border:' + border + ';box-sizing:border-box">'
-      +   (f.kind === 'watch' ? '<span style="position:absolute;left:3px;bottom:3px;width:14px;height:14px;border-radius:3px;border:1.5px solid #fff;background:' + f.orig + '" title="원래 확정색"></span>' : '')
-      +   (f.kind === 'add' ? '<span style="position:absolute;right:4px;top:1px;font-family:var(--mono);font-size:15px;font-weight:800;color:' + _dcpTextOn(f.hex.slice(1)) + '">+</span>' : '')
-      +   (f.sn && f.kind !== 'out' ? '<span style="position:absolute;right:3px;bottom:3px;font-family:var(--mono);font-size:8px;font-weight:800;padding:0 3px;border-radius:2px;background:#3E8ED0;color:#fff">S</span>' : '')
+    return '<div onclick="_finOpen(event,' + i + ')" style="width:92px;cursor:pointer;text-align:center' + (f.kind === 'out' ? ';opacity:0.45' : '') + '" title="클릭 — 선정 사유">'
+      + '<div style="position:relative;height:78px;border-radius:8px;background:' + f.hex + ';border:' + border + ';box-sizing:border-box">'
+      +   (f.kind === 'watch' ? '<span style="position:absolute;left:5px;bottom:5px;width:22px;height:22px;border-radius:4px;border:2px solid #fff;background:' + f.orig + '" title="원래 확정색"></span>' : '')
+      +   (f.kind === 'add' ? '<span style="position:absolute;right:7px;top:2px;font-family:var(--mono);font-size:22px;font-weight:800;color:' + _dcpTextOn(f.hex.slice(1)) + '">+</span>' : '')
+      +   (f.sn && f.kind !== 'out' ? '<span style="position:absolute;right:5px;bottom:5px;font-family:var(--mono);font-size:10px;font-weight:800;padding:1px 5px;border-radius:3px;background:#3E8ED0;color:#fff">S</span>' : '')
       + '</div>'
-      + '<div style="font-size:10px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden">' + (f.name || '') + '</div>'
-      + '<div style="font-family:var(--mono);font-size:8px;color:' + k[1] + '">' + k[0] + '</div>'
+      + '<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;margin-top:3px">' + (f.name || '') + '</div>'
+      + '<div style="font-family:var(--mono);font-size:10px;color:var(--text3)">' + f.hex + '</div>'
+      + '<div style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + k[1] + '">' + k[0] + '</div>'
       + '</div>';
   }
   function _finHtml(){
@@ -24146,9 +24145,9 @@ document.addEventListener('DOMContentLoaded',function(){
       return tiers.map(function(t){
         var l = list.filter(function(f){ return _stdTier(f.hex) === t[0]; });
         if(!l.length) return '';
-        return '<div style="margin-bottom:10px"><div style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + t[1] + ';margin-bottom:4px">'
+        return '<div style="margin-bottom:16px"><div style="font-family:var(--mono);font-size:13px;font-weight:800;color:' + t[1] + ';margin-bottom:6px;letter-spacing:0.06em">'
           + t[0].toUpperCase() + ' <span style="color:var(--text4);font-weight:400">' + l.length + '</span></div>'
-          + '<div style="display:flex;gap:6px;flex-wrap:wrap">' + l.map(_finChip).join('') + '</div></div>';
+          + '<div style="display:flex;gap:10px;flex-wrap:wrap">' + l.map(_finChip).join('') + '</div></div>';
       }).join('');
     };
     var n = function(k){ return r.main.filter(function(f){ return f.kind === k; }).length; };
@@ -24156,13 +24155,13 @@ document.addEventListener('DOMContentLoaded',function(){
       var b = k === 'watch' ? '3px solid var(--gold)' : (k === 'add' ? '2px dashed var(--warn)' : (k === 'sales' ? '3px solid #3E8ED0' : '1px solid var(--border)'));
       return '<span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;border:' + b + ';vertical-align:-2px;margin-right:4px"></span>' + FIN_KIND[k][0] + '</span>';
     }).join('') + '<span><span style="font-weight:800;padding:0 3px;border-radius:2px;background:#3E8ED0;color:#fff">S</span> 25FW 판매 근거</span>';
-    return _rvCard('★ 최종 컬러 제안 — 확정 ' + r.main.length + '색 + 추가 ' + r.add.length + '색',
-        '<div style="display:flex;gap:14px;font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:12px;flex-wrap:wrap">'
-      +   '<span>유지 ' + n('keep') + ' · 보완 ' + n('watch') + ' · 세일즈 유지 ' + n('sales') + ' · 제외 ' + r.out.length + '</span>' + legend + '</div>'
+    return _rvCard('<span style="font-size:17px">★ 최종 컬러 제안 — 확정 ' + r.main.length + '색 + 추가 ' + r.add.length + '색</span>',
+        '<div style="display:flex;gap:16px;font-family:var(--mono);font-size:12px;color:var(--text2);margin-bottom:16px;flex-wrap:wrap;align-items:center">'
+      +   '<span style="font-weight:700">유지 ' + n('keep') + ' · 보완 ' + n('watch') + ' · 세일즈 유지 ' + n('sales') + ' · 제외 ' + r.out.length + '</span>' + legend + '</div>'
       + '<div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">'
-      +   '<div style="flex:3 1 480px;min-width:0">' + col(r.main) + '</div>'
-      +   '<div style="flex:1 1 220px;min-width:0;padding-left:16px;border-left:2px dashed var(--border)">'
-      +     '<div style="font-family:var(--mono);font-size:12px;font-weight:800;color:var(--warn);margin-bottom:8px">+ 추가 컬러칩 ' + r.add.length + '</div>'
+      +   '<div style="flex:3 1 560px;min-width:0">' + col(r.main) + '</div>'
+      +   '<div style="flex:1 1 300px;min-width:0;padding-left:18px;border-left:2px dashed var(--border)">'
+      +     '<div style="font-family:var(--mono);font-size:15px;font-weight:800;color:var(--warn);margin-bottom:10px">+ 추가 컬러칩 ' + r.add.length + '</div>'
       +     (r.add.length ? col(r.add) : '<div class="spp-empty" style="font-size:10px">추가 없음</div>')
       +   '</div>'
       + '</div>'
