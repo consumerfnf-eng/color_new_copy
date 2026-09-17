@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v228 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_STD_v229 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -24039,8 +24039,7 @@ document.addEventListener('DOMContentLoaded',function(){
     var r = _stdBuild();
     if(!r){
       // 75칩은 파일 내장 데이터라 03 결과와 무관하게 항상 보여준다 (v227)
-      wrap.innerHTML = '<div class="spp-empty">Trend-Matched 결과가 없어 상단 재분류는 비어 있습니다. 01·02 에서 데이터를 로드하면 채워집니다.</div>'
-        + '<div style="margin-top:30px;padding-top:24px;border-top:1px solid var(--border)">' + _stdLibBar() + '</div>';
+      wrap.innerHTML = '<div class="spp-empty">Trend-Matched 결과가 없습니다. 01·02 에서 데이터를 먼저 로드하세요.</div>';
       return;
     }
     // v228 — 03 Trend-Matched 표시 44색을 디커 기준으로만 나눠 보여준다 (비교 표시 제거)
@@ -24066,9 +24065,8 @@ document.addEventListener('DOMContentLoaded',function(){
         + '</div>';
     }).join('');
 
-    wrap.innerHTML = head + body
-      + '<div style="margin-top:30px;padding-top:24px;border-top:1px solid var(--border)">' + _stdLibBar() + '</div>'
-      + '<div style="margin-top:30px;padding-top:24px;border-top:1px solid var(--border)">' + _stdAxisSection() + '</div>';
+    // v229 — 보유칩(75칩 라이브러리·디커 축 교차표) 표시는 일단 뺀다. 데이터·함수는 파일에 남겨 둠
+    wrap.innerHTML = head + body;
   }
   window._discRenderStd = _stdRender;
   window._discGoStd = function(){
