@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v213 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_STD_v214 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21262,7 +21262,7 @@ document.addEventListener('DOMContentLoaded',function(){
       +   '<div class="dcp-card">'
       +     codeLine
       +     '<div class="dcp-fill" style="background:' + t.hex + '">'
-      +       (isKey ? '<span style="font-family:var(--mono);font-size:8px;font-weight:800;color:' + _dcpTextOn(t.hex.slice(1)) + '">KEY</span>' : '')
+      +       (isKey ? '<span style="font-family:var(--mono);font-size:8px;font-weight:800;color:' + _dcpTextOn(t.hex.slice(1)) + '">' + TM_GROUP_LABEL.key + '</span>' : '')
       +     '</div>'
       +     '<div class="dcp-hex">' + t.hex + '</div>'
       +   '</div>'
@@ -21833,7 +21833,9 @@ document.addEventListener('DOMContentLoaded',function(){
         +   m.rows.map(function(r){ return '<div class="dcp-mood-row">' + r.map(_dcpChip).join('') + '</div>'; }).join('')
         + '</div></div>';
     }).join('') + '</div>';
-    return '<div class="dcp-body">' + _dcpUploadPanel() + _dcpTabBar() + core + moods
+    // 무드 3종(ACTIVE WELLNESS / CASUAL COMMUTE / OUTDOOR RESORT)은
+    // 위 SEASONAL·ACCENT·CORE 재분류에 이미 포함돼 있어 따로 내보내지 않는다.
+    return '<div class="dcp-body">' + _dcpUploadPanel() + _dcpTabBar() + core
       + (cv ? '' : '<div class="dcp-note">' + DCP_NOTE + '</div>') + '</div>';
   }
 
@@ -22131,7 +22133,7 @@ document.addEventListener('DOMContentLoaded',function(){
       +   '<div class="dcp-card">'
       +     codeLine
       +     '<div class="dcp-fill" style="background:' + t.hex + '">'
-      +       (isKey ? '<span style="font-family:var(--mono);font-size:8px;font-weight:800;color:' + _dcpTextOn(t.hex.slice(1)) + '">KEY</span>' : '')
+      +       (isKey ? '<span style="font-family:var(--mono);font-size:8px;font-weight:800;color:' + _dcpTextOn(t.hex.slice(1)) + '">' + TM_GROUP_LABEL.key + '</span>' : '')
       +     '</div>'
       +     '<div class="dcp-hex">' + t.hex + '</div>'
       +   '</div>'
@@ -22554,7 +22556,7 @@ document.addEventListener('DOMContentLoaded',function(){
       +   '<div class="dcp-card"' + (moved ? ' style="border-color:var(--gold)"' : '') + '>'
       +     codeLine
       +     '<div class="dcp-fill" style="background:' + t.hex + '">'
-      +       (isKey ? '<span style="font-family:var(--mono);font-size:8px;font-weight:800;color:' + _dcpTextOn(t.hex.slice(1)) + '">KEY</span>' : '')
+      +       (isKey ? '<span style="font-family:var(--mono);font-size:8px;font-weight:800;color:' + _dcpTextOn(t.hex.slice(1)) + '">' + TM_GROUP_LABEL.key + '</span>' : '')
       +     '</div>'
       +     '<div class="dcp-hex">' + t.hex + '</div>'
       +   '</div>'
@@ -23814,17 +23816,23 @@ document.addEventListener('DOMContentLoaded',function(){
             + '<div class="dcp-mood-row" style="justify-content:flex-start;flex-wrap:wrap;gap:4px;margin-top:6px">'
             +   r.all.map(function(c){
                   var on = c.sku > 0;
+                  // 색은 전부 선명하게 두고, 실사용만 우상단에 점을 찍는다
                   return '<span title="' + c.code + ' ' + c.nm + ' ' + c.hex + ' · C* ' + c.C
                     + (on ? ' · SKU ' + c.sku + ' · 수량 ' + c.qty.toLocaleString() : ' · 미사용')
                     + (c.coloro ? ' · COLORO ' + c.coloro : '') + '"'
-                    + ' style="display:inline-block;width:26px;height:26px;border-radius:5px;background:' + c.hex
-                    + (on ? ';box-shadow:0 0 0 1.5px ' + r.color : ';opacity:0.3') + '"></span>';
+                    + ' style="position:relative;display:inline-block;width:26px;height:26px;border-radius:5px;'
+                    + 'background:' + c.hex + ';border:1px solid var(--border)">'
+                    + (on
+                        ? '<span style="position:absolute;top:-3px;right:-3px;width:8px;height:8px;border-radius:50%;'
+                          + 'background:' + r.color + ';border:1.5px solid var(--surface)"></span>'
+                        : '')
+                    + '</span>';
                 }).join('')
             + '</div>'
             + '</div>';
         }).join('')
       + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);line-height:1.7;margin-top:6px">'
-      +   '진한 막대·테두리 있는 칩 = SKU 가 붙은 실사용 · 옅은 쪽 = 보유만. '
+      +   '진한 막대 = 실사용 · 옅은 막대 = 보유. 칩 우상단 점이 SKU 가 붙은 실사용 표시. '
       +   'Accent 17칩은 전부 미사용(SKU 0)입니다.'
       + '</div>';
   }
