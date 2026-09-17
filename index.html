@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v249 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_STD_v250 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -23960,7 +23960,9 @@ document.addEventListener('DOMContentLoaded',function(){
     return '<div style="display:grid;grid-template-columns:200px 1fr;gap:12px;align-items:center;margin-bottom:8px">'
       + '<div style="text-align:right">'
       +   '<div style="font-size:12px;font-weight:700;color:var(--text)">'
-      +     (tag ? '<span style="font-family:var(--mono);font-size:8px;border:1px solid var(--text3);border-radius:2px;padding:0 4px;margin-right:5px;vertical-align:1px">' + tag + '</span>' : '')
+      +     (tag ? (/^[A-Z0-9]+$/.test(tag)
+                ? '<span style="font-family:var(--mono);font-size:8px;border:1px solid var(--text3);border-radius:2px;padding:0 4px;margin-right:5px;vertical-align:1px">' + tag + '</span>'
+                : tag + ' ') : '')
       +     label + '</div>'
       +   '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);line-height:1.4">' + sub
       +     (d && d.tot ? ' · ' + ['Core','Seasonal','Accent'].map(function(t){ return t.charAt(0) + ' ' + d.pct[t] + '%'; }).join(' ') : '') + '</div>'
@@ -24005,24 +24007,15 @@ document.addEventListener('DOMContentLoaded',function(){
         _cmpRow('SKU', '자사 27FW · 현재', '표준칩 SKU ' + cur.tot.toLocaleString() + ' · 품번×컬러 · 파일 등급', cur)
       + _cmpRow('MKT', '전체 마켓', mkt.n + '색 · 빈도 ' + mkt.tot.toLocaleString(), mkt)
       + _cmpRow('25FW', '디커 25FW 판매', _cmpSales().length + '색 · 스타일 수 ' + sales.tot.toLocaleString(), sales));
-    // 라이프스타일 — 마켓은 브랜드 구분, 자사는 27FW 확정 팔레트 무드(색 수 기준)
+    // v250 — 라이프스타일은 카드 하나에 3줄 (해당 브랜드 마켓 컬러 비중)
     var cats = _fnCatRatios('disc');
-    var moodKey = { commute: 'CASUAL COMMUTE', wellness: 'ACTIVE WELLNESS', resort: 'OUTDOOR RESORT' };
-    var moods = (_dcpCustomView() ? _dcpCustomView().moods : DCP_MOODS);
-    cats.forEach(function(c){
-      var mood = moods.filter(function(m){ return String(m.title).toUpperCase() === moodKey[c.key]; })[0];
-      var mh = [];
-      if(mood) mood.rows.forEach(function(r){ r.forEach(function(it){ if(it && it.hex && !it.gap) mh.push('#' + String(it.hex).replace(/^#/, '')); }); });
-      var pd = _cmpFrom(mh, function(h){ return h; });
-      var md = { tierHex: c.tierHex || { Core: {}, Seasonal: {}, Accent: {} }, pct: c.pct || {}, tot: c.freq || 0 };
-      html += _cmpCard((c.emoji ? c.emoji + ' ' : '') + c.name, c.sub + ' · ' + c.brands.slice(0, 4).join(' · ') + (c.brands.length > 4 ? ' 외' : ''),
-          _cmpRow('27FW', '자사 확정 팔레트', (mood ? mood.title : '무드 없음') + ' · ' + pd.n + '색', pd)
-        + _cmpRow('MKT', '라이프스타일 마켓', c.colors + '색 · 빈도 ' + (c.freq || 0).toLocaleString(), md)
-        + _cmpRow('25FW', '디커 25FW 판매', '라이프스타일 구분 없음 · 전체 기준', sales));
-    });
+    html += _cmpCard('LIFESTYLE', '디커 기준 · 라이프스타일 브랜드 마켓 컬러 비중',
+      cats.map(function(c){
+        var md = { tierHex: c.tierHex || { Core: {}, Seasonal: {}, Accent: {} }, pct: c.pct || {}, tot: c.freq || 0 };
+        return _cmpRow(c.emoji || '', c.name, c.sub + ' · ' + c.colors + '색 · 빈도 ' + (c.freq || 0).toLocaleString(), md);
+      }).join(''));
     html += '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:8px;line-height:1.6">'
-      + '자사 현재 = 표준 75칩 파일의 SKU·등급(디스커버리 레인지플랜 714 SKU 와 집계 시점 차이 있음) · 마켓 = 01 GL·KR 빈도 · 25FW = 판매 데이터 스타일 수 · '
-      + '라이프스타일 행의 자사는 27FW 확정 팔레트 무드별 색 수</div>';
+      + '자사 현재 = 표준 75칩 파일의 SKU·등급(디스커버리 레인지플랜 714 SKU 와 집계 시점 차이 있음) · 마켓 = 01 GL·KR 빈도 · 25FW = 판매 데이터 스타일 수</div>';
     return html + '</div>';
   }
   window._discComparePanel = _cmpPanel;
@@ -24031,31 +24024,52 @@ document.addEventListener('DOMContentLoaded',function(){
   function _rvMini(hex, tip, extra){
     return '<span title="' + (tip || hex) + '" style="display:inline-block;width:30px;height:30px;border-radius:4px;background:' + hex + ';border:1px solid var(--border)' + (extra || '') + '"></span>';
   }
+  // 한 줄 칩 — 묶음마다 위에 라벨, 사이에 세로 구분선
+  function _rvLine(groups){
+    return '<div style="display:flex;align-items:flex-end;gap:0;flex-wrap:wrap;margin-top:8px">'
+      + groups.filter(function(g){ return g.items.length; }).map(function(g, gi){
+          return '<div style="' + (gi ? 'border-left:2px solid var(--border2);margin-left:6px;padding-left:6px;' : '') + '">'
+            + '<div style="font-family:var(--mono);font-size:9px;font-weight:700;color:' + g.color + ';margin-bottom:3px;white-space:nowrap">'
+            +   g.label + ' <span style="color:var(--text4);font-weight:400">' + g.items.length + '</span></div>'
+            + '<div style="display:flex;gap:3px">' + g.items.map(function(x){
+                return '<div style="text-align:center;width:40px" title="' + x.tip + '">'
+                  + _rvMini(x.hex, '', ';width:36px;height:26px')
+                  + '<div style="font-family:var(--mono);font-size:8px;color:var(--text3);white-space:nowrap;overflow:hidden">' + x.l1 + '</div>'
+                  + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4)">' + x.l2 + '</div></div>';
+              }).join('') + '</div></div>';
+        }).join('')
+      + '</div>';
+  }
   function _rvTopChips(){
     var chips = _dcpTrendChips(), html = '';
-    var G = [['sub', 'SEASONAL', 'var(--blue)'], ['key', 'ACCENT', '#A090F0'], ['basic', 'CORE', 'var(--gold)']];
-    html += _rvCard('A. 트렌드 기반 칩 — 03 Trend-Matched',
-      G.map(function(g){
-        var list = chips.filter(function(c){ return c.group === g[0]; });
-        return '<div style="display:grid;grid-template-columns:90px 1fr;gap:8px;align-items:center;margin-bottom:6px">'
-          + '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + g[2] + '">' + g[1] + ' <span style="color:var(--text4);font-weight:400">' + list.length + '</span></span>'
-          + '<div style="display:flex;gap:3px;flex-wrap:wrap">' + list.map(function(c){
-              return _rvMini(c.item.trend.hex, c.item.trend.hex + ' · ' + (c.item.trend.sources || []).join('·') + ' · 빈도 ' + c.item.mkFreq);
-            }).join('') + '</div></div>';
-      }).join(''));
+    var G = [['basic', 'CORE', 'var(--gold)'], ['sub', 'SEASONAL', 'var(--blue)'], ['key', 'ACCENT', '#A090F0']];
+    var srcShort = function(t){ return (t.sources || []).map(function(x){ return x === 'Peclers' ? 'PEC' : x; }).join('·') || '—'; };
+    var toItem = function(it){
+      var t = it.trend;
+      return { hex: t.hex, l1: srcShort(t), l2: '×' + it.mkFreq, tip: t.hex + ' · ' + (t.sources || []).join('·') + ' · 마켓 빈도 ' + it.mkFreq };
+    };
+    var gmap = { basic: 'Core', sub: 'Seasonal', key: 'Accent' };
+    var ad = _cmpFrom(chips, function(c){ return c.item.trend.hex; }, null, function(c){ return gmap[c.group]; });
+    html += _rvCard('A. 트렌드 기반 칩 — 03 Trend-Matched ' + chips.length + '색',
+        _cmpBar(ad)
+      + _rvLine(G.map(function(g){
+          return { label: g[1], color: g[2], items: chips.filter(function(c){ return c.group === g[0]; }).map(function(c){ return toItem(c.item); }) };
+        }))
+      + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:4px">막대 = 등급별 색 수 비중 · 칩 아래 = 출처 · 마켓 빈도</div>');
     var cc = null; try{ cc = _ccBuild(); }catch(e){}
     if(cc){
       var keys = _ccCatKeys().filter(function(k){ return cc.lists[k] && cc.lists[k].list.length; });
-      html += _rvCard('B. 제안 컬러칩 — 03 Category Curation',
-        keys.map(function(k){
-          var box = cc.lists[k], d = box.def;
-          return '<div style="display:grid;grid-template-columns:150px 1fr;gap:8px;align-items:center;margin-bottom:6px">'
-            + '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text2)">' + (d.emoji || '') + ' ' + d.name + ' <span style="color:var(--text4);font-weight:400">' + box.list.length + '</span></span>'
-            + '<div style="display:flex;gap:3px;flex-wrap:wrap">' + box.list.map(function(e){
-                var t = e.g.item.trend;
-                return _rvMini(t.hex, t.hex + ' · ' + TM_GROUP_LABEL[e.g.group] + ' · 빈도 ' + e.g.item.mkFreq);
-              }).join('') + '</div></div>';
-        }).join(''));
+      var all = [];
+      keys.forEach(function(k){ cc.lists[k].list.forEach(function(e){ all.push(e.g.item.trend.hex); }); });
+      var bd = _cmpFrom(all, function(h){ return h; });
+      html += _rvCard('B. 제안 컬러칩 — 03 Category Curation ' + all.length + '색',
+          _cmpBar(bd)
+        + _rvLine(keys.map(function(k){
+            var box = cc.lists[k], d = box.def;
+            return { label: (d.emoji ? d.emoji + ' ' : '') + d.name, color: 'var(--text2)',
+                     items: box.list.map(function(e){ return toItem(e.g.item); }) };
+          }))
+        + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:4px">막대 = 디커 기준 색 수 비중 · 라벨 = 라이프스타일</div>');
     }
     var sd = _cmpFrom(_cmpSales(), function(c){ return c.hex; }, function(c){ return c.style_cnt; });
     var top = _cmpSales().slice().sort(function(a, b){ return b.sell_rate - a.sell_rate; });
