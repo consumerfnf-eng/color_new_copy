@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v221 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_STD_v223 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21769,6 +21769,7 @@ document.addEventListener('DOMContentLoaded',function(){
     return ((r*299 + g*587 + b*114) / 1000) >= 150 ? '#1a1a1a' : '#ffffff';
   }
 
+  var _dcpInMood = false;     // 무드 3종 렌더 중에는 상태 띠를 붙이지 않는다
   function _dcpChip(it){
     if(it.gap) return '<div style="width:6px;flex:0 0 auto"></div>';
     var head = '';
@@ -21788,7 +21789,7 @@ document.addEventListener('DOMContentLoaded',function(){
       : '<div class="dcp-hex">#' + it.hex + '</div>';
     return '<div class="dcp-chip" style="' + _dcpChipDim('#' + it.hex) + '" title="' + it.name + ' · #' + it.hex + '">'
       + head + '<div class="dcp-card">' + codeLine + fill + foot + '</div>'
-      + _dcpStatusStrip('#' + it.hex) + '</div>';
+      + (_dcpInMood ? '' : _dcpStatusStrip('#' + it.hex)) + '</div>';
   }
 
   function _dcpBodyHtml(){
@@ -21826,6 +21827,7 @@ document.addEventListener('DOMContentLoaded',function(){
             + '</div>';
         }).join('')
       + '</div>';
+    _dcpInMood = true;
     var moods = '<div class="dcp-moods">' + moodDefs.map(function(m){
       return '<div class="dcp-mood">'
         + '<div class="dcp-mood-title">' + m.title + '</div>'
@@ -21833,9 +21835,8 @@ document.addEventListener('DOMContentLoaded',function(){
         +   m.rows.map(function(r){ return '<div class="dcp-mood-row">' + r.map(_dcpChip).join('') + '</div>'; }).join('')
         + '</div></div>';
     }).join('') + '</div>';
-    // 무드 3종(ACTIVE WELLNESS / CASUAL COMMUTE / OUTDOOR RESORT)은
-    // 위 SEASONAL·ACCENT·CORE 재분류에 이미 포함돼 있어 따로 내보내지 않는다.
-    return '<div class="dcp-body">' + _dcpUploadPanel() + _dcpTabBar() + core
+    _dcpInMood = false;
+    return '<div class="dcp-body">' + _dcpUploadPanel() + _dcpTabBar() + core + moods
       + (cv ? '' : '<div class="dcp-note">' + DCP_NOTE + '</div>') + '</div>';
   }
 
@@ -23091,16 +23092,24 @@ document.addEventListener('DOMContentLoaded',function(){
     if(!list.length) return '';
     return '<div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--border)">'
       + '<div style="font-family:var(--mono);font-size:11px;color:var(--text4);margin-bottom:8px">'
-      +   '기준 미달 ' + list.length + '색 — 03 보완 후보에는 있지만 빈도·브랜드가 모자랍니다</div>'
+      +   '기준 미달 ' + list.length + '색 — 03 보완 후보에는 있지만 기준(빈도 ' + RPT_MIN_FREQ
+      +   ' 이상 · ' + RPT_MIN_BRANDS + '브랜드 이상)에 못 미칩니다. 칩 아래에 어느 조건이 모자란지 표시했습니다</div>'
       + '<div class="dcp-mood-row" style="justify-content:flex-start;flex-wrap:wrap;gap:6px;opacity:0.75">'
       +   list.slice(0, 10).map(function(e){
-            var t = e.item.trend, nb = _rptBrands(e);
+            var t = e.item.trend, nb = _rptBrands(e), f = e.item.mkFreq || 0;
+            // 어느 조건에서 걸렸는지 그 자리에 적는다 (빈도인지 브랜드인지)
+            var miss = [];
+            if(f < RPT_MIN_FREQ) miss.push('빈도 ' + f);
+            if(nb.length < RPT_MIN_BRANDS) miss.push(nb.length + '브랜드');
             return '<span onclick="_rptSwPop(event,\'' + t.hex + '\')"'
-              + ' title="' + t.hex + ' · 빈도 ' + e.item.mkFreq + (nb.length ? ' · ' + nb.length + '브랜드' : '') + '"'
-              + ' style="display:inline-block;width:40px;cursor:pointer;margin:0 6px 6px 0;vertical-align:top">'
-              + '<span style="display:block;width:40px;height:40px;border-radius:8px;background:' + t.hex + '"></span>'
-              + '<span style="display:block;font-family:var(--mono);font-size:8px;color:var(--text4);'
-              +   'text-align:center;margin-top:3px">×' + e.item.mkFreq + (nb.length ? '·' + nb.length + '브' : '') + '</span>'
+              + ' title="' + t.hex + ' · 빈도 ' + f + ' · ' + nb.length + '브랜드 — 미달: '
+              +   miss.join(' · ') + ' (기준 빈도 ' + RPT_MIN_FREQ + ' 이상 · ' + RPT_MIN_BRANDS + '브랜드 이상)"'
+              + ' style="display:inline-block;width:56px;cursor:pointer;margin:0 8px 8px 0;vertical-align:top">'
+              + '<span style="display:block;width:56px;height:56px;border-radius:10px;background:' + t.hex + '"></span>'
+              + '<span style="display:block;font-family:var(--mono);font-size:9px;color:var(--text3);'
+              +   'text-align:center;margin-top:4px;line-height:1.4">×' + f + ' · ' + nb.length + '브</span>'
+              + '<span style="display:block;font-family:var(--mono);font-size:8.5px;color:var(--warn);'
+              +   'text-align:center;line-height:1.4">' + miss.join('·') + ' 미달</span>'
               + '</span>';
           }).join('')
       + '</div></div>';
@@ -23409,7 +23418,7 @@ document.addEventListener('DOMContentLoaded',function(){
       + '</div>';
   }
   function _dcpChipDim(hex){
-    if(DCP_TAB === 'all') return '';
+    if(DCP_TAB === 'all' || _dcpInMood) return '';
     var st = _dcpStatusMap()[String(hex).toUpperCase()];
     return (st && st.tier === DCP_TAB) ? '' : ';opacity:0.22';
   }
