@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v237 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_STD_v238 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -24060,8 +24060,10 @@ document.addEventListener('DOMContentLoaded',function(){
     try{ mk = _tmMarketPool(); }catch(e){}
     if(!mk.length) return '';
     var th = { Core: {}, Seasonal: {}, Accent: {} }, w = { Core: 0, Seasonal: 0, Accent: 0 }, tot = 0;
+    // v238 — 03 칩 행과 같은 '우리 기준'(_tmClassify)으로 분류
+    var OURS = { basic: 'Core', sub: 'Seasonal', key: 'Accent' };
     mk.forEach(function(x){
-      var t = _stdTier(x.hex), f = x.freq || 1;
+      var t = OURS[_tmClassify(x.hex)], f = x.freq || 1;
       th[t][x.hex] = (th[t][x.hex] || 0) + f; w[t] += f; tot += f;
     });
     var pct = {};
@@ -24092,7 +24094,7 @@ document.addEventListener('DOMContentLoaded',function(){
       + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">'
       +   '<div style="width:3px;height:16px;background:' + ac + ';border-radius:2px"></div>'
       +   '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + ac + ';letter-spacing:0.06em;text-transform:uppercase">MARKET COLORS · CORE / SEASONAL / ACCENT</span>'
-      +   '<span style="font-family:var(--mono);font-size:9px;color:var(--text3)">마켓 전체 ' + mk.length + '색 · 빈도 ' + tot.toLocaleString() + ' · 디커 기준</span>'
+      +   '<span style="font-family:var(--mono);font-size:9px;color:var(--text3)">마켓 전체 ' + mk.length + '색 · 빈도 ' + tot.toLocaleString() + ' · 우리 기준 (Accent C*≥' + TM_KEY_C + ')</span>'
       +   '<span style="font-family:var(--mono);font-size:8px;color:var(--text4)">Click swatch for Pantone</span>'
       +   '<span style="margin-left:auto;display:flex;gap:12px;font-family:var(--mono);font-size:9px;color:var(--text2)">'
       +     ['Core','Seasonal','Accent'].map(function(t){
