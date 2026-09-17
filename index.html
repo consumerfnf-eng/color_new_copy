@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_REVIEW_v208 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_REVIEW_v210 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -22937,6 +22937,37 @@ document.addEventListener('DOMContentLoaded',function(){
   // 리포트 전용 칩 — 앞장 Trend-Matched 와 같은 dcp 형태로 통일한다.
   //  위: 코드 / 색면(라벨) / HEX   아래: 대응하는 색 띠 (있을 때만)
   // 정사각 스와치 클릭 팝업 — 코드가 필요할 때만 꺼내 본다
+  // 둥근 정사각 스와치 + 캡션 (클릭 시 코드 팝업)
+  function _rptSquare(hex, caption, accent){
+    return '<span onclick="_rptSwPop(event,\'' + hex + '\')" title="' + hex + ' · 클릭하면 코드"'
+      + ' style="display:inline-block;width:52px;cursor:pointer;margin:0 8px 8px 0;vertical-align:top">'
+      + '<span style="display:block;width:52px;height:52px;border-radius:12px;background:' + hex
+      +   ';border:1px solid ' + (accent || 'var(--border2)') + '"></span>'
+      + (caption
+          ? '<span style="display:block;font-family:var(--mono);font-size:8.5px;color:var(--text3);'
+            + 'text-align:center;margin-top:4px;line-height:1.35">' + caption + '</span>'
+          : '')
+      + '</span>';
+  }
+  // 최종 제안용 — 27FW 팔레트와 같은 칩 형태
+  function _rptPantoneChip(e){
+    var t = e.item.trend, nb = _rptBrands(e);
+    return '<div class="dcp-chip" style="cursor:pointer" onclick="_rptSwPop(event,\'' + t.hex + '\')"'
+      + ' title="' + (t.name || '') + ' ' + t.hex + ' · 빈도 ' + e.item.mkFreq
+      + (nb.length ? ' · ' + nb.length + '브랜드' : '') + '">'
+      + '<div class="dcp-card">'
+      +   '<div class="dcp-code">' + (_rptTrendCode(t) || '&nbsp;') + '</div>'
+      +   '<div class="dcp-fill" style="background:' + t.hex + '">'
+      +     '<span style="font-family:var(--mono);font-size:8px;font-weight:800;color:'
+      +       _dcpTextOn(String(t.hex).slice(1)) + '">×' + e.item.mkFreq + '</span>'
+      +   '</div>'
+      +   '<div class="dcp-hex">' + t.hex + '</div>'
+      + '</div>'
+      + '<div style="font-family:var(--mono);font-size:8px;color:var(--text3);text-align:center;margin-top:3px">'
+      +   (nb.length ? nb.length + '브랜드' : '&nbsp;') + '</div>'
+      + '</div>';
+  }
+
   window._rptSwPop = function(evt, hex){
     evt.stopPropagation();
     var pop = _ccEnsurePop();
@@ -23113,6 +23144,7 @@ document.addEventListener('DOMContentLoaded',function(){
           why: famLabel + ' 계열이 마켓에서 ' + _rptWeakNote(strong)
              + ' 로 관측되는데 팔레트에는 한 색도 없습니다. 의도적으로 뺀 것이 아니라면 공백입니다.',
           extra: (missFam.indexOf('green') >= 0 || missFam.indexOf('teal') >= 0) ? _greenAdviceHtml() : '',
+          chipStyle: 'pantone',
           items: strong.slice(0, 6)
         });
       } else if(cands.length){
@@ -23123,6 +23155,7 @@ document.addEventListener('DOMContentLoaded',function(){
              + '빈도 ' + RPT_MIN_FREQ + ' 이상 · ' + RPT_MIN_BRANDS + '개 브랜드 이상 조건에 못 미쳐 '
              + '공백으로 볼지는 판단이 필요합니다.',
           extra: (missFam.indexOf('green') >= 0 || missFam.indexOf('teal') >= 0) ? _greenAdviceHtml() : '',
+          chipStyle: 'pantone',
           items: cands.slice(0, 6)
         });
       }
@@ -23178,29 +23211,22 @@ document.addEventListener('DOMContentLoaded',function(){
             + '<div style="font-size:14px;color:var(--text2);line-height:1.75;margin-bottom:' + ((a.items&&a.items.length)||(a.pals&&a.pals.length) ? '10px' : '0') + '">' + a.why + '</div>'
             + (a.extra ? a.extra : '')
             + (a.items && a.items.length
-                ? '<div style="display:flex;flex-wrap:wrap;gap:8px">'
-                  + a.items.map(function(e){
-                      var nb = _rptBrands(e);
-                      return '<span onclick="_rptSwPop(event,\'' + e.item.trend.hex + '\')" title="클릭 — 코드 확인"'
-                        + ' style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;'
-                        + 'padding:3px 9px 3px 3px;border:1px solid var(--border);border-radius:20px">'
-                        + '<span style="width:22px;height:22px;border-radius:50%;background:' + e.item.trend.hex + '"></span>'
-                        + '<span style="font-family:var(--mono);font-size:11px;color:var(--text2)">'
-                        +   (_tmPantoneCode(e.item.trend.pantone) || e.item.trend.hex)
-                        +   ' · 빈도 ' + e.item.mkFreq
-                        +   (nb.length ? ' · ' + nb.length + '브랜드' : '')
-                        +   '</span></span>';
-                    }).join('') + '</div>'
+                ? (a.chipStyle === 'pantone'
+                    ? '<div class="dcp-mood-row" style="justify-content:flex-start;flex-wrap:wrap;gap:8px">'
+                      + a.items.map(_rptPantoneChip).join('') + '</div>'
+                    : '<div style="display:flex;flex-wrap:wrap;gap:0">'
+                      + a.items.map(function(e){
+                          var nb = _rptBrands(e);
+                          return _rptSquare(e.item.trend.hex,
+                            (_tmPantoneCode(e.item.trend.pantone) || e.item.trend.hex)
+                              + '<br>×' + e.item.mkFreq + (nb.length ? ' · ' + nb.length + '브' : ''));
+                        }).join('') + '</div>')
                 : '')
             + (a.pals && a.pals.length
-                ? '<div style="display:flex;flex-wrap:wrap;gap:8px">'
+                ? '<div style="display:flex;flex-wrap:wrap;gap:0">'
                   + a.pals.map(function(x){
-                      return '<span onclick="_rptSwPop(event,\'' + x.pal.hex + '\')" title="클릭 — 코드 확인"'
-                        + ' style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;'
-                        + 'padding:3px 9px 3px 3px;border:1px solid var(--border);border-radius:20px">'
-                        + '<span style="width:22px;height:22px;border-radius:50%;background:' + x.pal.hex + '"></span>'
-                        + '<span style="font-family:var(--mono);font-size:11px;color:var(--text2)">'
-                        +   x.pal.name + ' ΔE' + x.de + '</span></span>';
+                      return _rptSquare(x.pal.hex, x.pal.name + '<br>ΔE' + x.de,
+                        (a.tag === '유지' ? '#5FA85F' : 'var(--warn)'));
                     }).join('') + '</div>'
                 : '')
             + '</div>';
@@ -23425,8 +23451,8 @@ document.addEventListener('DOMContentLoaded',function(){
     var top = g.ranked[0], rest = g.ranked.slice(1, 3);
     var sw = function(h, n){
       return '<span onclick="_rptSwPop(event,\'' + h + '\')" title="' + h + (n ? ' · 빈도 ' + n : '') + ' · 클릭하면 코드"'
-        + ' style="display:inline-block;width:38px;height:38px;cursor:pointer;'
-        + 'background:' + h + ';border:1px solid var(--border2);margin:0 5px 5px 0;vertical-align:top"></span>';
+        + ' style="display:inline-block;width:44px;height:44px;cursor:pointer;border-radius:10px;'
+        + 'background:' + h + ';border:1px solid var(--border2);margin:0 6px 6px 0;vertical-align:top"></span>';
     };
     var html = '<div style="font-size:14px;color:var(--text2);line-height:1.8;margin-top:8px">'
       + '마켓에서 잡히는 그린 계열은 ' + g.marketN + '색, 트렌드(WGSN·Peclers)는 ' + g.trendN + '색입니다. '
