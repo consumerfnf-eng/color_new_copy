@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v219 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_STD_v220 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -23857,7 +23857,7 @@ document.addEventListener('DOMContentLoaded',function(){
       +   '<span class="spp-trend-market-title">표준 75칩 · 실사용 30칩</span>'
       +   '<span class="spp-trend-market-sub">디스커버리 표준 컬러 라이브러리 — 보유 칩과 실제 SKU 가 붙은 칩</span>'
       + '</div>'
-      + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-bottom:16px">'
+      + '<div style="font-family:var(--mono);font-size:12px;color:var(--text4);margin-bottom:18px">'
       +   '보유 ' + lib.length + '칩 · 실사용 ' + lib.filter(function(c){ return c.sku > 0; }).length + '칩 · '
       +   'SKU ' + rows.reduce(function(n,r){ return n + r.sku; }, 0).toLocaleString()
       +   ' · 수량 ' + totQty.toLocaleString()
@@ -23867,11 +23867,11 @@ document.addEventListener('DOMContentLoaded',function(){
           var wUsed = Math.round(r.used.length / maxChips * 100);
           return '<div style="margin-bottom:18px">'
             + '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px">'
-            +   '<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:' + r.color
-            +     ';letter-spacing:0.1em;min-width:80px">' + r.tier + '</span>'
-            +   '<span style="font-family:var(--mono);font-size:10px;color:var(--text3)">보유 ' + r.all.length
+            +   '<span style="font-family:var(--mono);font-size:14px;font-weight:700;color:' + r.color
+            +     ';letter-spacing:0.1em;min-width:96px">' + r.tier + '</span>'
+            +   '<span style="font-family:var(--mono);font-size:12px;color:var(--text3)">보유 ' + r.all.length
             +     '칩 · 실사용 ' + r.used.length + '칩</span>'
-            +   '<span style="font-family:var(--mono);font-size:10px;color:var(--text4);margin-left:auto">'
+            +   '<span style="font-family:var(--mono);font-size:12px;color:var(--text4);margin-left:auto">'
             +     'SKU ' + r.sku.toLocaleString() + ' · 수량 ' + r.qty.toLocaleString()
             +     ' (' + Math.round(r.qty / totQty * 100) + '%)</span>'
             + '</div>'
@@ -23897,7 +23897,7 @@ document.addEventListener('DOMContentLoaded',function(){
             + '</div>'
             + '</div>';
         }).join('')
-      + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);line-height:1.7;margin-top:6px">'
+      + '<div style="font-family:var(--mono);font-size:11px;color:var(--text4);line-height:1.8;margin-top:10px">'
       +   '진한 막대 = 실사용 · 옅은 막대 = 보유. 칩 우상단 점이 SKU 가 붙은 실사용 표시. '
       +   'Accent 17칩은 전부 미사용(SKU 0)입니다.'
       + '</div>';
@@ -23939,40 +23939,42 @@ document.addEventListener('DOMContentLoaded',function(){
     var maxV = 1;
     keys.forEach(function(k){ maxV = Math.max(maxV, oursC[k] || 0, libC[k] || 0); });
     var bar = function(n, col, op){
-      return '<span style="display:inline-block;height:10px;border-radius:2px;vertical-align:middle;'
+      return '<span style="display:inline-block;height:14px;border-radius:3px;vertical-align:middle;'
         + 'width:' + Math.max(2, Math.round((n || 0) / maxV * 100)) + '%;background:' + col
         + (op ? ';opacity:' + op : '') + '"></span>';
     };
     return '<div style="margin-bottom:26px">'
       + '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">'
-      +   '<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:' + accent
-      +     ';letter-spacing:0.1em">' + title + '</span>'
-      +   '<span style="font-family:var(--mono);font-size:9px;color:var(--text4)">' + desc + '</span>'
+      +   '<span style="font-family:var(--mono);font-size:16px;font-weight:700;color:' + accent
+      +     ';letter-spacing:0.08em">' + title + '</span>'
+      +   '<span style="font-family:var(--mono);font-size:11px;color:var(--text4)">' + desc + '</span>'
       + '</div>'
-      + '<div style="display:flex;font-family:var(--mono);font-size:9px;color:var(--text4);'
-      +   'border-bottom:1px solid var(--border);padding-bottom:4px;margin-bottom:6px">'
-      +   '<span style="flex:0 0 96px">구간</span>'
-      +   '<span style="flex:1 1 0">우리 제안</span>'
-      +   '<span style="flex:1 1 0">디커 보유 · 실사용</span>'
+      + '<div style="display:flex;align-items:baseline;font-family:var(--mono);font-size:13px;'
+      +   'border-bottom:1px solid var(--border2);padding-bottom:6px;margin-bottom:8px">'
+      +   '<span style="flex:0 0 110px;color:var(--text4)">구간</span>'
+      +   '<span style="flex:1 1 0;color:' + accent + ';font-weight:700">우리 제안'
+      +     '<span style="font-size:10px;color:var(--text4);font-weight:400"> ' + ours.length + '색</span></span>'
+      +   '<span style="flex:1 1 0;color:var(--text2);font-weight:700">디커 컬러칩'
+      +     '<span style="font-size:10px;color:var(--text4);font-weight:400"> ' + lib.length + '칩 · 보유/실사용</span></span>'
       + '</div>'
       + keys.map(function(k){
           var o = oursC[k] || 0, l = libC[k] || 0, u = usedC[k] || 0;
           var flag = (l >= 5 && u === 0 && o === 0);   // 보유는 많은데 안 쓰고 제안도 없음
           return '<div style="display:flex;align-items:center;padding:4px 0;'
             + (flag ? 'background:rgba(200,120,60,0.06);' : '') + '">'
-            + '<span style="flex:0 0 96px;font-family:var(--mono);font-size:10px;color:'
+            + '<span style="flex:0 0 110px;font-family:var(--mono);font-size:13px;color:'
             +   (flag ? 'var(--warn)' : 'var(--text2)') + '">' + k + '</span>'
             + '<span style="flex:1 1 0;display:flex;align-items:center;gap:6px;padding-right:12px">'
-            +   bar(o, accent) + '<span style="font-family:var(--mono);font-size:10px;color:var(--text3);'
+            +   bar(o, accent) + '<span style="font-family:var(--mono);font-size:13px;color:var(--text3);'
             +     'flex:0 0 auto">' + (o ? o + '색' : '—') + '</span></span>'
             + '<span style="flex:1 1 0;display:flex;align-items:center;gap:6px">'
-            +   '<span style="flex:1 1 0;position:relative;height:10px">'
-            +     '<span style="position:absolute;inset:0 auto 0 0;height:10px;border-radius:2px;width:'
+            +   '<span style="flex:1 1 0;position:relative;height:14px">'
+            +     '<span style="position:absolute;inset:0 auto 0 0;height:14px;border-radius:3px;width:'
             +       Math.max(2, Math.round(l / maxV * 100)) + '%;background:var(--text4);opacity:0.3"></span>'
-            +     '<span style="position:absolute;inset:0 auto 0 0;height:10px;border-radius:2px;width:'
+            +     '<span style="position:absolute;inset:0 auto 0 0;height:14px;border-radius:3px;width:'
             +       Math.max(0, Math.round(u / maxV * 100)) + '%;background:var(--text3)"></span>'
             +   '</span>'
-            +   '<span style="font-family:var(--mono);font-size:10px;color:var(--text3);flex:0 0 auto;white-space:nowrap"'
+            +   '<span style="font-family:var(--mono);font-size:13px;color:var(--text3);flex:0 0 auto;white-space:nowrap"'
             +     ' title="디커 보유 ' + l + '칩 중 실제 SKU 가 붙은 칩 ' + u + '개">'
             +     '보유 ' + l + ' · 사용 ' + u + '</span></span>'
             + '</div>';
@@ -24006,7 +24008,7 @@ document.addEventListener('DOMContentLoaded',function(){
       +   '<span class="spp-trend-market-title">디커 축으로 본 분포</span>'
       +   '<span class="spp-trend-market-sub">색상군 · 채도대 · 명도대 — 우리 제안과 디커 라이브러리를 같은 축에서</span>'
       + '</div>'
-      + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);line-height:1.7;margin-bottom:18px">'
+      + '<div style="font-family:var(--mono);font-size:12px;color:var(--text4);line-height:1.8;margin-bottom:20px">'
       +   '우리 제안 ' + ours.length + '색 · 디커 보유 ' + lib.length + '칩 · 실사용 '
       +   lib.filter(function(c){ return c.sku > 0; }).length + '칩. '
       +   '디커 열의 옅은 막대가 보유, 진한 막대가 실사용입니다.'
@@ -24042,11 +24044,11 @@ document.addEventListener('DOMContentLoaded',function(){
       +   '<span class="spp-trend-market-title">디스커버리 등급 기준</span>'
       +   '<span class="spp-trend-market-sub">03 에 표시된 제안 컬러를 디스커버리팀 기준(rev v3.0)으로 재분류</span>'
       + '</div>'
-      + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);line-height:1.8;margin-bottom:6px">'
+      + '<div style="font-family:var(--mono);font-size:12px;color:var(--text4);line-height:1.9;margin-bottom:8px">'
       +   '① 형광 또는 C*≥' + STD_CUT.accent_chroma + ' → Accent · ② 무채·네이비 → Core · '
       +   '③ 베이지·브라운 C*<' + STD_CUT.core_warm_chroma + ' & L*<' + STD_CUT.core_warm_light + ' → Core · ④ 나머지 → Seasonal'
       + '</div>'
-      + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-bottom:14px">'
+      + '<div style="font-family:var(--mono);font-size:12px;color:var(--text4);margin-bottom:14px">'
       +   '대상 ' + r.all.length + '색 (03 Trend-Matched 표시분과 동일) · 우리 기준과 다르게 분류된 색 '
       +   '<span style="color:var(--gold)">' + r.diff.length + '색</span> — 칩 테두리가 금색'
       + '</div>'
@@ -24054,7 +24056,7 @@ document.addEventListener('DOMContentLoaded',function(){
           var hit = r.all.filter(function(x){ return _stdNearChip(x.item.trend.hex).chip; });
           var pal = _gapPaletteList();
           var palHit = pal.filter(function(pp){ return _stdNearChip(pp.hex).chip; });
-          return '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);line-height:1.8;margin-bottom:14px">'
+          return '<div style="font-family:var(--mono);font-size:12px;color:var(--text4);line-height:1.9;margin-bottom:16px">'
             + '표준 75칩 대조 (ΔE ≤ ' + STD_MATCH_DE + ') — 제안 ' + r.all.length + '색 중 '
             + '<span style="color:#5FA85F">' + hit.length + '색</span>은 표준칩으로 대체 가능, '
             + (r.all.length - hit.length) + '색은 표준칩에 없습니다. '
@@ -24068,11 +24070,11 @@ document.addEventListener('DOMContentLoaded',function(){
       var list = r.groups[t[0]];
       return '<div style="margin-bottom:22px">'
         + '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">'
-        +   '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + t[1]
+        +   '<span style="font-family:var(--mono);font-size:14px;font-weight:700;color:' + t[1]
         +     ';letter-spacing:0.1em">' + t[0] + '</span>'
-        +   '<span style="font-family:var(--mono);font-size:9px;color:var(--text3)">' + list.length + '색</span>'
+        +   '<span style="font-family:var(--mono);font-size:12px;color:var(--text3)">' + list.length + '색</span>'
         +   (list.length
-              ? '<span style="font-family:var(--mono);font-size:9px;color:var(--text4)">· 우리 기준으로는 '
+              ? '<span style="font-family:var(--mono);font-size:11px;color:var(--text4)">· 우리 기준으로는 '
                 + (function(){
                     var c = {}; list.forEach(function(x){ c[OURS[x.ours]] = (c[OURS[x.ours]] || 0) + 1; });
                     return Object.keys(c).map(function(k){ return k + ' ' + c[k]; }).join(' · ');
