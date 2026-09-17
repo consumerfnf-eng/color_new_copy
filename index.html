@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v231 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_STD_v232 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21837,6 +21837,7 @@ document.addEventListener('DOMContentLoaded',function(){
         + '</div></div>';
     }).join('') + '</div>';
     _dcpInMood = false;
+    if(DCP_TAB === 'final'){ core = _dcpFinalHtml(); moods = ''; }
     return '<div class="dcp-body">' + _dcpUploadPanel() + _dcpTabBar() + core + moods
       + (cv ? '' : '<div class="dcp-note">' + DCP_NOTE + '</div>') + '</div>';
   }
@@ -23308,29 +23309,59 @@ document.addEventListener('DOMContentLoaded',function(){
   //   보완 : ΔE 5~10                  — 같은 계열이나 톤 차이
   //   위험 : ΔE 10 초과               — 마켓 근거 없음
   // ══════════════════════════════════════════════════════════════
-  var DCP_TAB = 'all';            // all | keep | watch | risk
+  // v232 — 판정 기준을 '03 Trend-Matched 표시 44색' 으로 교체
+  //   유지 : 가장 가까운 트렌드 칩과 Lab ΔE ≤ 5
+  //   보완 : ΔE 5~10  → 칩 클릭 시 어긋난 요소(명도·채도·색상)와 방향을 팝업으로
+  //   위험 : ΔE > 10  → 탭에서는 빼고 '최종' 평가에서만 다룬다
+  var DCP_TAB = 'all';            // all | keep | watch | final
+  var DCP_KEEP_DE = 5, DCP_WATCH_DE = 10;
   var DCP_TABS = [
     ['all',   '전체',  'var(--text3)'],
     ['keep',  '유지',  '#5FA85F'],
     ['watch', '보완',  'var(--gold)'],
-    ['risk',  '위험',  'var(--warn)']
+    ['final', '최종',  '#A090F0']
   ];
+  var DCP_TIER_META = { keep: ['유지', '#5FA85F'], watch: ['보완', 'var(--gold)'], risk: ['위험', 'var(--warn)'] };
   var _dcpStatus = null, _dcpStatusKey = null;
+
+  function _dcpTrendChips(){
+    if(!_tmLastBuild){ try{ _tmBuild(); }catch(e){} }
+    var out = [];
+    if(_tmLastBuild && _tmLastBuild.buckets){
+      ['sub','key','basic'].forEach(function(k){
+        (_tmLastBuild.buckets[k] || []).forEach(function(it){ out.push({ item: it, group: k }); });
+      });
+    }
+    return out;
+  }
+  function _dcpPalUnique(){
+    var seen = {}, out = [];
+    _gapPaletteList().forEach(function(p){
+      var k = String(p.hex).toUpperCase();
+      if(seen[k]) return; seen[k] = 1; out.push(p);
+    });
+    return out;
+  }
 
   function _dcpStatusMap(){
     var key = (typeof _tmLastBuild !== 'undefined' ? _tmLastBuild : null);
-    if(_dcpStatus && _dcpStatusKey === key) return _dcpStatus;
-    var map = {}, r = null;
-    try { r = _rptBuild(); } catch(e){ r = null; }
-    if(r){
-      r.verified.forEach(function(x){
-        map[String(x.pal.hex).toUpperCase()] =
-          { tier: (x.tier === 'solid' ? 'keep' : 'watch'), de: x.de, freq: x.freq, mkHex: x.mkHex };
-      });
-      r.weak.forEach(function(x){
-        map[String(x.pal.hex).toUpperCase()] = { tier: 'risk', de: x.de, freq: 0, mkHex: x.mkHex };
+    if(_dcpStatus && _dcpStatusKey === key && _dcpStatus._pal === _dcpCustom) return _dcpStatus;
+    var chips = _dcpTrendChips(), map = {};
+    if(chips.length){
+      _dcpPalUnique().forEach(function(p){
+        var best = null, bd = 1e9;
+        chips.forEach(function(c){
+          var dd = _tmDeltaE(p.hex, c.item.trend.hex);
+          if(dd < bd){ bd = dd; best = c; }
+        });
+        map[String(p.hex).toUpperCase()] = {
+          tier: bd <= DCP_KEEP_DE ? 'keep' : (bd <= DCP_WATCH_DE ? 'watch' : 'risk'),
+          de: Math.round(bd * 10) / 10, name: p.name,
+          tHex: best.item.trend.hex, trend: best.item.trend, group: best.group, freq: best.item.mkFreq
+        };
       });
     }
+    Object.defineProperty(map, '_pal', { value: (typeof _dcpCustom !== 'undefined' ? _dcpCustom : null), enumerable: false });
     _dcpStatus = map; _dcpStatusKey = key;
     return map;
   }
@@ -23342,87 +23373,181 @@ document.addEventListener('DOMContentLoaded',function(){
   function _dcpTabBar(){
     var m = _dcpStatusMap(), cnt = { all: 0, keep: 0, watch: 0, risk: 0 };
     Object.keys(m).forEach(function(h){ cnt[m[h].tier]++; cnt.all++; });
+    cnt.final = cnt.risk ? ('· 위험 ' + cnt.risk) : '';
     return '<div style="display:flex;gap:6px;margin:0 0 14px;flex-wrap:wrap">'
       + DCP_TABS.map(function(t){
           var on = (DCP_TAB === t[0]);
+          var n = (t[0] === 'final') ? cnt.final : (cnt[t[0]] || 0);
           return '<button onclick="_dcpSetTab(\'' + t[0] + '\')" style="font-family:var(--mono);font-size:11px;'
             + 'padding:5px 13px;border-radius:4px;cursor:pointer;'
             + 'border:1px solid ' + (on ? t[2] : 'var(--border)') + ';'
             + 'background:' + (on ? 'rgba(160,120,64,0.14)' : 'transparent') + ';'
             + 'color:' + (on ? t[2] : 'var(--text3)') + ';font-weight:' + (on ? '700' : '400') + '">'
-            + t[1] + ' ' + (cnt[t[0]] || 0) + '</button>';
+            + t[1] + (n !== '' ? ' ' + n : '') + '</button>';
         }).join('')
       + '<span style="font-family:var(--mono);font-size:10px;color:var(--text4);align-self:center;margin-left:6px">'
-      +   '유지 = 마켓 ΔE 5 이내 · 보완 = 5~10 · 위험 = 10 초과</span>'
+      +   '03 Trend-Matched 표시 칩 기준 · 유지 = ΔE ' + DCP_KEEP_DE + ' 이내 · 보완 = ' + DCP_KEEP_DE + '~' + DCP_WATCH_DE + '</span>'
       + '</div>';
   }
-  // 칩 아래에 붙는 상태 띠 (앞장 세일즈 칩과 같은 형태)
-  // hex → Pantone 근사 코드 (원본 코드가 없는 마켓 컬러용)
   function _dcpPantoneOf(hex){
     var cc = (window.hexToColoro && window.hexToColoro(hex)) || null;
     if(cc && cc.pantone) return 'Pantone ≈ ' + _tmPantoneCode(cc.pantone) + ' TCX';
     if(cc && cc.coloro)  return 'COLORO ≈ ' + cc.coloro;
     return '';
   }
-  // 상태 띠 클릭 → 확정색과 마켓색을 코드까지 나란히
+
+  // ── 보완 사유: 트렌드 칩과 무엇이 얼마나 다른가 ─────────────
+  function _dcpHueWord(H){
+    H = (H + 360) % 360;
+    if(H < 25 || H >= 340) return '레드';
+    if(H < 70)  return '오렌지';
+    if(H < 100) return '옐로';
+    if(H < 165) return '그린';
+    if(H < 220) return '틸';
+    if(H < 290) return '블루';
+    return '퍼플·핑크';
+  }
+  function _dcpReason(palHex, tHex){
+    var p = _tmLCh(palHex), t = _tmLCh(tHex);
+    var dL = t.L - p.L, dC = t.C - p.C;
+    var dh = ((t.H - p.H + 540) % 360) - 180;
+    var dHue = (p.C < 5 || t.C < 5) ? 0 : 2 * Math.sqrt(p.C * t.C) * Math.sin(dh * Math.PI / 360);
+    var parts = [
+      { key: 'L', label: '명도', size: Math.abs(dL),
+        text: dL > 0 ? '트렌드 칩이 ' + dL.toFixed(0) + ' 더 밝음 → 한 톤 밝게' : '트렌드 칩이 ' + (-dL).toFixed(0) + ' 더 어두움 → 한 톤 어둡게' },
+      { key: 'C', label: '채도', size: Math.abs(dC),
+        text: dC > 0 ? '트렌드 칩이 C* ' + dC.toFixed(0) + ' 더 선명 → 채도 올리기' : '트렌드 칩이 C* ' + (-dC).toFixed(0) + ' 더 차분 → 채도 낮추기' },
+      { key: 'H', label: '색상', size: Math.abs(dHue),
+        text: '색상각 ' + Math.abs(dh).toFixed(0) + '° 차이 → ' + _dcpHueWord(p.H + (dh > 0 ? 25 : -25)) + ' 쪽으로' }
+    ];
+    parts.sort(function(a, b){ return b.size - a.size; });
+    return { parts: parts, p: p, t: t };
+  }
+
+  function _dcpPopPlace(evt, pop){
+    pop.style.display = 'block';
+    var r = evt.currentTarget.getBoundingClientRect();
+    var w = pop.offsetWidth || 280;
+    var top = r.bottom + 6, left = r.left;
+    if(left + w > window.innerWidth - 8) left = Math.max(8, window.innerWidth - w - 8);
+    if(top + pop.offsetHeight > window.innerHeight - 8) top = Math.max(8, r.top - pop.offsetHeight - 6);
+    pop.style.top = top + 'px'; pop.style.left = left + 'px';
+    document.getElementById('cc-move-ov').style.display = 'block';
+  }
+
   window._dcpOpenStatus = function(evt, hex){
     evt.stopPropagation();
     var st = _dcpStatusMap()[String(hex).toUpperCase()];
     if(!st) return;
-    var meta = DCP_TABS.filter(function(t){ return t[0] === st.tier; })[0];
-    var pal = _gapPaletteList().filter(function(p){ return String(p.hex).toUpperCase() === String(hex).toUpperCase(); })[0];
+    var meta = DCP_TIER_META[st.tier];
     var pop = _ccEnsurePop();
+    var src = (st.trend.sources && st.trend.sources.length) ? st.trend.sources.join('·') : '';
     var row = function(label, h, name, code){
       return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0">'
-        + '<span style="width:40px;height:40px;border-radius:5px;flex:0 0 auto;border:1px solid var(--border2);background:'
-        +   (h || 'transparent') + (h ? '' : ';background-image:repeating-linear-gradient(45deg,var(--border) 0 4px,transparent 4px 8px)') + '"></span>'
+        + '<span style="width:40px;height:40px;border-radius:5px;flex:0 0 auto;border:1px solid var(--border2);background:' + h + '"></span>'
         + '<div style="min-width:0">'
         +   '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);letter-spacing:0.06em">' + label + '</div>'
         +   (name ? '<div style="font-size:13px;font-weight:700;color:var(--text)">' + name + '</div>' : '')
-        +   '<div style="font-family:var(--mono);font-size:11px;color:var(--text2)">' + (h || '—') + '</div>'
+        +   '<div style="font-family:var(--mono);font-size:11px;color:var(--text2)">' + h + '</div>'
         +   (code ? '<div style="font-family:var(--mono);font-size:10px;color:var(--text3)">' + code + '</div>' : '')
         + '</div></div>';
     };
-    pop.innerHTML = ''
+    var reason = '';
+    if(st.tier !== 'keep'){
+      var rs = _dcpReason(hex, st.tHex);
+      var maxS = Math.max(1, rs.parts[0].size);
+      reason = '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">'
+        + '<div style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + meta[1] + ';margin-bottom:6px">보완 사유</div>'
+        + rs.parts.map(function(x, i){
+            var weak = x.size < 2;
+            return '<div style="margin-bottom:6px;' + (weak ? 'opacity:0.45' : '') + '">'
+              + '<div style="display:flex;align-items:center;gap:6px">'
+              +   '<span style="font-family:var(--mono);font-size:10px;color:var(--text2);flex:0 0 30px">' + x.label + '</span>'
+              +   '<span style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden">'
+              +     '<span style="display:block;height:6px;width:' + Math.round(x.size / maxS * 100) + '%;background:' + meta[1] + '"></span></span>'
+              +   (i === 0 ? '<span style="font-family:var(--mono);font-size:9px;color:' + meta[1] + '">주 원인</span>' : '')
+              + '</div>'
+              + (weak ? '' : '<div style="font-size:11.5px;color:var(--text2);margin:2px 0 0 36px;line-height:1.5">' + x.text + '</div>')
+              + '</div>';
+          }).join('')
+        + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);line-height:1.6">'
+        +   '확정색 L ' + rs.p.L.toFixed(0) + ' · C* ' + rs.p.C.toFixed(0) + ' · H ' + rs.p.H.toFixed(0) + '° → '
+        +   '트렌드 L ' + rs.t.L.toFixed(0) + ' · C* ' + rs.t.C.toFixed(0) + ' · H ' + rs.t.H.toFixed(0) + '°</div>'
+        + '</div>';
+    }
+    pop.innerHTML = '<div style="width:270px">'
       + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'
-      +   '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + meta[2]
-      +     ';border:1px solid ' + meta[2] + ';border-radius:3px;padding:2px 7px">' + meta[1] + '</span>'
+      +   '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + meta[1]
+      +     ';border:1px solid ' + meta[1] + ';border-radius:3px;padding:2px 7px">' + meta[0] + '</span>'
       +   '<span style="font-family:var(--mono);font-size:11px;color:var(--text3)">ΔE ' + st.de + '</span>'
       + '</div>'
-      + row('확정 팔레트', hex, pal ? pal.name : '', _rptPalMeta(hex) || _dcpPantoneOf(hex))
+      + row('확정 팔레트', hex, st.name || '', _rptPalMeta(hex) || _dcpPantoneOf(hex))
       + '<div style="height:1px;background:var(--border)"></div>'
-      + row('가장 가까운 마켓 컬러', st.mkHex, st.freq ? '빈도 ' + st.freq : '', st.mkHex ? _dcpPantoneOf(st.mkHex) : '')
-      + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-top:6px;line-height:1.6">'
-      +   '≈ 는 HEX 기반 근사 매핑입니다.</div>';
-    pop.style.display = 'block';
-    var r = evt.currentTarget.getBoundingClientRect();
-    var top = r.bottom + 6, left = r.left;
-    if(left + 250 > window.innerWidth - 8) left = window.innerWidth - 258;
-    if(top + pop.offsetHeight > window.innerHeight - 8) top = Math.max(8, r.top - pop.offsetHeight - 6);
-    pop.style.top = top + 'px'; pop.style.left = left + 'px';
-    document.getElementById('cc-move-ov').style.display = 'block';
+      + row('가장 가까운 Trend-Matched 칩 · ' + TM_GROUP_LABEL[st.group], st.tHex,
+            (src ? src + ' · ' : '') + '마켓 빈도 ' + st.freq, _rptTrendCode(st.trend))
+      + reason
+      + '</div>';
+    _dcpPopPlace(evt, pop);
   };
 
   function _dcpStatusStrip(hex){
-    if(DCP_TAB === 'all') return '';
+    if(DCP_TAB !== 'keep' && DCP_TAB !== 'watch') return '';
     var st = _dcpStatusMap()[String(hex).toUpperCase()];
     if(!st || st.tier !== DCP_TAB) return '';
-    var meta = DCP_TABS.filter(function(t){ return t[0] === st.tier; })[0];
+    var meta = DCP_TIER_META[st.tier];
     return '<div onclick="_dcpOpenStatus(event,\'' + hex + '\')" style="margin-top:4px;cursor:pointer;'
-      + 'border:1px solid ' + meta[2] + ';border-radius:4px;overflow:hidden"'
-      + ' title="클릭 — HEX·Pantone 확인 · ΔE ' + st.de + '">'
-      +   (st.mkHex
-            ? '<div style="height:22px;background:' + st.mkHex + '"></div>'
-            : '<div style="height:22px;background-image:repeating-linear-gradient(45deg,var(--border) 0 4px,transparent 4px 8px)"></div>')
-      +   '<div style="font-family:var(--mono);font-size:8.5px;text-align:center;padding:2px;color:' + meta[2] + '">'
-      +     meta[1] + ' ΔE' + st.de + '</div>'
+      + 'border:1px solid ' + meta[1] + ';border-radius:4px;overflow:hidden"'
+      + ' title="클릭 — ' + (st.tier === 'watch' ? '보완 사유 · ' : '') + 'HEX·Pantone 확인 · ΔE ' + st.de + '">'
+      +   '<div style="height:22px;background:' + st.tHex + '"></div>'
+      +   '<div style="font-family:var(--mono);font-size:8.5px;text-align:center;padding:2px;color:' + meta[1] + '">'
+      +     meta[0] + ' ΔE' + st.de + (st.tier === 'watch' ? ' ⓘ' : '') + '</div>'
       + '</div>';
   }
   function _dcpChipDim(hex){
-    if(DCP_TAB === 'all' || _dcpInMood) return '';
+    if((DCP_TAB !== 'keep' && DCP_TAB !== 'watch') || _dcpInMood) return '';
     var st = _dcpStatusMap()[String(hex).toUpperCase()];
     return (st && st.tier === DCP_TAB) ? '' : ';opacity:0.22';
   }
+
+  // ── 최종 탭 (1단계: 판정 요약 + 위험 색) ────────────────────
+  function _dcpFinalHtml(){
+    var m = _dcpStatusMap(), keys = Object.keys(m);
+    if(!keys.length) return '<div class="spp-empty">Trend-Matched 결과가 없습니다. 01·02 에서 데이터를 먼저 로드하세요.</div>';
+    var by = { keep: [], watch: [], risk: [] };
+    keys.forEach(function(h){ by[m[h].tier].push(h); });
+    var tot = keys.length;
+    var bar = '<div style="display:flex;height:28px;border-radius:6px;overflow:hidden;border:1px solid var(--border);margin:6px 0 4px">'
+      + ['keep','watch','risk'].map(function(k){
+          if(!by[k].length) return '';
+          return '<div title="' + DCP_TIER_META[k][0] + ' ' + by[k].length + '색" style="flex:' + by[k].length
+            + ';background:' + DCP_TIER_META[k][1] + ';display:flex;align-items:center;justify-content:center;'
+            + 'font-family:var(--mono);font-size:11px;font-weight:700;color:#fff">'
+            + DCP_TIER_META[k][0] + ' ' + Math.round(by[k].length / tot * 100) + '%</div>';
+        }).join('')
+      + '</div>';
+    var riskChips = by.risk.map(function(h){
+      var st = m[h];
+      return '<div style="display:flex;flex-direction:column;align-items:center;width:78px;cursor:pointer"'
+        + ' onclick="_dcpOpenStatus(event,\'' + h + '\')" title="클릭 — 가장 가까운 트렌드 칩과 차이">'
+        + '<div style="font-size:10px;font-weight:700;color:var(--text2);height:14px;overflow:hidden;white-space:nowrap;max-width:78px">' + (st.name || '') + '</div>'
+        + '<div style="width:70px;height:44px;border-radius:5px 5px 0 0;background:' + h + ';border:1px solid var(--border)"></div>'
+        + '<div style="width:70px;height:14px;border-radius:0 0 5px 5px;background:' + st.tHex + ';border:1px solid var(--border);border-top:0"></div>'
+        + '<div style="font-family:var(--mono);font-size:9px;color:var(--warn);margin-top:2px">ΔE ' + st.de + '</div>'
+        + '</div>';
+    }).join('');
+    return '<div style="margin-bottom:22px">'
+      + '<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--text2);letter-spacing:0.08em">판정 요약 · 확정 ' + tot + '색</div>'
+      + bar
+      + '<div style="font-family:var(--mono);font-size:10px;color:var(--text4)">'
+      +   '유지 ' + by.keep.length + ' · 보완 ' + by.watch.length + ' · 위험 ' + by.risk.length + ' (Trend-Matched 칩과 ΔE ' + DCP_WATCH_DE + ' 초과)</div>'
+      + (by.risk.length
+          ? '<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--warn);margin:18px 0 8px;letter-spacing:0.08em">위험 ' + by.risk.length + '색 — 트렌드 근거 없음</div>'
+            + '<div style="display:flex;flex-wrap:wrap;gap:10px">' + riskChips + '</div>'
+            + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-top:6px">위 = 확정색 · 아래 띠 = 가장 가까운 Trend-Matched 칩</div>'
+          : '')
+      + '</div>';
+  }
+  window._dcpFinalHtml = _dcpFinalHtml;
 
   // ── 계열 분포를 한 줄 컬러바로 ───────────────────────────────
   //  색 47개를 CORE → SEASONAL → ACCENT 순으로 이어 붙여, 구성이 한눈에 보이게.
