@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v243 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_STD_v244 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20774,7 +20774,9 @@ document.addEventListener('DOMContentLoaded',function(){
     var coolH = (a.H >= TM_COOL_H[0] && a.H <= TM_COOL_H[1]);
     // 어두운 저채도라도 색상이 뉴트럴대일 때만 BASIC.
     // 색상 조건이 없으면 다크 포레스트·딥 틸·다크 플럼까지 전부 빨아들인다.
-    if(a.L < TM_DARK_L && a.C < TM_DARK_C && (warmH || coolH)) return 'basic';
+    // v244 — 어두운 저채도(L*<30 · C*<20)는 색상각과 무관하게 CORE
+    //  (#532E35 딥 와인브라운, #273635 다크 그린그레이 등 — 화면에서 다크 앵커로 읽힘)
+    if(a.L < TM_DARK_L && a.C < TM_DARK_C) return 'basic';
     var cool = coolH && a.L < TM_COOL_MAX_L;
     if(a.C < TM_NEUTRAL_C && (warmH || cool)) return 'basic';              // 뉴트럴로 읽히는 색상대
     // v242 — 브라운 계열 기본색: 초콜릿·카키·탠 등. C*30 이상(카멜·러스트)은 시즌/포인트로 둔다
