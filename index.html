@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v246 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_STD_v247 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20524,7 +20524,7 @@ document.addEventListener('DOMContentLoaded',function(){
   var TM_TOTAL  = 46;                                      // 표시 총량 — 마켓 등급 비율대로 나눈다
   function _tmMarketCaps(market){
     var w = { sub: 0, key: 0, basic: 0 };
-    market.forEach(function(m){ w[_tmClassify(m.hex)] += (m.freq || 1); });
+    market.forEach(function(m){ w[_tmGroupOf(m.hex)] += (m.freq || 1); });
     var ks = ['basic','sub','key'];
     var n = _fnAlloc(TM_TOTAL, ks.map(function(k){ return w[k]; }));
     var out = {};
@@ -20765,6 +20765,11 @@ document.addEventListener('DOMContentLoaded',function(){
     return { L: l[0], C: C, H: H };
   }
   function _tmChroma(hex){ return _tmLCh(hex).C / 100; }   // 기존 호출부 호환용
+  // v247 — 03 Trend-Matched 칩 행·칩 수 배분은 디커 기준(조정판)으로 나눈다
+  //  (위 MARKET COLORS 바와 같은 기준). _tmClassify(우리 기준)는 그대로 둔다.
+  function _tmGroupOf(hex){
+    return ({ Core: 'basic', Seasonal: 'sub', Accent: 'key' })[_stdTier(hex)];
+  }
   function _tmClassify(hex){
     var a = _tmLCh(hex);
     if(a.C < TM_BASIC_C) return 'basic';                                   // 순수 무채
@@ -20836,7 +20841,7 @@ document.addEventListener('DOMContentLoaded',function(){
       // 분류는 '화면에 나가는 색' 기준이어야 한다.
       // 마켓 컬러로 분류하면 ΔRGB 30 차이만큼 엇갈려서,
       // 페일 뉴트럴이 SUB 로 올라가는 문제가 생긴다.
-      buckets[_tmClassify(best.hex)].push(item);
+      buckets[_tmGroupOf(best.hex)].push(item);
     });
 
     var rawAll = {};
@@ -21400,7 +21405,7 @@ document.addEventListener('DOMContentLoaded',function(){
       +   '마켓 ' + t.scanned + '색 · 트렌드 풀 ' + t.trendPool + '색 · 매칭 임계 ΔRGB ≤ ' + TM_DIST
       +   ' · 채택 ' + matchedTotal + '색 (마켓 비율 × ' + TM_TOTAL + ' → ' + TM_GROUP_LABEL.basic + ' ' + TM_CAPS.basic
       +   ' / ' + TM_GROUP_LABEL.sub + ' ' + TM_CAPS.sub + ' / ' + TM_GROUP_LABEL.key + ' ' + TM_CAPS.key + ') · 계열 다양성 + 유사색 배제 · BASIC 아이보리 ' + TM_BASIC_IVORY_N + '개/브라운≥' + TM_BASIC_BROWN_MIN
-      +   ' · 분류 Lab 기준 BASIC C*<' + TM_BASIC_C + ' (뉴트럴 색상대 C*<' + TM_NEUTRAL_C + ', 쿨은 L<' + TM_COOL_MAX_L + ') / KEY C*≥' + TM_KEY_C + ' · 마켓 근접색 병합 Lab ΔE < ' + TM_CLUSTER_DE + ' · 브랜드 집계 Lab ΔE < ' + TM_NEAR_BRAND_DE
+      +   ' · 분류 디커 기준 (Accent C*≥' + STD_CUT.accent_chroma + ' · 무채·네이비 Core · 베이지·브라운 C*<' + STD_CUT.core_warm_chroma + ' Core)' + ' · 마켓 근접색 병합 Lab ΔE < ' + TM_CLUSTER_DE + ' · 브랜드 집계 Lab ΔE < ' + TM_NEAR_BRAND_DE
       + '</div>'
       + _fnMarketTierBar()
       + _ovTabs()
@@ -24197,7 +24202,7 @@ document.addEventListener('DOMContentLoaded',function(){
       +     ['Core','Seasonal','Accent'].map(function(t){
               var k = { Core: 'basic', Seasonal: 'sub', Accent: 'key' }[t];
               return '<span><span style="display:inline-block;width:9px;height:9px;border:2px solid ' + FN_SOLID[t] + ';margin-right:4px;vertical-align:-1px"></span>'
-                + t + ' <b style="color:var(--text)">' + pct[t] + '%</b>' + (FN_CRIT === 'ours' ? ' → ' + TM_CAPS[k] + '칩' : '') + '</span>';
+                + t + ' <b style="color:var(--text)">' + pct[t] + '%</b>' + ' → ' + TM_CAPS[k] + '칩' + '</span>';
             }).join('')
       +   '</span>'
       + '</div>'
