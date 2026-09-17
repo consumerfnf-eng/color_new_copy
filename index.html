@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v244 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_STD_v246 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -24079,7 +24079,6 @@ document.addEventListener('DOMContentLoaded',function(){
       + '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
       +   '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text2);letter-spacing:0.06em">LIFESTYLE COLOR MIX · CORE / SEASONAL / ACCENT</span>'
       +   '<span style="display:flex;gap:4px">' + tab('basic', '기본') + tab('detail', '컬러 구성 상세') + '</span>'
-      +   _fnCritTabs()
       +   '<span style="margin-left:auto;display:flex;gap:12px;font-family:var(--mono);font-size:9px;color:var(--text3)">'
       +     ['Core','Seasonal','Accent'].map(function(t){ return '<span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + FN_SOLID[t] + ';margin-right:4px"></span>' + t + '</span>'; }).join('')
       +   '</span>'
@@ -24090,9 +24089,8 @@ document.addEventListener('DOMContentLoaded',function(){
                         + (c.pct ? ' · ' + pctTxt(c.pct) : ''),
                       c.pct ? _fnBigBar(c, false) : '<div class="spp-empty">데이터 없음</div>');
         }).join('')
-      + card('DISCOVERY TARGET', '참고 브랜드 평균 · 레인지플랜 산출 · ' + pctTxt(FN_RP.target), _fnBigBar(null, true))
       + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:8px">'
-      +   _fnCritLabel() + ' · 해당 라이프스타일 브랜드의 마켓 컬러를 빈도 가중 · DISCOVERY TARGET 은 디스커버리팀 산출값(디커 기준) · 컬러 구성 상세 = 비슷한 색(ΔE < ' + FN_CLUSTER_DE + ') 묶음, 어두운 색부터</div>'
+      +   _fnCritLabel() + ' · 해당 라이프스타일 브랜드의 마켓 컬러를 빈도 가중 · 컬러 구성 상세 = 비슷한 색(ΔE < ' + FN_CLUSTER_DE + ') 묶음, 어두운 색부터</div>'
       + '</div>';
   }
   window._discCatPanel = _fnCatPanel;
@@ -24123,7 +24121,7 @@ document.addEventListener('DOMContentLoaded',function(){
   }
   var _fnBarIdx = {};
   // v243 — 두 패널 공통 분류 기준 (비교용 토글)
-  var FN_CRIT = 'disc';     // 'disc' | 'ours'
+  var FN_CRIT = 'disc';     // v246: 디커 기준(조정판) 하나로 고정
   window._fnSetCrit = function(c){
     FN_CRIT = c;
     try{ _tmRender(); }catch(e){}
@@ -24194,7 +24192,6 @@ document.addEventListener('DOMContentLoaded',function(){
       +   '<div style="width:3px;height:16px;background:' + ac + ';border-radius:2px"></div>'
       +   '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + ac + ';letter-spacing:0.06em;text-transform:uppercase">MARKET COLORS · CORE / SEASONAL / ACCENT</span>'
       +   '<span style="font-family:var(--mono);font-size:9px;color:var(--text3)">마켓 전체 ' + mk.length + '색 · 빈도 ' + tot.toLocaleString() + ' · ' + _fnCritLabel() + '</span>'
-      +   _fnCritTabs()
       +   '<span style="font-family:var(--mono);font-size:8px;color:var(--text4)">Click swatch for brands</span>'
       +   '<span style="margin-left:auto;display:flex;gap:12px;font-family:var(--mono);font-size:9px;color:var(--text2)">'
       +     ['Core','Seasonal','Accent'].map(function(t){
@@ -24770,7 +24767,8 @@ document.addEventListener('DOMContentLoaded',function(){
   //  하단에는 표준 75칩(보유)과 실제 사용 30칩(SKU>0)을 비교한다.
   // ══════════════════════════════════════════════════════════════
   var STD_SECT_ID = 'disc-std-page';
-  var STD_CUT = { accent_chroma: 50.0, achro_gate: 10.0, core_warm_chroma: 35.0, core_warm_light: 82.0 };
+  var STD_CUT = { accent_chroma: 50.0, achro_gate: 10.0, core_warm_chroma: 22.5, core_warm_light: 82.0,   // v246: 35 → 22.5
+                  olive_h: 85, olive_l: 50 };
   var STD_TIERS = [
     ['Seasonal', 'var(--blue)'],
     ['Accent',   '#A090F0'],
@@ -24799,8 +24797,11 @@ document.addEventListener('DOMContentLoaded',function(){
     if(a.C >= STD_CUT.accent_chroma) return 'Accent';           // ① (형광 안료는 우리 데이터에 없음)
     var h = _stdHue(hex);
     if(h === '무채' || h === '네이비') return 'Core';            // ②
+    // ③ v246 조정 — 채도 상한 35 → 22.5, 밝은 올리브베이지(H>85 & L≥50)는 제외
+    //   (로즈브라운·카멜·올리브골드·올리브베이지는 Seasonal)
     if((h === '베이지' || h === '브라운')
-       && a.C < STD_CUT.core_warm_chroma && a.L < STD_CUT.core_warm_light) return 'Core';   // ③
+       && a.C < STD_CUT.core_warm_chroma && a.L < STD_CUT.core_warm_light
+       && !(a.H > STD_CUT.olive_h && a.L >= STD_CUT.olive_l)) return 'Core';   // ③
     return 'Seasonal';                                          // ④
   }
 
