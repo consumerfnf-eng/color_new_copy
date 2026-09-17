@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v259 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_STD_v260 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -23993,7 +23993,7 @@ document.addEventListener('DOMContentLoaded',function(){
     };
     var html = '<div style="margin:0 0 26px">'
       + '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
-      +   '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text2);letter-spacing:0.06em">COLOR MIX · 자사 현재 vs 마켓 vs 25FW 판매</span>'
+      +   '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text2);letter-spacing:0.06em">COLOR MIX · 자사 현재 vs 마켓 vs 27FW 확정</span>'
       +   '<span style="display:flex;gap:4px">' + tab('basic', '기본') + tab('detail', '컬러 구성 상세') + '</span>'
       +   '<span style="margin-left:auto;display:flex;gap:12px;font-family:var(--mono);font-size:9px;color:var(--text3)">'
       +     ['Core','Seasonal','Accent'].map(function(t){ return '<span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + FN_SOLID[t] + ';margin-right:4px"></span>' + t + '</span>'; }).join('')
@@ -24002,7 +24002,12 @@ document.addEventListener('DOMContentLoaded',function(){
     html += _cmpCard('TOTAL', '디커 기준 · 폭 = 비중',
         _cmpRow('SKU', '자사 27FW · 현재', '표준칩 SKU ' + cur.tot.toLocaleString() + ' · 품번×컬러 · 파일 등급', cur)
       + _cmpRow('MKT', '전체 마켓', mkt.n + '색 · 빈도 ' + mkt.tot.toLocaleString(), mkt)
-      + _cmpRow('25FW', '디커 25FW 판매', _cmpSales().length + '색 · 스타일 수 ' + sales.tot.toLocaleString(), sales));
+      + (function(){
+          // v260 — 25FW 판매 대신 27FW 확정 팔레트 (색 수 기준, 중복 hex 1회)
+          var pal = _dcpPalUnique();
+          var pd = _cmpFrom(pal, function(p){ return p.hex; });
+          return _cmpRow('27FW', '27FW 확정 팔레트', (_dcpCustomView() ? '업로드 팔레트' : '사내 확정') + ' · ' + pd.n + '색', pd);
+        })());
     // v250 — 라이프스타일은 카드 하나에 3줄 (해당 브랜드 마켓 컬러 비중)
     var cats = _fnCatRatios('disc');
     html += _cmpCard('LIFESTYLE', '디커 기준 · 라이프스타일 브랜드 마켓 컬러 비중',
@@ -24011,7 +24016,7 @@ document.addEventListener('DOMContentLoaded',function(){
         return _cmpRow(c.emoji || '', c.name, c.sub + ' · ' + c.colors + '색 · 빈도 ' + (c.freq || 0).toLocaleString(), md);
       }).join(''));
     html += '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:8px;line-height:1.6">'
-      + '자사 현재 = 표준 75칩 파일의 SKU·등급(디스커버리 레인지플랜 714 SKU 와 집계 시점 차이 있음) · 마켓 = 01 GL·KR 빈도 · 25FW = 판매 데이터 스타일 수</div>';
+      + '자사 현재 = 표준 75칩 파일의 SKU·등급(디스커버리 레인지플랜 714 SKU 와 집계 시점 차이 있음) · 마켓 = 01 GL·KR 빈도 · 27FW = 확정 팔레트 색 수(CORE + 무드 3종, 중복 1회)</div>';
     return html + '</div>';
   }
   window._discComparePanel = _cmpPanel;
