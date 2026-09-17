@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v256 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_STD_v258 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -24104,7 +24104,7 @@ document.addEventListener('DOMContentLoaded',function(){
         }).join('')
       + '</div>';
   }
-  var RV_OPEN = { A: false, B: false };
+  var RV_OPEN = { A: false, B: false, C: false };
   window._rvToggle = function(k){ RV_OPEN[k] = !RV_OPEN[k]; _dcpRender(); try{ _discOrderSections(); }catch(e){} };
   function _rvFold(k, line){
     return '<div style="margin-top:8px">'
@@ -24146,17 +24146,16 @@ document.addEventListener('DOMContentLoaded',function(){
     }
     var sd = _cmpFrom(_cmpSales(), function(c){ return c.hex; }, function(c){ return c.style_cnt; });
     var top = _cmpSales().slice().sort(function(a, b){ return b.sell_rate - a.sell_rate; });
-    html += _rvCard('C. 디커 25FW 판매 컬러',
+    var salesAll = _cmpSales().slice().sort(function(a, b){ return b.style_cnt - a.style_cnt; });
+    html += _rvCard('C. 디커 25FW 판매 컬러 ' + salesAll.length + '색',
         _cmpBar(sd)
-      + '<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:8px">'
-      + top.map(function(c){
-          return '<div style="text-align:center;width:40px" title="' + c.code + ' · 판매율 ' + c.sell_rate + '% · 매출 ' + c.rev_share + '% · 스타일 ' + c.style_cnt + '">'
-            + _rvMini(c.hex, '', ';width:36px;height:26px')
-            + '<div style="font-family:var(--mono);font-size:8px;color:var(--text3)">' + c.code + '</div>'
-            + '<div style="font-family:var(--mono);font-size:8px;color:' + (c.sell_rate >= FIN_SALES_RATE ? '#5FA85F' : 'var(--text4)') + '">' + c.sell_rate + '%</div></div>';
-        }).join('')
-      + '</div>'
-      + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:4px">막대 = 스타일 수 비중(디커 기준) · 칩 = 판매율 순 · 초록 = 판매율 ' + FIN_SALES_RATE + '% 이상</div>');
+      + _rvFold('C', _rvLine([['Core', 'CORE', 'var(--gold)'], ['Seasonal', 'SEASONAL', 'var(--blue)'], ['Accent', 'ACCENT', '#A090F0']].map(function(g){
+          return { label: g[1], color: g[2], items: salesAll.filter(function(c){ return _stdTier(c.hex) === g[0]; }).map(function(c){
+            return { hex: c.hex, l1: c.code, l2: c.sell_rate + '%',
+                     tip: c.code + ' ' + c.hex + ' · 판매율 ' + c.sell_rate + '% · 매출 ' + c.rev_share + '% · 스타일 ' + c.style_cnt };
+          }) };
+        })))
+      + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:4px">막대 = 스타일 수 비중(디커 기준) · 칩 = 스타일 수 순 · 칩 아래 = 컬러 코드 · 판매율</div>');
     return html;
   }
 
@@ -24200,15 +24199,15 @@ document.addEventListener('DOMContentLoaded',function(){
     var i = _finIdx.length; _finIdx.push(f);
     var k = FIN_KIND[f.kind];
     var border = f.kind === 'watch' ? '3px solid var(--gold)' : (f.kind === 'add' ? '2px dashed var(--warn)' : (f.kind === 'sales' ? '3px solid #3E8ED0' : '1px solid var(--border)'));
-    return '<div onclick="_finOpen(event,' + i + ')" style="width:92px;cursor:pointer;text-align:center' + (f.kind === 'out' ? ';opacity:0.45' : '') + '" title="클릭 — 선정 사유">'
-      + '<div style="position:relative;height:78px;border-radius:8px;background:' + f.hex + ';border:' + border + ';box-sizing:border-box">'
-      +   (f.kind === 'watch' ? '<span style="position:absolute;left:5px;bottom:5px;width:22px;height:22px;border-radius:4px;border:2px solid #fff;background:' + f.orig + '" title="원래 확정색"></span>' : '')
-      +   (f.kind === 'add' ? '<span style="position:absolute;right:7px;top:2px;font-family:var(--mono);font-size:22px;font-weight:800;color:' + _dcpTextOn(f.hex.slice(1)) + '">+</span>' : '')
-      +   (f.sn && f.kind !== 'out' ? '<span style="position:absolute;right:5px;bottom:5px;font-family:var(--mono);font-size:10px;font-weight:800;padding:1px 5px;border-radius:3px;background:#3E8ED0;color:#fff">S</span>' : '')
+    return '<div onclick="_finOpen(event,' + i + ')" style="width:72px;cursor:pointer;text-align:center' + (f.kind === 'out' ? ';opacity:0.45' : '') + '" title="클릭 — 선정 사유">'
+      + '<div style="position:relative;height:58px;border-radius:7px;background:' + f.hex + ';border:' + border + ';box-sizing:border-box">'
+      +   (f.kind === 'watch' ? '<span style="position:absolute;left:4px;bottom:4px;width:16px;height:16px;border-radius:3px;border:1.5px solid #fff;background:' + f.orig + '" title="원래 확정색"></span>' : '')
+      +   (f.kind === 'add' ? '<span style="position:absolute;right:5px;top:1px;font-family:var(--mono);font-size:17px;font-weight:800;color:' + _dcpTextOn(f.hex.slice(1)) + '">+</span>' : '')
+      +   (f.sn && f.kind !== 'out' ? '<span style="position:absolute;right:4px;bottom:4px;font-family:var(--mono);font-size:8px;font-weight:800;padding:0 4px;border-radius:2px;background:#3E8ED0;color:#fff">S</span>' : '')
       + '</div>'
-      + '<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;margin-top:3px">' + (f.name || '') + '</div>'
-      + '<div style="font-family:var(--mono);font-size:10px;color:var(--text3)">' + f.hex + '</div>'
-      + '<div style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + k[1] + '">' + k[0] + '</div>'
+      + '<div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;margin-top:2px">' + (f.name || '') + '</div>'
+      + '<div style="font-family:var(--mono);font-size:8.5px;color:var(--text3)">' + f.hex + '</div>'
+      + '<div style="font-family:var(--mono);font-size:8.5px;font-weight:700;color:' + k[1] + '">' + k[0] + '</div>'
       + '</div>';
   }
   function _finHtml(){
@@ -24222,7 +24221,7 @@ document.addEventListener('DOMContentLoaded',function(){
         if(!l.length) return '';
         return '<div style="margin-bottom:16px"><div style="font-family:var(--mono);font-size:13px;font-weight:800;color:' + t[1] + ';margin-bottom:6px;letter-spacing:0.06em">'
           + t[0].toUpperCase() + ' <span style="color:var(--text4);font-weight:400">' + l.length + '</span></div>'
-          + '<div style="display:flex;gap:10px;flex-wrap:wrap">' + l.map(_finChip).join('') + '</div></div>';
+          + '<div style="display:flex;gap:7px;flex-wrap:wrap">' + l.map(_finChip).join('') + '</div></div>';
       }).join('');
     };
     var n = function(k){ return r.main.filter(function(f){ return f.kind === k; }).length; };
