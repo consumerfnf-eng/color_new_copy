@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v248 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
+<!-- BUILD_VERSION: DISC_STD_v249 (2026-09-17) — DISCOVERY 27FW 한정 탭 순서/Trend 레이아웃 + Trend-Matched Proposal -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21913,8 +21913,8 @@ document.addEventListener('DOMContentLoaded',function(){
             : (DCP_CORE_1.filter(function(x){ return !x.gap; }).length
              + DCP_CORE_2.filter(function(x){ return !x.gap; }).length
              + DCP_MOODS.reduce(function(n,m){ return n + m.rows.reduce(function(k,r){ return k + r.length; }, 0); }, 0));
-    sect.innerHTML =
-        '<div class="spp-trend-market-hd" style="margin-bottom:0">'
+    sect.innerHTML = _cmpPanel()
+      + '<div class="spp-trend-market-hd" style="margin-bottom:0">'
       +   '<span class="spp-trend-market-flame" style="color:var(--gold)">▣ 27FW PALETTE</span>'
       +   '<span class="spp-trend-market-title">' + (cv0 ? '업로드 팔레트' : 'DISCOVERY 27FW Color Palette') + '</span>'
       +   '<span class="spp-trend-market-sub">' + (cv0 ? cv0.fileName : '사내 확정 팔레트 · CORE + 무드 3종')
@@ -23747,7 +23747,7 @@ document.addEventListener('DOMContentLoaded',function(){
     var by = { keep: [], watch: [], risk: [] };
     keys.forEach(function(h){ by[m[h].tier].push(h); });
     var add = _dcpAddList();
-    var html = '';
+    var html = _rvTopChips();
 
     // 0) KPI
     html += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">'
@@ -23910,9 +23910,305 @@ document.addEventListener('DOMContentLoaded',function(){
           }).join('')
         + '</div>');
     }
+    html += _finHtml();
     return html;
   }
   window._discReviewHtml = _rvHtml;
+
+
+  // ══════════════════════════════════════════════════════════════
+  //  v249 — 04 상단 비교 컬러바 · REVIEW 칩 나열 · 최종 컬러칩(세일즈 반영)
+  // ══════════════════════════════════════════════════════════════
+  var CMP_VIEW = 'detail';
+  window._cmpSetView = function(v){ CMP_VIEW = v; _dcpRender(); try{ _discOrderSections(); }catch(e){} };
+
+  // tierHex = { Core:{hex:w}, Seasonal:{…}, Accent:{…} }
+  function _cmpFrom(list, hexOf, wOf, tierOf){
+    var th = { Core: {}, Seasonal: {}, Accent: {} }, w = { Core: 0, Seasonal: 0, Accent: 0 }, tot = 0, n = 0;
+    list.forEach(function(x){
+      var h = String(hexOf(x) || '').toUpperCase();
+      if(!/^#[0-9A-F]{6}$/.test(h)) return;
+      var t = tierOf ? tierOf(x, h) : _stdTier(h), f = wOf ? (wOf(x) || 0) : 1;
+      if(f <= 0) return;
+      th[t][h] = (th[t][h] || 0) + f; w[t] += f; tot += f; n++;
+    });
+    var pct = {};
+    Object.keys(w).forEach(function(t){ pct[t] = tot ? Math.round(w[t] / tot * 1000) / 10 : 0; });
+    return { tierHex: th, pct: pct, tot: tot, n: n };
+  }
+  function _cmpBar(d, h){
+    var detail = CMP_VIEW === 'detail';
+    return '<div style="display:flex;gap:2px;height:' + (h || 36) + 'px;border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);background:var(--bg2)">'
+      + ['Core','Seasonal','Accent'].map(function(t){
+          var v = d.pct[t];
+          if(!v) return '';
+          var inner = detail
+            ? _fnCluster(d.tierHex[t]).map(function(x){
+                return '<div title="' + t + ' · ' + x.hex + ' · ' + x.f + '" style="flex:' + x.f + ';min-width:1px;height:100%;background:' + x.hex + '"></div>';
+              }).join('')
+            : '<div style="flex:1;height:100%;background:' + FN_SOLID[t] + '"></div>';
+          var lbl = v >= 2.5
+            ? '<span style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;font-family:var(--mono);'
+              + 'font-size:10px;font-weight:800;color:#fff;white-space:nowrap;'
+              + (detail ? 'padding:2px 7px;border-radius:10px;background:rgba(20,20,20,0.38);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);' : '')
+              + '">' + v + '%</span>' : '';
+          return '<div title="' + t + ' ' + v + '%" style="position:relative;flex:' + v + ';display:flex;height:100%">' + inner + lbl + '</div>';
+        }).join('')
+      + '</div>';
+  }
+  function _cmpRow(tag, label, sub, d){
+    return '<div style="display:grid;grid-template-columns:200px 1fr;gap:12px;align-items:center;margin-bottom:8px">'
+      + '<div style="text-align:right">'
+      +   '<div style="font-size:12px;font-weight:700;color:var(--text)">'
+      +     (tag ? '<span style="font-family:var(--mono);font-size:8px;border:1px solid var(--text3);border-radius:2px;padding:0 4px;margin-right:5px;vertical-align:1px">' + tag + '</span>' : '')
+      +     label + '</div>'
+      +   '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);line-height:1.4">' + sub
+      +     (d && d.tot ? ' · ' + ['Core','Seasonal','Accent'].map(function(t){ return t.charAt(0) + ' ' + d.pct[t] + '%'; }).join(' ') : '') + '</div>'
+      + '</div>'
+      + (d && d.tot ? _cmpBar(d) : '<div class="spp-empty" style="font-size:10px">데이터 없음</div>')
+      + '</div>';
+  }
+  function _cmpCard(title, sub, rows){
+    return '<div style="margin-top:12px;padding:16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px">'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">'
+      +   '<div style="width:3px;height:16px;background:var(--gold);border-radius:2px"></div>'
+      +   '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--gold);letter-spacing:0.06em;text-transform:uppercase">' + title + '</span>'
+      +   '<span style="font-family:var(--mono);font-size:9px;color:var(--text3)">' + sub + '</span>'
+      + '</div>' + rows + '</div>';
+  }
+  function _cmpSales(){
+    var d = window.DISC_SALES_DATA || {}, out = [];
+    ['key','sub','basic'].forEach(function(g){ (d[g] || []).forEach(function(c){ if(c && c.hex) out.push(c); }); });
+    return out;
+  }
+  function _cmpPanel(){
+    var lib = (typeof DISC_STD75 !== 'undefined') ? DISC_STD75 : [];
+    var cur = _cmpFrom(lib, function(c){ return c.hex; }, function(c){ return c.sku; }, function(c){ return c.tier; });
+    var mk = []; try{ mk = _tmMarketPool(); }catch(e){}
+    var mkt = _cmpFrom(mk, function(x){ return x.hex; }, function(x){ return x.freq || 1; });
+    var sales = _cmpFrom(_cmpSales(), function(c){ return c.hex; }, function(c){ return c.style_cnt; });
+    var tab = function(k, l){
+      var on = CMP_VIEW === k;
+      return '<button onclick="_cmpSetView(\'' + k + '\')" style="font-family:var(--mono);font-size:10px;padding:4px 11px;border-radius:4px;cursor:pointer;'
+        + 'border:1px solid ' + (on ? 'var(--gold)' : 'var(--border)') + ';background:' + (on ? 'rgba(160,120,64,0.16)' : 'transparent') + ';'
+        + 'color:' + (on ? 'var(--gold)' : 'var(--text3)') + ';font-weight:' + (on ? 700 : 400) + '">' + l + '</button>';
+    };
+    var html = '<div style="margin:0 0 26px">'
+      + '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+      +   '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text2);letter-spacing:0.06em">COLOR MIX · 자사 현재 vs 마켓 vs 25FW 판매</span>'
+      +   '<span style="display:flex;gap:4px">' + tab('basic', '기본') + tab('detail', '컬러 구성 상세') + '</span>'
+      +   '<span style="margin-left:auto;display:flex;gap:12px;font-family:var(--mono);font-size:9px;color:var(--text3)">'
+      +     ['Core','Seasonal','Accent'].map(function(t){ return '<span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + FN_SOLID[t] + ';margin-right:4px"></span>' + t + '</span>'; }).join('')
+      +   '</span>'
+      + '</div>';
+    html += _cmpCard('TOTAL', '디커 기준 · 폭 = 비중',
+        _cmpRow('SKU', '자사 27FW · 현재', '표준칩 SKU ' + cur.tot.toLocaleString() + ' · 품번×컬러 · 파일 등급', cur)
+      + _cmpRow('MKT', '전체 마켓', mkt.n + '색 · 빈도 ' + mkt.tot.toLocaleString(), mkt)
+      + _cmpRow('25FW', '디커 25FW 판매', _cmpSales().length + '색 · 스타일 수 ' + sales.tot.toLocaleString(), sales));
+    // 라이프스타일 — 마켓은 브랜드 구분, 자사는 27FW 확정 팔레트 무드(색 수 기준)
+    var cats = _fnCatRatios('disc');
+    var moodKey = { commute: 'CASUAL COMMUTE', wellness: 'ACTIVE WELLNESS', resort: 'OUTDOOR RESORT' };
+    var moods = (_dcpCustomView() ? _dcpCustomView().moods : DCP_MOODS);
+    cats.forEach(function(c){
+      var mood = moods.filter(function(m){ return String(m.title).toUpperCase() === moodKey[c.key]; })[0];
+      var mh = [];
+      if(mood) mood.rows.forEach(function(r){ r.forEach(function(it){ if(it && it.hex && !it.gap) mh.push('#' + String(it.hex).replace(/^#/, '')); }); });
+      var pd = _cmpFrom(mh, function(h){ return h; });
+      var md = { tierHex: c.tierHex || { Core: {}, Seasonal: {}, Accent: {} }, pct: c.pct || {}, tot: c.freq || 0 };
+      html += _cmpCard((c.emoji ? c.emoji + ' ' : '') + c.name, c.sub + ' · ' + c.brands.slice(0, 4).join(' · ') + (c.brands.length > 4 ? ' 외' : ''),
+          _cmpRow('27FW', '자사 확정 팔레트', (mood ? mood.title : '무드 없음') + ' · ' + pd.n + '색', pd)
+        + _cmpRow('MKT', '라이프스타일 마켓', c.colors + '색 · 빈도 ' + (c.freq || 0).toLocaleString(), md)
+        + _cmpRow('25FW', '디커 25FW 판매', '라이프스타일 구분 없음 · 전체 기준', sales));
+    });
+    html += '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:8px;line-height:1.6">'
+      + '자사 현재 = 표준 75칩 파일의 SKU·등급(디스커버리 레인지플랜 714 SKU 와 집계 시점 차이 있음) · 마켓 = 01 GL·KR 빈도 · 25FW = 판매 데이터 스타일 수 · '
+      + '라이프스타일 행의 자사는 27FW 확정 팔레트 무드별 색 수</div>';
+    return html + '</div>';
+  }
+  window._discComparePanel = _cmpPanel;
+
+  // ── REVIEW 상단 칩 나열 ─────────────────────────────────────
+  function _rvMini(hex, tip, extra){
+    return '<span title="' + (tip || hex) + '" style="display:inline-block;width:30px;height:30px;border-radius:4px;background:' + hex + ';border:1px solid var(--border)' + (extra || '') + '"></span>';
+  }
+  function _rvTopChips(){
+    var chips = _dcpTrendChips(), html = '';
+    var G = [['sub', 'SEASONAL', 'var(--blue)'], ['key', 'ACCENT', '#A090F0'], ['basic', 'CORE', 'var(--gold)']];
+    html += _rvCard('A. 트렌드 기반 칩 — 03 Trend-Matched',
+      G.map(function(g){
+        var list = chips.filter(function(c){ return c.group === g[0]; });
+        return '<div style="display:grid;grid-template-columns:90px 1fr;gap:8px;align-items:center;margin-bottom:6px">'
+          + '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + g[2] + '">' + g[1] + ' <span style="color:var(--text4);font-weight:400">' + list.length + '</span></span>'
+          + '<div style="display:flex;gap:3px;flex-wrap:wrap">' + list.map(function(c){
+              return _rvMini(c.item.trend.hex, c.item.trend.hex + ' · ' + (c.item.trend.sources || []).join('·') + ' · 빈도 ' + c.item.mkFreq);
+            }).join('') + '</div></div>';
+      }).join(''));
+    var cc = null; try{ cc = _ccBuild(); }catch(e){}
+    if(cc){
+      var keys = _ccCatKeys().filter(function(k){ return cc.lists[k] && cc.lists[k].list.length; });
+      html += _rvCard('B. 제안 컬러칩 — 03 Category Curation',
+        keys.map(function(k){
+          var box = cc.lists[k], d = box.def;
+          return '<div style="display:grid;grid-template-columns:150px 1fr;gap:8px;align-items:center;margin-bottom:6px">'
+            + '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text2)">' + (d.emoji || '') + ' ' + d.name + ' <span style="color:var(--text4);font-weight:400">' + box.list.length + '</span></span>'
+            + '<div style="display:flex;gap:3px;flex-wrap:wrap">' + box.list.map(function(e){
+                var t = e.g.item.trend;
+                return _rvMini(t.hex, t.hex + ' · ' + TM_GROUP_LABEL[e.g.group] + ' · 빈도 ' + e.g.item.mkFreq);
+              }).join('') + '</div></div>';
+        }).join(''));
+    }
+    var sd = _cmpFrom(_cmpSales(), function(c){ return c.hex; }, function(c){ return c.style_cnt; });
+    var top = _cmpSales().slice().sort(function(a, b){ return b.sell_rate - a.sell_rate; });
+    html += _rvCard('C. 디커 25FW 판매 컬러',
+        _cmpBar(sd)
+      + '<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:8px">'
+      + top.map(function(c){
+          return '<div style="text-align:center;width:40px" title="' + c.code + ' · 판매율 ' + c.sell_rate + '% · 매출 ' + c.rev_share + '% · 스타일 ' + c.style_cnt + '">'
+            + _rvMini(c.hex, '', ';width:36px;height:26px')
+            + '<div style="font-family:var(--mono);font-size:8px;color:var(--text3)">' + c.code + '</div>'
+            + '<div style="font-family:var(--mono);font-size:8px;color:' + (c.sell_rate >= FIN_SALES_RATE ? '#5FA85F' : 'var(--text4)') + '">' + c.sell_rate + '%</div></div>';
+        }).join('')
+      + '</div>'
+      + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:4px">막대 = 스타일 수 비중(디커 기준) · 칩 = 판매율 순 · 초록 = 판매율 ' + FIN_SALES_RATE + '% 이상</div>');
+    return html;
+  }
+
+  // ── 최종 컬러칩 ─────────────────────────────────────────────
+  var FIN_SALES_DE = 12, FIN_SALES_RATE = 40, FIN_SALES_REV = 1;
+  var _finIdx = [];
+  function _finSalesNear(hex){
+    var best = null, bd = FIN_SALES_DE;
+    _cmpSales().forEach(function(c){ var dd = _tmDeltaE(hex, c.hex); if(dd < bd){ bd = dd; best = c; } });
+    return best ? { c: best, de: Math.round(bd * 10) / 10 } : null;
+  }
+  function _finStrong(sn){ return sn && (sn.c.sell_rate >= FIN_SALES_RATE || sn.c.rev_share >= FIN_SALES_REV); }
+  function _finBuild(){
+    var m = _dcpStatusMap(), pal = _dcpPalUnique();
+    if(!Object.keys(m).length) return null;
+    var main = [], add = [], out = [];
+    pal.forEach(function(p){
+      var h = String(p.hex).toUpperCase(), st = m[h]; if(!st) return;
+      var sn = _finSalesNear(h);
+      var trendItem = _tmIndex[st.tHex] || null;
+      if(st.tier === 'keep')  main.push({ kind: 'keep',  hex: h, name: p.name, st: st, sn: sn, ti: trendItem });
+      else if(st.tier === 'watch') main.push({ kind: 'watch', hex: st.tHex, orig: h, name: p.name, st: st, sn: sn, ti: trendItem });
+      else if(_finStrong(sn)) main.push({ kind: 'sales', hex: h, name: p.name, st: st, sn: sn, ti: null });
+      else out.push({ kind: 'out', hex: h, name: p.name, st: st, sn: sn });
+    });
+    _dcpAddList().forEach(function(x){
+      var h = x.item.trend.hex;
+      if(main.concat(add).some(function(f){ return _tmDeltaE(f.hex, h) < FN_DEDUP_DE; })) return;
+      add.push({ kind: 'add', hex: h, name: (x.item.trend.sources || []).join('·') || 'Trend', x: x, ti: x.item, sn: _finSalesNear(h) });
+    });
+    return { main: main, add: add, out: out };
+  }
+  var FIN_KIND = {
+    keep:  ['유지', '#5FA85F'],
+    watch: ['보완', 'var(--gold)'],
+    sales: ['세일즈 유지', '#3E8ED0'],
+    add:   ['추가', 'var(--warn)'],
+    out:   ['제외', 'var(--text4)']
+  };
+  function _finChip(f){
+    var i = _finIdx.length; _finIdx.push(f);
+    var k = FIN_KIND[f.kind];
+    var border = f.kind === 'watch' ? '3px solid var(--gold)' : (f.kind === 'add' ? '2px dashed var(--warn)' : (f.kind === 'sales' ? '3px solid #3E8ED0' : '1px solid var(--border)'));
+    return '<div onclick="_finOpen(event,' + i + ')" style="width:62px;cursor:pointer;text-align:center' + (f.kind === 'out' ? ';opacity:0.45' : '') + '" title="클릭 — 선정 사유">'
+      + '<div style="position:relative;height:48px;border-radius:6px;background:' + f.hex + ';border:' + border + ';box-sizing:border-box">'
+      +   (f.kind === 'watch' ? '<span style="position:absolute;left:3px;bottom:3px;width:14px;height:14px;border-radius:3px;border:1.5px solid #fff;background:' + f.orig + '" title="원래 확정색"></span>' : '')
+      +   (f.kind === 'add' ? '<span style="position:absolute;right:4px;top:1px;font-family:var(--mono);font-size:15px;font-weight:800;color:' + _dcpTextOn(f.hex.slice(1)) + '">+</span>' : '')
+      +   (f.sn && f.kind !== 'out' ? '<span style="position:absolute;right:3px;bottom:3px;font-family:var(--mono);font-size:8px;font-weight:800;padding:0 3px;border-radius:2px;background:#3E8ED0;color:#fff">S</span>' : '')
+      + '</div>'
+      + '<div style="font-size:10px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden">' + (f.name || '') + '</div>'
+      + '<div style="font-family:var(--mono);font-size:8px;color:' + k[1] + '">' + k[0] + '</div>'
+      + '</div>';
+  }
+  function _finHtml(){
+    var r = _finBuild();
+    if(!r) return '';
+    _finIdx = [];
+    var tiers = [['Core', 'var(--gold)'], ['Seasonal', 'var(--blue)'], ['Accent', '#A090F0']];
+    var col = function(list){
+      return tiers.map(function(t){
+        var l = list.filter(function(f){ return _stdTier(f.hex) === t[0]; });
+        if(!l.length) return '';
+        return '<div style="margin-bottom:10px"><div style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + t[1] + ';margin-bottom:4px">'
+          + t[0].toUpperCase() + ' <span style="color:var(--text4);font-weight:400">' + l.length + '</span></div>'
+          + '<div style="display:flex;gap:6px;flex-wrap:wrap">' + l.map(_finChip).join('') + '</div></div>';
+      }).join('');
+    };
+    var n = function(k){ return r.main.filter(function(f){ return f.kind === k; }).length; };
+    var legend = ['keep','watch','sales','add'].map(function(k){
+      var b = k === 'watch' ? '3px solid var(--gold)' : (k === 'add' ? '2px dashed var(--warn)' : (k === 'sales' ? '3px solid #3E8ED0' : '1px solid var(--border)'));
+      return '<span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;border:' + b + ';vertical-align:-2px;margin-right:4px"></span>' + FIN_KIND[k][0] + '</span>';
+    }).join('') + '<span><span style="font-weight:800;padding:0 3px;border-radius:2px;background:#3E8ED0;color:#fff">S</span> 25FW 판매 근거</span>';
+    return _rvCard('★ 최종 컬러 제안 — 확정 ' + r.main.length + '색 + 추가 ' + r.add.length + '색',
+        '<div style="display:flex;gap:14px;font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:12px;flex-wrap:wrap">'
+      +   '<span>유지 ' + n('keep') + ' · 보완 ' + n('watch') + ' · 세일즈 유지 ' + n('sales') + ' · 제외 ' + r.out.length + '</span>' + legend + '</div>'
+      + '<div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">'
+      +   '<div style="flex:3 1 480px;min-width:0">' + col(r.main) + '</div>'
+      +   '<div style="flex:1 1 220px;min-width:0;padding-left:16px;border-left:2px dashed var(--border)">'
+      +     '<div style="font-family:var(--mono);font-size:12px;font-weight:800;color:var(--warn);margin-bottom:8px">+ 추가 컬러칩 ' + r.add.length + '</div>'
+      +     (r.add.length ? col(r.add) : '<div class="spp-empty" style="font-size:10px">추가 없음</div>')
+      +   '</div>'
+      + '</div>'
+      + (r.out.length ? '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">'
+          + '<div style="font-family:var(--mono);font-size:10px;color:var(--text4);margin-bottom:4px">제외 검토 ' + r.out.length + '색 — 트렌드 ΔE ' + DCP_WATCH_DE + ' 초과 · 25FW 판매 근거 약함</div>'
+          + '<div style="display:flex;gap:6px;flex-wrap:wrap">' + r.out.map(_finChip).join('') + '</div></div>' : '')
+      + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:8px;line-height:1.6">'
+      +   '등급 = 디커 기준 · 보완 칩은 트렌드 톤으로 표시(왼쪽 아래 작은 칸 = 원래 확정색) · 세일즈 유지 = 트렌드 근거는 약하지만 25FW 판매색과 ΔE ' + FIN_SALES_DE
+      +   ' 이내이고 판매율 ' + FIN_SALES_RATE + '% 이상 또는 매출 ' + FIN_SALES_REV + '% 이상 · 칩 클릭 = 선정 사유</div>');
+  }
+  window._finOpen = function(evt, i){
+    evt.stopPropagation();
+    var f = _finIdx[i]; if(!f) return;
+    var k = FIN_KIND[f.kind], why = [];
+    var ti = f.ti, t = ti ? ti.trend : (f.st ? f.st.trend : null);
+    if(f.kind === 'keep') why.push(['판정', '트렌드 칩과 ΔE ' + f.st.de + ' — 사실상 같은 색이라 그대로 유지']);
+    if(f.kind === 'watch'){
+      var rs = _dcpReason(f.orig, f.hex).parts.filter(function(x){ return x.size >= 2; });
+      why.push(['판정', '확정색 ' + f.name + ' → 트렌드 톤으로 조정 (ΔE ' + f.st.de + ')']);
+      rs.forEach(function(x){ why.push([x.label, x.text]); });
+    }
+    if(f.kind === 'sales') why.push(['판정', '트렌드 칩과 ΔE ' + f.st.de + ' 로 거리가 있지만 25FW 판매 성과로 유지']);
+    if(f.kind === 'add'){
+      why.push(['판정', f.x.group === 'key' ? '확정 팔레트에 포인트 컬러가 부족 — ' + TM_GROUP_LABEL.key + ' 보강' : '확정 팔레트에 없는 톤(ΔE ' + DCP_WATCH_DE + ' 초과) — 신규 추가']);
+    }
+    if(f.kind === 'out') why.push(['판정', '트렌드 칩과 ΔE ' + f.st.de + ' · 25FW 판매 근거도 약해 제외 검토']);
+    if(t && f.kind !== 'out' && f.kind !== 'sales'){
+      var src = (t.sources || []).join(' · ');
+      if(src) why.push(['트렌드', src + (t.sources && t.sources.length > 1 ? ' 동시 제안' : ' 제안') + ' · ' + _rptTrendCode(t)]);
+    }
+    if(ti && f.kind !== 'out' && f.kind !== 'sales'){
+      why.push(['마켓', '빈도 ' + ti.mkFreq + (ti.brands && ti.brands.length ? ' · ' + ti.brands.length + '개 브랜드 (' + ti.brands.slice(0, 4).join(', ') + (ti.brands.length > 4 ? ' 외' : '') + ')' : '')]);
+    }
+    if(f.sn){
+      var c = f.sn.c;
+      why.push(['25FW 판매', c.code + ' ' + c.hex + ' 과 ΔE ' + f.sn.de + ' · 판매율 ' + c.sell_rate + '% · 매출 비중 ' + c.rev_share + '% · 스타일 ' + c.style_cnt + '개'
+        + (_finStrong(f.sn) ? ' → 판매 성과 높음' : '')]);
+    } else if(f.kind !== 'add'){
+      why.push(['25FW 판매', 'ΔE ' + FIN_SALES_DE + ' 이내 판매색 없음']);
+    }
+    why.push(['등급', '디커 기준 ' + _stdTier(f.hex) + ' (' + _stdHue(f.hex) + ')']);
+    var pop = _ccEnsurePop();
+    pop.innerHTML = '<div style="width:290px">'
+      + '<div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">'
+      +   '<span style="position:relative;width:48px;height:48px;border-radius:6px;border:1px solid var(--border2);background:' + f.hex + '">'
+      +     (f.orig ? '<span style="position:absolute;left:3px;bottom:3px;width:16px;height:16px;border-radius:3px;border:1.5px solid #fff;background:' + f.orig + '"></span>' : '')
+      +   '</span>'
+      +   '<div><span style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + k[1] + ';border:1px solid ' + k[1] + ';border-radius:3px;padding:1px 6px">' + k[0] + '</span>'
+      +   '<div style="font-size:13px;font-weight:700;color:var(--text);margin-top:3px">' + (f.name || '') + '</div>'
+      +   '<div style="font-family:var(--mono);font-size:11px;color:var(--text2)">' + f.hex + (f.orig ? ' ← ' + f.orig : '') + '</div></div>'
+      + '</div>'
+      + '<div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--gold);margin-bottom:4px">선정 사유</div>'
+      + why.map(function(w){
+          return '<div style="display:grid;grid-template-columns:64px 1fr;gap:6px;padding:3px 0;border-top:1px solid var(--border)">'
+            + '<span style="font-family:var(--mono);font-size:9px;color:var(--text4)">' + w[0] + '</span>'
+            + '<span style="font-size:11.5px;color:var(--text2);line-height:1.5">' + w[1] + '</span></div>';
+        }).join('')
+      + '</div>';
+    _dcpPopPlace(evt, pop);
+  };
 
   // ══════════════════════════════════════════════════════════════
   //  최종 컬러 도출 (v234) — 디스커버리 레인지플랜 결과와 연결
