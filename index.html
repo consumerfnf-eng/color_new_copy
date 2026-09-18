@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v264 (2026-09-18) — 03 GAP 제거 · 04 근거데이터 제거 · 05 = Trend-Matched v2(마켓 평균 계열/명도/채도 → WGSN·Peclers 매칭, 등급비율 마켓 맞춤 + 25FW 판매 검증 노랑칩) -->
+<!-- BUILD_VERSION: DISC_STD_v265 (2026-09-18) — 05 v2: 계열×명도밴드 세분화(브라운도 명도별 빈도 반영) · 04 D 라이프스타일 최종 근거 명시 + 상한(Core3/Seasonal6/Accent2) · 추가는 남은 슬롯만 마켓빈도순 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -23826,22 +23826,40 @@ document.addEventListener('DOMContentLoaded',function(){
     }); }catch(e){}
     var stMap = {}; try{ stMap = _dcpStatusMap(); }catch(e){}
     var FN_DEDUP = 5;
+    // 라이프스타일별 최종 제안 등급 상한 — 최대 Core 3 · Seasonal 6 · Accent 2
+    var LIFE_CAP = { Core: 3, Seasonal: 6, Accent: 2 };
 
-    // 라이프스타일 1개의 최종 제안 도출 (전역 최종과 같은 규칙, 팔레트 배정색+큐레이션 기준)
+    // 라이프스타일 1개의 최종 제안 도출
+    //  가져가는 근거: keep=확정색이 트렌드와 같음(ΔE≤5) · watch=트렌드 톤으로 보완(ΔE 5~10)
+    //               · sales=트렌드 근거 약하나 25FW 판매 성과로 유지
+    //               · add=목표 개수를 채우려 마켓 빈도 높은 트렌드(큐레이션) 색을 보충
+    //  각 등급은 keep>watch>sales>add 우선순위로 상한(LIFE_CAP)까지만 채운다.
     function _lifeFinal(moodCols, curList){
-      var main = [], out = [];
+      var byTier = { Core:[], Seasonal:[], Accent:[] }, out = [];
+      // 1) 팔레트 배정색 → 유지/보완/세일즈
       moodCols.forEach(function(mc){
         var h = mc.hex.toUpperCase(), st = stMap[h];
         var sn = null; try{ sn = _finSalesNear(h); }catch(e){}
-        if(st && st.tier === 'keep')       main.push({ kind:'keep',  hex:h, name:mc.name });
-        else if(st && st.tier === 'watch') main.push({ kind:'watch', hex:st.tHex, orig:h, name:mc.name });
-        else if(sn && _finStrong(sn))      main.push({ kind:'sales', hex:h, name:mc.name });
-        else                               out.push({ kind:'out', hex:h, name:mc.name });
+        var chip = null;
+        if(st && st.tier === 'keep')       chip = { kind:'keep',  hex:h, name:mc.name, pr:0 };
+        else if(st && st.tier === 'watch') chip = { kind:'watch', hex:st.tHex, orig:h, name:mc.name, pr:1 };
+        else if(sn && _finStrong(sn))      chip = { kind:'sales', hex:h, name:mc.name, pr:2 };
+        else { out.push({ kind:'out', hex:h, name:mc.name }); return; }
+        byTier[_stdTier(chip.hex)].push(chip);
       });
-      (curList||[]).forEach(function(e){
-        var h = String(e.hex).toUpperCase();
-        if(main.some(function(f){ return _tmDeltaE(f.hex, h) < FN_DEDUP; })) return;
-        main.push({ kind:'add', hex:h, name:'Trend' });
+      // 2) 큐레이션 트렌드 픽을 마켓 빈도 높은 순으로, 남은 슬롯에만 보충(add)
+      (curList||[]).slice().sort(function(a,b){ return (b.freq||0)-(a.freq||0); }).forEach(function(e){
+        var h = String(e.hex).toUpperCase(), T = _stdTier(h);
+        if(byTier[T].length >= LIFE_CAP[T]) return;                          // 이미 목표 개수 채움
+        var chosen = byTier.Core.concat(byTier.Seasonal, byTier.Accent);
+        if(chosen.some(function(f){ return _tmDeltaE(f.hex, h) < FN_DEDUP; })) return;   // 유사색 제외
+        byTier[T].push({ kind:'add', hex:h, name:'Trend', freq:e.freq, pr:3 });
+      });
+      // 3) 등급별 우선순위 정렬 후 상한까지만
+      var main = [];
+      ['Core','Seasonal','Accent'].forEach(function(T){
+        byTier[T].sort(function(a,b){ return a.pr - b.pr; });
+        byTier[T].slice(0, LIFE_CAP[T]).forEach(function(c){ main.push(c); });
       });
       return { main: main, out: out };
     }
@@ -23886,7 +23904,8 @@ document.addEventListener('DOMContentLoaded',function(){
       }).join('');
 
       var nk = function(k){ return fin2.main.filter(function(f){ return f.kind === k; }).length; };
-      var finLine = '최종 ' + fin2.main.length + '색 — 유지 ' + nk('keep') + ' · 보완 ' + nk('watch') + ' · 세일즈 ' + nk('sales') + ' · 추가 ' + nk('add') + (fin2.out.length ? ' · 제외 ' + fin2.out.length : '');
+      var tc = function(T){ return fin2.main.filter(function(f){ return _stdTier(f.hex) === T; }).length; };
+      var finLine = '최종 ' + fin2.main.length + '색 (Core ' + tc('Core') + '/' + LIFE_CAP.Core + ' · Seasonal ' + tc('Seasonal') + '/' + LIFE_CAP.Seasonal + ' · Accent ' + tc('Accent') + '/' + LIFE_CAP.Accent + ') — 유지 ' + nk('keep') + ' · 보완 ' + nk('watch') + ' · 세일즈 ' + nk('sales') + ' · 추가 ' + nk('add') + (fin2.out.length ? ' · 제외 ' + fin2.out.length : '');
 
       return '<div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px">'
         + '<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:2px">'
@@ -23908,7 +23927,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
     html += _rvCard('D. 라이프스타일별 분석 & 최종 제안 — 제안(팔레트) vs 트렌드(큐레이션) vs 최종',
         (lifeCards || '<div class="spp-empty">데이터 없음</div>')
-      + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:6px;line-height:1.6">지정 마켓 = 각 라이프스타일에 배정한 브랜드(DISC27_CAT_DEFS) · 제안 = 27FW 팔레트에서 이 라이프스타일로 배정된 색 · 트렌드 = 03 Category Curation 이 라이프스타일 픽 · 최종 = 유지·보완·세일즈·추가(트렌드+25FW 판매 반영) · 등급 = 디커 기준</div>');
+      + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:6px;line-height:1.7">지정 마켓 = 각 라이프스타일에 배정한 브랜드 · 제안 = 27FW 팔레트에서 이 라이프스타일로 배정된 색 · 트렌드 = 03 Category Curation 이 라이프스타일 픽<br>최종 등급 상한: <b>Core ' + LIFE_CAP.Core + ' · Seasonal ' + LIFE_CAP.Seasonal + ' · Accent ' + LIFE_CAP.Accent + '</b> · <b>유지</b>=확정색이 트렌드와 같음(ΔE≤5) · <b>보완</b>=트렌드 톤으로 조정(ΔE 5~10) · <b>세일즈</b>=25FW 판매 성과로 유지 · <b>추가</b>=남은 슬롯을 마켓 빈도 높은 트렌드색으로 보충 · <b>제외</b>=근거 부족 · 등급=디커 기준</div>');
 
     // v264 — 04 하단 '근거 데이터'(A 트렌드 · B 큐레이션 · C 25FW 판매) 블록 제거
 
@@ -25588,48 +25607,77 @@ document.addEventListener('DOMContentLoaded',function(){
       return;
     }
 
-    // 1) 마켓 계열 통계 — freq 가중 Lab centroid
-    var fam={}, totalF=0;
+    // 명도 밴드 — 계열 안에서 명도 단계를 나눠 각 단계의 빈도까지 반영한다
+    var BANDS = [ ['다크',0,35], ['미드',35,58], ['라이트',58,78], ['페일',78,101] ];
+    function bandOf(L){ for(var i=0;i<BANDS.length;i++){ if(L>=BANDS[i][1] && L<BANDS[i][2]) return BANDS[i]; } return BANDS[BANDS.length-1]; }
+
+    // 1) 세그먼트 = 계열 × 명도밴드 (freq 가중 Lab centroid)
+    var seg={}, totalF=0;
     mkt.forEach(function(m){
       var h=String(m.hex).toUpperCase(); if(!/^#[0-9A-F]{6}$/.test(h)) return;
-      var f=m.freq||1, lab=_tmLab(h), k=_stdHue(h);
-      if(!fam[k]) fam[k]={freq:0,L:0,a:0,b:0};
-      fam[k].freq+=f; fam[k].L+=lab[0]*f; fam[k].a+=lab[1]*f; fam[k].b+=lab[2]*f; totalF+=f;
+      var f=m.freq||1, lab=_tmLab(h), fam=_stdHue(h), bd=bandOf(lab[0]), key=fam+'|'+bd[0];
+      if(!seg[key]) seg[key]={ fam:fam, band:bd[0], bandLo:bd[1], bandHi:bd[2], freq:0, L:0, a:0, b:0 };
+      var s=seg[key]; s.freq+=f; s.L+=lab[0]*f; s.a+=lab[1]*f; s.b+=lab[2]*f; totalF+=f;
     });
-    Object.keys(fam).forEach(function(k){
-      var s=fam[k]; s.cL=s.L/s.freq; s.ca=s.a/s.freq; s.cb=s.b/s.freq;
+    var segList=Object.keys(seg).map(function(k){ return seg[k]; });
+    segList.forEach(function(s){
+      s.cL=s.L/s.freq; s.ca=s.a/s.freq; s.cb=s.b/s.freq;
       s.cHex=_labToHex(s.cL,s.ca,s.cb);
       s.C=Math.sqrt(s.ca*s.ca+s.cb*s.cb);
       s.tier=_stdTier(s.cHex);
       s.share=totalF? Math.round(s.freq/totalF*1000)/10 : 0;
     });
-    var famOrder=STD_HUE_ORDER.filter(function(k){ return fam[k]; }).sort(function(x,y){ return fam[y].freq-fam[x].freq; });
+    segList.sort(function(x,y){ return y.freq-x.freq; });
 
-    // 2) 마켓 등급비율(caps) — 시즈널/코어/악센트를 마켓 평균에 맞춤
+    // 마켓 등급 비율(caps) — 시즈널/코어/악센트를 마켓 평균에 맞춤
     var caps; try{ caps=_tmMarketCaps(mkt); }catch(e){ caps={basic:0,sub:0,key:0}; }
     var capTier={ Core:caps.basic||0, Seasonal:caps.sub||0, Accent:caps.key||0 };
     var mktTierF={ Core:0, Seasonal:0, Accent:0 };
     mkt.forEach(function(m){ var h=String(m.hex).toUpperCase(); if(/^#[0-9A-F]{6}$/.test(h)) mktTierF[_stdTier(h)]+=(m.freq||1); });
     var mktTierPct={}; ['Core','Seasonal','Accent'].forEach(function(t){ mktTierPct[t]= totalF? Math.round(mktTierF[t]/totalF*1000)/10 : 0; });
 
-    // 3) 트렌드 색 태깅 (계열·등급·계열 centroid ΔE)
+    // 2) 트렌드 색 준비 (계열·명도·hex)
     var tcol=trend.map(function(t){
       var h=String(t.hex).toUpperCase(); if(!/^#[0-9A-F]{6}$/.test(h)) return null;
-      var k=_stdHue(h), s=fam[k];
-      return { hex:h, name:t.name, sources:t.sources||[], fam:k, tier:_stdTier(h), de: s? Math.round(_tmDeltaE(h,s.cHex)*10)/10 : 999, famFreq: s?s.freq:0, famShare: s?s.share:0 };
+      var lab=_tmLab(h);
+      return { hex:h, name:t.name, sources:t.sources||[], fam:_stdHue(h), L:lab[0], tier:_stdTier(h) };
     }).filter(Boolean);
+    var usedHex={};
+    // 세그먼트별 후보: 같은 계열 + 명도밴드(±8) 안에서 centroid ΔE 가까운 순, 같은 등급 우선
+    function candsFor(s){
+      return tcol.filter(function(c){ return c.fam===s.fam && c.L>=s.bandLo-8 && c.L<s.bandHi+8; })
+        .map(function(c){ return { c:c, de: Math.round(_tmDeltaE(c.hex, s.cHex)*10)/10, sameTier: c.tier===s.tier ? 0 : 1 }; })
+        .sort(function(a,b){ return (a.sameTier-b.sameTier) || (a.de-b.de); });
+    }
 
-    // 4) 등급별 선발 — 계열 빈도 desc → centroid ΔE asc, 유사색(ΔE<MIN) 배제, 마켓 caps 만큼
+    // 3) 등급별 선발 — 세그먼트 빈도에 비례(largest remainder)해서 명도밴드별 개수 배분
     var MIN_DE=8, picked={ Core:[], Seasonal:[], Accent:[] };
     ['Core','Seasonal','Accent'].forEach(function(T){
-      var quota=capTier[T]||0;
-      tcol.filter(function(c){ return c.tier===T; })
-        .sort(function(a,b){ return (b.famFreq-a.famFreq) || (a.de-b.de); })
-        .forEach(function(c){
-          if(picked[T].length>=quota) return;
-          if(picked[T].some(function(p){ return _tmDeltaE(p.hex,c.hex)<MIN_DE; })) return;
-          picked[T].push(c);
-        });
+      var quota=capTier[T]||0; if(!quota) return;
+      var segs=segList.filter(function(s){ return s.tier===T && s.freq>0; });
+      if(!segs.length) return;
+      var alloc; try{ alloc=_fnAlloc(quota, segs.map(function(s){ return s.freq; })); }catch(e){ alloc=segs.map(function(){ return 0; }); }
+      segs.forEach(function(s,i){ s._cand=candsFor(s); s._need=alloc[i]||0; });
+      function tryPick(s){
+        for(var i=0;i<s._cand.length;i++){
+          var c=s._cand[i].c;
+          if(usedHex[c.hex]) continue;
+          if(picked[T].some(function(p){ return _tmDeltaE(p.hex,c.hex)<MIN_DE; })) continue;
+          usedHex[c.hex]=1;
+          picked[T].push({ hex:c.hex, name:c.name, sources:c.sources, fam:s.fam, band:s.band, segFreq:s.freq, de:s._cand[i].de });
+          return true;
+        }
+        return false;
+      }
+      // 각 세그먼트에 배분량만큼
+      segs.forEach(function(s){ for(var k=0;k<s._need;k++){ if(picked[T].length>=quota) break; tryPick(s); } });
+      // 남은 quota 는 빈도 큰 세그먼트부터 그리디로 채움
+      var guard=0;
+      while(picked[T].length<quota && guard++<quota*4){
+        var progressed=false;
+        for(var j=0;j<segs.length;j++){ if(picked[T].length>=quota) break; if(tryPick(segs[j])) progressed=true; }
+        if(!progressed) break;
+      }
     });
     var totalPick=picked.Core.length+picked.Seasonal.length+picked.Accent.length;
 
@@ -25637,22 +25685,25 @@ document.addEventListener('DOMContentLoaded',function(){
     var head=''
       + '<div class="spp-trend-market-hd" style="margin-bottom:14px">'
       +   '<span class="spp-trend-market-flame" style="color:var(--gold)">◇ TREND-MATCHED v2</span>'
-      +   '<span class="spp-trend-market-title">마켓 평균 기반 팔레트 도출</span>'
-      +   '<span class="spp-trend-market-sub">마켓 계열 분포 → 계열별 평균 명도·채도(centroid) → WGSN·Peclers 근접색 추출 · 등급 비율은 마켓 평균에 맞춤</span>'
+      +   '<span class="spp-trend-market-title">마켓 계열 × 명도 기반 팔레트 도출</span>'
+      +   '<span class="spp-trend-market-sub">디커 선택 마켓을 계열 × 명도밴드로 쪼개 빈도를 재고 → 각 밴드 평균에 WGSN·Peclers 근접색 추출 · 등급 비율은 마켓 평균에 맞춤</span>'
       + '</div>';
 
     var tierCol={ Core:FN_SOLID.Core, Seasonal:'var(--blue)', Accent:FN_SOLID.Accent };
     var cell='padding:5px 8px;border-bottom:1px solid var(--border)';
     var swat=function(hex,w,h){ return '<span style="display:inline-block;width:'+(w||16)+'px;height:'+(h||16)+'px;border-radius:3px;background:'+hex+';border:1px solid var(--border);vertical-align:middle"></span>'; };
 
-    // A. 마켓 평균 계열 분포
+    // A. 마켓 계열 × 명도 분포 (빈도순)
+    var segShow=segList.filter(function(s){ return s.share>=0.5; }).slice(0,20);
+    var moreN=segList.length-segShow.length;
     var secA='<div style="border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:18px">'
-      + '<div style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--gold);margin-bottom:4px">A. 마켓 평균 계열 분포</div>'
+      + '<div style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--gold);margin-bottom:4px">A. 마켓 계열 × 명도 분포 (디커 선택 마켓 · 빈도순)</div>'
       + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-bottom:10px">등급 비중 — Core '+mktTierPct.Core+'% · Seasonal '+mktTierPct.Seasonal+'% · Accent '+mktTierPct.Accent+'% · 빈도 가중</div>'
       + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px">'
-      + '<thead><tr style="color:var(--text3)"><th style="text-align:left;'+cell+'">계열</th><th style="text-align:left;'+cell+'">평균색</th><th style="text-align:right;'+cell+'">비중</th><th style="text-align:right;'+cell+'">평균 L*</th><th style="text-align:right;'+cell+'">평균 C*</th><th style="text-align:left;'+cell+'">등급</th></tr></thead><tbody>'
-      + famOrder.map(function(k){ var s=fam[k];
-          return '<tr><td style="'+cell+';color:var(--text2)">'+k+'</td>'
+      + '<thead><tr style="color:var(--text3)"><th style="text-align:left;'+cell+'">계열</th><th style="text-align:left;'+cell+'">명도</th><th style="text-align:left;'+cell+'">평균색</th><th style="text-align:right;'+cell+'">비중</th><th style="text-align:right;'+cell+'">평균 L*</th><th style="text-align:right;'+cell+'">평균 C*</th><th style="text-align:left;'+cell+'">등급</th></tr></thead><tbody>'
+      + segShow.map(function(s){
+          return '<tr><td style="'+cell+';color:var(--text2)">'+s.fam+'</td>'
+            + '<td style="'+cell+';color:var(--text3)">'+s.band+'</td>'
             + '<td style="'+cell+'">'+swat(s.cHex,20,16)+' <span style="color:var(--text4);font-size:9px">'+s.cHex.toUpperCase()+'</span></td>'
             + '<td style="text-align:right;'+cell+';color:var(--text);font-weight:700">'+s.share+'%</td>'
             + '<td style="text-align:right;'+cell+';color:var(--text3)">'+Math.round(s.cL)+'</td>'
@@ -25660,30 +25711,31 @@ document.addEventListener('DOMContentLoaded',function(){
             + '<td style="'+cell+';color:'+tierCol[s.tier]+';font-weight:700">'+s.tier+'</td></tr>';
         }).join('')
       + '</tbody></table></div>'
-      + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:6px">평균색 = 계열별 마켓 컬러의 빈도 가중 Lab 중심(centroid) · 등급 = centroid 기준 디커 판정</div>'
+      + (moreN>0 ? '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:4px">외 '+moreN+'개 세그먼트(비중 0.5% 미만)</div>' : '')
+      + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:6px">명도밴드 — 다크 L&lt;35 · 미드 35~58 · 라이트 58~78 · 페일 ≥78 · 평균색 = 세그먼트 빈도 가중 Lab 중심</div>'
       + '</div>';
 
-    // B. 권장 팔레트 v2
+    // B. 권장 팔레트 v2 (명도밴드 반영)
     var chip=function(c){
-      var acc=(c.tier==='Accent');
-      return '<div title="'+(c.name||'')+' '+c.hex+' · 계열 '+c.fam+' · 마켓빈도 '+c.famFreq+' · centroid ΔE '+c.de+'" style="width:74px;text-align:center">'
+      var acc=(_stdTier(c.hex)==='Accent');
+      return '<div title="'+(c.name||'')+' '+c.hex+' · '+c.fam+' '+c.band+' · 마켓빈도 '+c.segFreq+' · centroid ΔE '+c.de+'" style="width:74px;text-align:center">'
         + '<div style="height:52px;border-radius:7px;background:'+c.hex+';border:'+(acc?'2px solid '+FN_SOLID.Accent:'1px solid var(--border)')+';box-sizing:border-box"></div>'
         + '<div style="font-family:var(--mono);font-size:8px;font-weight:700;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden">'+((c.sources||[]).join('·')||'—')+'</div>'
         + '<div style="font-family:var(--mono);font-size:8.5px;color:var(--text)">'+c.hex+'</div>'
-        + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4)">'+c.fam+' · ×'+c.famFreq+'</div>'
+        + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4)">'+c.fam+'·'+c.band+' ×'+c.segFreq+'</div>'
         + '</div>';
     };
     var secB='<div style="border:1px solid var(--gold);border-radius:10px;padding:14px 16px;margin-bottom:18px;background:rgba(160,120,64,0.06)">'
       + '<div style="font-family:var(--mono);font-size:11px;font-weight:800;color:var(--gold);margin-bottom:4px">★ B. 권장 팔레트 v2 — WGSN·Peclers 매칭 · 총 '+totalPick+'색</div>'
-      + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-bottom:12px">등급 목표(마켓 맞춤): Core '+capTier.Core+' · Seasonal '+capTier.Seasonal+' · Accent '+capTier.Accent+'</div>'
+      + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-bottom:12px">등급 목표(마켓 맞춤): Core '+capTier.Core+' · Seasonal '+capTier.Seasonal+' · Accent '+capTier.Accent+' · 등급 안 개수는 명도밴드 빈도에 비례 배분</div>'
       + ['Core','Seasonal','Accent'].map(function(T){
           var list=picked[T];
           return '<div style="margin-bottom:14px">'
             + '<div style="font-family:var(--mono);font-size:12px;font-weight:800;color:'+tierCol[T]+';margin-bottom:6px">'+T.toUpperCase()+' <span style="color:var(--text4);font-weight:400">'+list.length+' / '+(capTier[T]||0)+'</span></div>'
-            + (list.length ? '<div style="display:flex;gap:7px;flex-wrap:wrap">'+list.map(chip).join('')+'</div>' : '<div class="spp-empty" style="font-size:10px">해당 계열의 트렌드 근접색 없음</div>')
+            + (list.length ? '<div style="display:flex;gap:7px;flex-wrap:wrap">'+list.map(chip).join('')+'</div>' : '<div class="spp-empty" style="font-size:10px">해당 계열·명도의 트렌드 근접색 없음</div>')
             + '</div>';
         }).join('')
-      + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:6px;line-height:1.6">선발 규칙: 등급별로 계열 빈도(마켓)가 높은 순 → 그 계열 centroid에 가장 가까운 WGSN·Peclers 색 → 유사색(ΔE<'+MIN_DE+') 배제 · 등급 개수 = 마켓 평균 비율</div>'
+      + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:6px;line-height:1.6">선발 규칙: 등급 목표 개수를 계열×명도 세그먼트 빈도에 비례 배분 → 각 세그먼트의 평균색(centroid)에 가장 가까운 WGSN·Peclers 색(같은 명도밴드) → 유사색(ΔE<'+MIN_DE+') 배제 · 브라운도 다크/미드/라이트가 각자 빈도만큼 제안됨</div>'
       + '</div>';
 
     // C. 25FW 판매 컬러 (검증) — 노랑 바탕 · 칩 이미지
