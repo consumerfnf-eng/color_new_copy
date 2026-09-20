@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v265 (2026-09-18) — 05 v2: 계열×명도밴드 세분화(브라운도 명도별 빈도 반영) · 04 D 라이프스타일 최종 근거 명시 + 상한(Core3/Seasonal6/Accent2) · 추가는 남은 슬롯만 마켓빈도순 -->
+<!-- BUILD_VERSION: DISC_STD_v266 (2026-09-18) — Core 재정의(기본물만: 무채·네이비·뉴트럴 베이지/브라운·니어블랙 · 청록/그린/러스트/퍼플은 어두워도 Seasonal) · 네이비 하한 245(페트롤→Seasonal) · 카키 Core 유지 · v2 칩 자기 등급 칸 배치 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -25249,7 +25249,7 @@ document.addEventListener('DOMContentLoaded',function(){
     var a = _tmLCh(hex);
     if(a.C < STD_CUT.achro_gate) return '무채';
     var H = a.H;
-    if(H >= 230 && H <= 300 && a.L < 45 && a.C < STD_CUT.navy_c) return '네이비';   // v248: 채도 상한 — 코발트·로열블루는 블루
+    if(H >= 245 && H <= 300 && a.L < 45 && a.C < STD_CUT.navy_c) return '네이비';   // v266: 하한 230→245 (페트롤 H232 등 청록성 색은 네이비에서 제외)
     if(a.L >= STD_CUT.cream_l && a.C < STD_CUT.cream_c && H >= 30 && H <= 110) return '베이지';   // v248: 크림·아이보리
     if(H >= 40 && H <= 75  && a.L >= 60 && a.C < 25) return '베이지';
     if(H >= 30 && H <= 95) return (a.L < 60 ? '브라운' : '베이지');
@@ -25261,22 +25261,21 @@ document.addEventListener('DOMContentLoaded',function(){
     if(H > 330 || H < 15) return '레드핑크';
     return '오렌지';
   }
-  // 디커 등급 판정
+  // 디커 등급 판정 (v266 — Core 재정의: 기본물만 Core. 청록·그린·러스트·퍼플 등은 어두워도 Seasonal)
   function _stdTier(hex){
     var a = _tmLCh(hex);
-    if(a.C >= STD_CUT.accent_chroma) return 'Accent';           // ① (형광 안료는 우리 데이터에 없음)
+    if(a.C >= STD_CUT.accent_chroma) return 'Accent';           // ① 비비드
+    // v266 — 니어블랙(검정으로 읽힘)만 색상군 무관 Core. (기존 'L<30·C<20 색상군무관' 규칙은 청록·딥그린까지 빨아들여 삭제)
+    if(a.L < 16) return 'Core';
     var h = _stdHue(hex);
-    if(h === '무채' || h === '네이비') return 'Core';            // ②
-    // v248 — 어두운 저채도(L*<30 · C*<20)는 색상군과 무관하게 Core (다크 플럼·와인·그린)
-    if(a.L < STD_CUT.dark_l && a.C < STD_CUT.dark_c) return 'Core';
-    // v248 — 밝은 저채도 크림·아이보리는 밝기 제한(L*<82)과 무관하게 Core
+    if(h === '무채' || h === '네이비') return 'Core';            // ② 블랙·화이트·그레이·아이보리·네이비 = 기본물
+    // 밝은 저채도 크림·아이보리
     if(h === '베이지' && a.L >= STD_CUT.cream_l && a.C < STD_CUT.cream_c) return 'Core';
-    // ③ v246 조정 — 채도 상한 35 → 22.5, 밝은 올리브베이지(H>85 & L≥50)는 제외
-    //   (로즈브라운·카멜·올리브골드·올리브베이지는 Seasonal)
+    // ③ 베이지·브라운 뉴트럴(샌드·토프·탠·초콜릿·모카·카키). 밝은 올리브베이지 제외 · 카키(#574D35 등)는 Core 유지
     if((h === '베이지' || h === '브라운')
        && a.C < STD_CUT.core_warm_chroma && a.L < STD_CUT.core_warm_light
        && !(a.H > STD_CUT.olive_h && a.L >= STD_CUT.olive_l)) return 'Core';   // ③
-    return 'Seasonal';                                          // ④
+    return 'Seasonal';                                          // ④ 옐로·오렌지·레드핑크·그린·틸·블루·퍼플 = 시즈널(비비드는 위에서 Accent)
   }
 
   // v231 — 매칭 전량(캡 적용 전)을 디커 기준으로 나눈 뒤, 03 과 같은 상한·선발 규칙으로 뽑는다
@@ -25643,11 +25642,12 @@ document.addEventListener('DOMContentLoaded',function(){
       return { hex:h, name:t.name, sources:t.sources||[], fam:_stdHue(h), L:lab[0], tier:_stdTier(h) };
     }).filter(Boolean);
     var usedHex={};
-    // 세그먼트별 후보: 같은 계열 + 명도밴드(±8) 안에서 centroid ΔE 가까운 순, 같은 등급 우선
+    // 세그먼트별 후보: 같은 계열 + 같은 등급 + 명도밴드(±8) 안에서 centroid ΔE 가까운 순
+    //  (같은 등급만 허용 → 러스트 같은 Seasonal 색이 Core 칸에 잘못 뜨지 않음)
     function candsFor(s){
-      return tcol.filter(function(c){ return c.fam===s.fam && c.L>=s.bandLo-8 && c.L<s.bandHi+8; })
-        .map(function(c){ return { c:c, de: Math.round(_tmDeltaE(c.hex, s.cHex)*10)/10, sameTier: c.tier===s.tier ? 0 : 1 }; })
-        .sort(function(a,b){ return (a.sameTier-b.sameTier) || (a.de-b.de); });
+      return tcol.filter(function(c){ return c.fam===s.fam && c.tier===s.tier && c.L>=s.bandLo-8 && c.L<s.bandHi+8; })
+        .map(function(c){ return { c:c, de: Math.round(_tmDeltaE(c.hex, s.cHex)*10)/10 }; })
+        .sort(function(a,b){ return a.de-b.de; });
     }
 
     // 3) 등급별 선발 — 세그먼트 빈도에 비례(largest remainder)해서 명도밴드별 개수 배분
