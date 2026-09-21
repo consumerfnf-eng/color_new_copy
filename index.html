@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v294 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v295 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -22433,7 +22433,7 @@ document.addEventListener('DOMContentLoaded',function(){
         + '</div></div>';
     }).join('') + '</div>';
     _dcpInMood = false;
-    if(DCP_TAB === 'final') DCP_TAB = 'all';
+    if(DCP_TAB === 'final'){ core = _dcpFinalBoard(); }
     if(DCP_TAB === 'watch'){ core = _dcpAddRow() + core; }
     // 라이프스타일 명칭은 위 tier 칩 라벨로 흡수 → 하단 무드 3종 블록(moods)은 표시하지 않는다.
     // (되돌리려면 아래 반환에 ' + moods' 를 다시 붙이면 됨. moods 변수는 위에서 그대로 생성됨)
@@ -23881,7 +23881,8 @@ document.addEventListener('DOMContentLoaded',function(){
     ['all',   '전체',  'var(--text3)'],
     ['keep',  '유지',  '#5FA85F'],
     ['watch', '보완',  'var(--gold)'],
-    ['sales', '세일즈', '#3E8ED0']     // v273 — 03 Sales-Based(DISCOVERY 25FW 실판매) 흡수
+    ['sales', '세일즈', '#3E8ED0'],    // v273 — 03 Sales-Based(DISCOVERY 25FW 실판매) 흡수
+    ['final', '최종',   '#A090F0']     // v295 — 유지·보완·세일즈·공백 유지·추가를 반영한 최종 팔레트
   ];   // v252: '최종' 탭 제거 — 최종 제안은 ✎ REVIEW 맨 아래
   var DCP_TIER_META = { keep: ['유지', '#5FA85F'], watch: ['보완', 'var(--gold)'], risk: ['위험', 'var(--warn)'] };
   var _dcpStatus = null, _dcpStatusKey = null;
@@ -23932,6 +23933,38 @@ document.addEventListener('DOMContentLoaded',function(){
     _dcpRender();
     try{ _discOrderSections(); }catch(e){}
   };
+  // v295 — 최종 탭: 현재 디스커버리 팔레트 판에 보완·추가를 반영한 최종 컬러칩
+  function _dcpFinalBoard(){
+    var r = null; try{ r = _finBuild(); }catch(e){}
+    if(!r) return '<div class="spp-empty" style="font-size:11px">03 Palette Proposal 데이터가 필요합니다. 01·02 를 먼저 로드하세요.</div>';
+    _finIdx = [];
+    var tiers = [['Seasonal','SEASONAL','var(--blue)'], ['Accent','ACCENT','#A090F0'], ['Core','CORE','var(--gold)']];
+    var cnt = function(list, k){ return list.filter(function(f){ return f.kind === k; }).length; };
+    var all = r.main.concat(r.add);
+    var summary = ['keep','watch','sales','gap','add'].filter(function(k){ return cnt(all, k); })
+      .map(function(k){ return '<span style="color:' + FIN_KIND[k][1] + ';font-weight:700">' + FIN_KIND[k][0] + ' ' + cnt(all, k) + '</span>'; }).join(' · ');
+    var rows = tiers.map(function(t){
+      var l = all.filter(function(f){ return _stdTier(f.hex) === t[0]; });
+      if(!l.length) return '';
+      var keep = l.filter(function(f){ return f.kind !== 'add'; }), add = l.filter(function(f){ return f.kind === 'add'; });
+      return '<div style="display:grid;grid-template-columns:110px 1fr;gap:10px;align-items:start;margin-bottom:18px">'
+        + '<div style="font-family:var(--mono);font-size:12px;font-weight:800;color:' + t[2] + ';letter-spacing:0.08em">' + t[1]
+        +   '<div style="font-size:9px;font-weight:400;color:var(--text4)">' + l.length + '색</div></div>'
+        + '<div style="display:flex;gap:7px;flex-wrap:wrap;align-items:flex-start">'
+        +   keep.map(_finChip).join('')
+        +   (add.length ? '<div style="width:2px;align-self:stretch;background:var(--border);margin:0 4px"></div>' + add.map(_finChip).join('') : '')
+        + '</div></div>';
+    }).join('');
+    return '<div style="margin:4px 0 12px">'
+      + '<div style="display:flex;gap:14px;align-items:baseline;flex-wrap:wrap;margin-bottom:12px">'
+      +   '<span style="font-family:var(--mono);font-size:12px;font-weight:800;color:var(--text)">최종 ' + all.length + '색</span>'
+      +   '<span style="font-family:var(--mono);font-size:10px">' + summary + '</span>'
+      +   '<span style="font-family:var(--mono);font-size:10px;color:var(--text4)">제외 ' + r.out.length + '색 · 칩 클릭 = 선정 사유</span>'
+      + '</div>'
+      + rows
+      + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4)">세로선 오른쪽 = 새로 추가하는 색 · 보완 칩은 트렌드 톤으로 바꾼 색(왼쪽 아래 작은 칸 = 원래 자사 색) · 등급 = 디커 기준</div>'
+      + '</div>';
+  }
   // 03 Palette Proposal 의 Sales-Based(DISCOVERY) 섹션을 그대로 가져온다 (v273)
   function _dcpSalesHtml(){
     var sb = document.getElementById('disc-sales-section');
@@ -23949,8 +23982,8 @@ document.addEventListener('DOMContentLoaded',function(){
     return '<div style="display:flex;gap:6px;margin:0 0 14px;flex-wrap:wrap">'
       + DCP_TABS.map(function(t){
           var on = (DCP_TAB === t[0]);
-          var n = (t[0] === 'final') ? cnt.final
-                : (t[0] === 'watch') ? (cnt.watch + ' + 추가 ' + _dcpAddList().length)
+          var n = (t[0] === 'watch') ? (cnt.watch + ' + 추가 ' + _dcpAddList().length)
+                : (t[0] === 'final') ? (function(){ try{ var fr = _finBuild(); return fr ? (fr.main.length + fr.add.length) : ''; }catch(e){ return ''; } })()
                 : (t[0] === 'sales') ? (function(){ try{ var r = _dcpSalesMap();
                       return Object.keys(r.map).length + (r.miss.length ? ' + 미보유 ' + r.miss.length : ''); }catch(e){ return ''; } })()
                 : (cnt[t[0]] || 0);
