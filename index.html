@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v273 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v274 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21915,7 +21915,7 @@ document.addEventListener('DOMContentLoaded',function(){
     // 라이프스타일 명칭은 위 tier 칩 라벨로 흡수 → 하단 무드 3종 블록(moods)은 표시하지 않는다.
     // (되돌리려면 아래 반환에 ' + moods' 를 다시 붙이면 됨. moods 변수는 위에서 그대로 생성됨)
     void moods;
-    if(DCP_TAB === 'sales') core = _dcpSalesHtml();
+    if(DCP_TAB === 'sales'){ _dcpSalesCache = null; core = _dcpSalesRow() + core; }
     return '<div class="dcp-body">' + _dcpUploadPanel() + _dcpTabBar() + core
       + (cv ? '' : '<div class="dcp-note">' + DCP_NOTE + '</div>') + '</div>';
   }
@@ -23428,7 +23428,8 @@ document.addEventListener('DOMContentLoaded',function(){
           var on = (DCP_TAB === t[0]);
           var n = (t[0] === 'final') ? cnt.final
                 : (t[0] === 'watch') ? (cnt.watch + ' + 추가 ' + _dcpAddList().length)
-                : (t[0] === 'sales') ? (function(){ try{ return _cmpSales().length; }catch(e){ return ''; } })()
+                : (t[0] === 'sales') ? (function(){ try{ var r = _dcpSalesMap();
+                      return Object.keys(r.map).length + (r.miss.length ? ' + 미보유 ' + r.miss.length : ''); }catch(e){ return ''; } })()
                 : (cnt[t[0]] || 0);
           return '<button onclick="_dcpSetTab(\'' + t[0] + '\')" style="font-family:var(--mono);font-size:11px;'
             + 'padding:5px 13px;border-radius:4px;cursor:pointer;'
@@ -23529,7 +23530,80 @@ document.addEventListener('DOMContentLoaded',function(){
     var dh = ((_tmLCh(tHex).H - _tmLCh(palHex).H + 540) % 360) - 180;
     return '→' + _dcpHueWord(_tmLCh(palHex).H + (dh > 0 ? 25 : -25));
   }
+  // ── 세일즈 탭 (v274) — 25FW 판매색을 확정 팔레트에 얹는다 ──
+  var SALES_TAB_DE = 12;
+  var _dcpSalesCache = null, _dcpSalesIdx = {};
+  function _dcpSalesMap(){
+    if(_dcpSalesCache) return _dcpSalesCache;
+    var sales = [];
+    try{ sales = _cmpSales(); }catch(e){}
+    var pal = _dcpPalUnique(), map = {}, used = {};
+    pal.forEach(function(p){
+      var best = null, bd = SALES_TAB_DE;
+      sales.forEach(function(c){
+        var dd = _tmDeltaE(p.hex, c.hex);
+        if(dd < bd){ bd = dd; best = c; }
+      });
+      if(best){
+        map[String(p.hex).toUpperCase()] = { c: best, de: Math.round(bd * 10) / 10, name: p.name };
+        used[best.hex] = 1;
+      }
+    });
+    var miss = sales.filter(function(c){ return !used[c.hex]; })
+      .sort(function(a, b){ return (b.style_cnt || 0) - (a.style_cnt || 0); });
+    _dcpSalesCache = { map: map, miss: miss, total: sales.length };
+    return _dcpSalesCache;
+  }
+  function _dcpSalesRow(){
+    var r = _dcpSalesMap();
+    if(!r.miss.length) return '';
+    _dcpSalesIdx = {};
+    var chips = r.miss.map(function(c){
+      _dcpSalesIdx[c.hex] = c;
+      return '<div onclick="_dcpOpenSales(event,\'' + c.hex + '\')" style="width:74px;flex:0 0 auto;cursor:pointer"'
+        + ' title="클릭 — 판매 실적">'
+        + '<div style="font-family:var(--mono);font-size:9px;font-weight:700;text-align:center;color:#3E8ED0">' + (c.code || '25FW') + '</div>'
+        + '<div style="border:1px solid #3E8ED0;border-radius:6px;overflow:hidden;background:var(--surface)">'
+        +   '<div style="height:52px;background:' + c.hex + '"></div>'
+        +   '<div style="font-family:var(--mono);font-size:8.5px;text-align:center;padding:2px;color:var(--text3)">' + c.hex + '</div>'
+        +   '<div style="font-family:var(--mono);font-size:8.5px;text-align:center;padding:0 2px 3px;color:var(--text4)">판매율 ' + c.sell_rate + '%</div>'
+        + '</div></div>';
+    }).join('');
+    return '<div style="margin:0 0 22px;padding:12px 14px;border:1px solid var(--border);border-radius:8px">'
+      + '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px;flex-wrap:wrap">'
+      +   '<span style="font-family:var(--mono);font-size:12px;font-weight:700;color:#3E8ED0;letter-spacing:0.08em">25FW 판매색 중 팔레트 미보유 ' + r.miss.length + '</span>'
+      +   '<span style="font-family:var(--mono);font-size:10px;color:var(--text4)">확정 팔레트에 ΔE ' + SALES_TAB_DE + ' 이내 색이 없는 판매색 · 스타일 수 순</span>'
+      + '</div>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap">' + chips + '</div>'
+      + '</div>';
+  }
+  window._dcpOpenSales = function(evt, hex){
+    evt.stopPropagation();
+    var c = _dcpSalesIdx[hex]; if(!c) return;
+    _uiModal({ hex: c.hex, badge: '25FW 판매', tone: 'blue', right: '판매율 ' + c.sell_rate + '%',
+      body: _uiCard(c.hex, '25FW SALES', c.code || '', c.hex)
+        + _uiSection('실적', _uiRows([
+            ['판매율', c.sell_rate + '%'],
+            ['매출 비중', c.rev_share + '%'],
+            ['스타일 수', (c.style_cnt || 0) + '개'],
+            ['판정', '확정 팔레트에 ΔE ' + SALES_TAB_DE + ' 이내 색 없음 — 신규 검토']
+          ])),
+      tags: [c.code || '25FW'] });
+  };
   function _dcpStatusStrip(hex){
+    if(DCP_TAB === 'sales'){
+      var sr = _dcpSalesMap().map[String(hex).toUpperCase()];
+      if(!sr) return '';
+      return '<div onclick="_dcpOpenSalesPair(event,\'' + hex + '\')" style="margin-top:4px;cursor:pointer;'
+        + 'border:1px solid #3E8ED0;border-radius:4px;overflow:hidden" title="클릭 — 25FW 판매 실적 · ΔE ' + sr.de + '">'
+        +   '<div style="display:flex;height:30px">'
+        +     '<div style="flex:1;background:' + hex + '"></div>'
+        +     '<div style="flex:1;background:' + sr.c.hex + '"></div>'
+        +   '</div>'
+        +   '<div style="font-family:var(--mono);font-size:8.5px;text-align:center;padding:2px;color:#3E8ED0;white-space:nowrap">'
+        +     (sr.c.code || '25FW') + ' ' + sr.c.sell_rate + '% · ΔE' + sr.de + '</div>'
+        + '</div>';
+    }
     if(DCP_TAB !== 'keep' && DCP_TAB !== 'watch') return '';
     var st = _dcpStatusMap()[String(hex).toUpperCase()];
     if(!st || st.tier !== DCP_TAB) return '';
@@ -23547,10 +23621,30 @@ document.addEventListener('DOMContentLoaded',function(){
       + '</div>';
   }
   function _dcpChipDim(hex){
-    if((DCP_TAB !== 'keep' && DCP_TAB !== 'watch') || _dcpInMood) return '';
+    if(_dcpInMood) return '';
+    if(DCP_TAB === 'sales')
+      return _dcpSalesMap().map[String(hex).toUpperCase()] ? '' : ';opacity:0.22';
+    if(DCP_TAB !== 'keep' && DCP_TAB !== 'watch') return '';
     var st = _dcpStatusMap()[String(hex).toUpperCase()];
     return (st && st.tier === DCP_TAB) ? '' : ';opacity:0.22';
   }
+  // 팔레트 색 ↔ 판매색 짝 팝업
+  window._dcpOpenSalesPair = function(evt, hex){
+    evt.stopPropagation();
+    var sr = _dcpSalesMap().map[String(hex).toUpperCase()]; if(!sr) return;
+    var c = sr.c;
+    _uiModal({ hex: hex, hex2: c.hex, l1: '확정 ' + (sr.name || ''), l2: '25FW 판매 ' + (c.code || ''),
+      badge: '세일즈', tone: 'blue', hexLine: hex + ' ↔ ' + c.hex, right: 'ΔE ' + sr.de,
+      body: _uiCard(hex, '확정 팔레트', _rptPalMeta(hex) || _dcpPantoneOf(hex) || hex, (sr.name || '') + ' · ' + hex)
+        + _uiCard(c.hex, '25FW 판매', c.code || '', c.hex)
+        + _uiSection('실적', _uiRows([
+            ['판매율', c.sell_rate + '%'],
+            ['매출 비중', c.rev_share + '%'],
+            ['스타일 수', (c.style_cnt || 0) + '개'],
+            ['색 차이', 'ΔE ' + sr.de + (sr.de <= 5 ? ' — 사실상 같은 색' : ' — 같은 계열, 톤 차이')]
+          ])),
+      tags: [c.code || '25FW'] });
+  };
 
   // ── 최종 탭 (1단계: 판정 요약 + 위험 색) ────────────────────
   function _dcpFinalHtml(){
