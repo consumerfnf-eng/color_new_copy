@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v271 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v272 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -24708,8 +24708,21 @@ document.addEventListener('DOMContentLoaded',function(){
       var t = _fnCritTier(x.hex), f = x.freq || 1;
       groups[t].push(x); w[t] += f; tot += f;
     });
+    // v272 — 비중을 03 Trend-Matched 표시 칩 수 기준으로 낸다 (마켓 빈도 기준 아님)
+    var chipN = { Core: 0, Seasonal: 0, Accent: 0 }, chipTot = 0;
+    if(_tmLastBuild && _tmLastBuild.buckets){
+      chipN.Core     = (_tmLastBuild.buckets.basic || []).length;
+      chipN.Seasonal = (_tmLastBuild.buckets.sub   || []).length;
+      chipN.Accent   = (_tmLastBuild.buckets.key   || []).length;
+      chipTot = chipN.Core + chipN.Seasonal + chipN.Accent;
+    }
+    var byChip = chipTot > 0;
     var pct = {};
-    Object.keys(w).forEach(function(t){ pct[t] = Math.round(w[t] / tot * 1000) / 10; });
+    Object.keys(w).forEach(function(t){
+      pct[t] = byChip ? Math.round(chipN[t] / chipTot * 1000) / 10
+                      : Math.round(w[t] / tot * 1000) / 10;
+    });
+    if(byChip) Object.keys(w).forEach(function(t){ if(chipN[t] > 0 && w[t] === 0) w[t] = 1; });
     _fnBarIdx = {};
     var seq = 0, ac = 'var(--gold)';
     var html = ['Core','Seasonal','Accent'].map(function(t){
@@ -24741,20 +24754,20 @@ document.addEventListener('DOMContentLoaded',function(){
           + 'font-family:var(--mono);font-size:11px;font-weight:800;color:#fff;white-space:nowrap;padding:2px 8px;border-radius:10px;'
           + 'background:rgba(20,20,20,0.38);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)">' + pct[t] + '%</span>'
         : '';
-      return '<div style="position:relative;flex:' + w[t] + ';display:flex;height:100%;'
+      return '<div style="position:relative;flex:' + (byChip ? Math.max(chipN[t], 0.4) : w[t]) + ';display:flex;height:100%;'
         + 'border:2px solid ' + FN_SOLID[t] + ';border-radius:4px;overflow:hidden">' + sw + lbl + '</div>';
     }).join('');
     return '<div style="margin:0 0 16px;padding:16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px">'
       + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">'
       +   '<div style="width:3px;height:16px;background:' + ac + ';border-radius:2px"></div>'
       +   '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:' + ac + ';letter-spacing:0.06em;text-transform:uppercase">MARKET COLORS · CORE / SEASONAL / ACCENT</span>'
-      +   '<span style="font-family:var(--mono);font-size:9px;color:var(--text3)">마켓 전체 ' + mk.length + '색 · 빈도 ' + tot.toLocaleString() + ' · ' + _fnCritLabel() + '</span>'
+      +   '<span style="font-family:var(--mono);font-size:9px;color:var(--text3)">마켓 전체 ' + mk.length + '색 · 빈도 ' + tot.toLocaleString() + ' · ' + _fnCritLabel() + (byChip ? ' · 비중 = 표시 칩 수 기준 (총 ' + chipTot + '칩)' : '') + '</span>'
       +   '<span style="font-family:var(--mono);font-size:8px;color:var(--text4)">Click swatch for brands</span>'
       +   '<span style="margin-left:auto;display:flex;gap:12px;font-family:var(--mono);font-size:9px;color:var(--text2)">'
       +     ['Core','Seasonal','Accent'].map(function(t){
               var k = { Core: 'basic', Seasonal: 'sub', Accent: 'key' }[t];
               return '<span><span style="display:inline-block;width:9px;height:9px;border:2px solid ' + FN_SOLID[t] + ';margin-right:4px;vertical-align:-1px"></span>'
-                + t + ' <b style="color:var(--text)">' + pct[t] + '%</b>' + ' → ' + TM_CAPS[k] + '칩' + '</span>';
+                + t + ' <b style="color:var(--text)">' + pct[t] + '%</b> → ' + (byChip ? chipN[t] : TM_CAPS[k]) + '칩</span>';
             }).join('')
       +   '</span>'
       + '</div>'
@@ -25335,7 +25348,7 @@ document.addEventListener('DOMContentLoaded',function(){
   //  하단에는 표준 75칩(보유)과 실제 사용 30칩(SKU>0)을 비교한다.
   // ══════════════════════════════════════════════════════════════
   var STD_SECT_ID = 'disc-std-page';
-  var STD_CUT = { accent_chroma: 50.0, achro_gate: 10.0, core_warm_chroma: 22.5, core_warm_light: 82.0,   // v246: 35 → 22.5
+  var STD_CUT = { accent_chroma: 50.0, achro_gate: 5.0, core_warm_chroma: 22.5, core_warm_light: 82.0,   // v246: 35 → 22.5
                   olive_h: 85, olive_l: 50,
                   navy_c: 25,                 // v248 네이비 채도 상한
                   cream_l: 85, cream_c: 15,   // v248 크림·아이보리
@@ -25351,7 +25364,7 @@ document.addEventListener('DOMContentLoaded',function(){
     var a = _tmLCh(hex);
     if(a.C < STD_CUT.achro_gate) return '무채';
     var H = a.H;
-    if(H >= 245 && H <= 300 && a.L < 45 && a.C < STD_CUT.navy_c) return '네이비';   // v266: 하한 230→245 (페트롤 H232 등 청록성 색은 네이비에서 제외)
+    if(H >= 260 && H <= 300 && a.L < 45 && a.C < STD_CUT.navy_c) return '네이비';   // v272: 하한 245→260 (#10364B H253 등 틸빛 다크블루는 네이비에서 제외)
     if(a.L >= STD_CUT.cream_l && a.C < STD_CUT.cream_c && H >= 30 && H <= 110) return '베이지';   // v248: 크림·아이보리
     if(H >= 40 && H <= 75  && a.L >= 60 && a.C < 25) return '베이지';
     if(H >= 30 && H <= 95) return (a.L < 60 ? '브라운' : '베이지');
@@ -25376,7 +25389,7 @@ document.addEventListener('DOMContentLoaded',function(){
     // ③ 베이지·브라운 뉴트럴(샌드·토프·탠·초콜릿·모카·카키). 밝은 올리브베이지 제외 · 카키(#574D35 등)는 Core 유지
     if((h === '베이지' || h === '브라운')
        && a.C < STD_CUT.core_warm_chroma && a.L < STD_CUT.core_warm_light
-       && !(a.H > STD_CUT.olive_h && a.L >= STD_CUT.olive_l)) return 'Core';   // ③
+       && !(a.H > STD_CUT.olive_h && a.L >= STD_CUT.olive_l && a.C >= 10)) return 'Core';   // ③ (v272: 올리브 제외는 C*≥10 일 때만 — 토프·그레이지는 Core 유지)
     return 'Seasonal';                                          // ④ 옐로·오렌지·레드핑크·그린·틸·블루·퍼플 = 시즈널(비비드는 위에서 Accent)
   }
 
