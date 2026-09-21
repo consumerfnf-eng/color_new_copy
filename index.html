@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v269 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v270 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -22095,6 +22095,9 @@ document.addEventListener('DOMContentLoaded',function(){
     return totals;
   }
 
+  // v270 — 라이프스타일별 채도 상한. 지정한 카테고리는 이보다 쨍한 색을 받지 않는다.
+  //   Casual Commute(Uniqlo·Musinsa Standard)는 비비드가 어울리지 않아 C* 45 로 제한.
+  var CC_MAX_C = { commute: 45 };
   function _gapSplitByCategory(items){
     var defs = _gapCatDefs();
     var bkn = window._brandKeyNorm || function(x){ return (x||'').toLowerCase().replace(/[\s._\-]+/g,'').trim(); };
@@ -22113,7 +22116,10 @@ document.addEventListener('DOMContentLoaded',function(){
       // 한 색이 여러 카테고리 브랜드에 걸쳐도 한 곳에만 넣는다.
       // 기준은 '그 카테고리 브랜드가 이 톤을 쓴 횟수' — 가장 많이 쓴 쪽이 주인.
       var best = null;
+      var cVal = _tmLCh(g.item.trend.hex).C;
       maps.forEach(function(m){
+        var cap = CC_MAX_C[m.def.key];
+        if(cap && cVal >= cap) return;                          // v270 채도 상한 초과 → 이 카테고리 제외
         var mine = nb.filter(function(b){ return m.set[bkn(b)]; });
         if(!mine.length) return;
         var f = mine.reduce(function(n,b){ return n + (counts[b] || 1); }, 0);
@@ -22125,6 +22131,8 @@ document.addEventListener('DOMContentLoaded',function(){
       if(best){
         maps.forEach(function(m){
           if(m === best.map) return;
+          var cap2 = CC_MAX_C[m.def.key];
+          if(cap2 && cVal >= cap2) return;
           var mine = nb.filter(function(b){ return m.set[bkn(b)]; });
           if(!mine.length) return;
           var f = mine.reduce(function(n,b){ return n + (counts[b] || 1); }, 0);
@@ -22136,6 +22144,8 @@ document.addEventListener('DOMContentLoaded',function(){
           // 걸친 나머지 카테고리에도 넣되 '부수'로 — 주력이 어디인지는 칩에 남긴다
           maps.forEach(function(m){
             if(m === best.map) return;
+            var cap3 = CC_MAX_C[m.def.key];
+            if(cap3 && cVal >= cap3) return;
             var mine = nb.filter(function(b){ return m.set[bkn(b)]; });
             if(!mine.length) return;
             var f = mine.reduce(function(n,b){ return n + (counts[b] || 1); }, 0);
@@ -24536,7 +24546,7 @@ document.addEventListener('DOMContentLoaded',function(){
   window._discCatMiniBar = _fnMiniBar;
 
   // ── 라이프스타일별 구성비 — 큰 막대 (기본 / 컬러 구성 상세) v236 ──
-  var FN_CAT_VIEW = 'basic';
+  var FN_CAT_VIEW = 'detail';   // v270: '기본' 제거, 컬러 구성 상세 고정
   var FN_SOLID = { Core: '#111111', Seasonal: '#5E5E5E', Accent: '#D98A2B' };
   var FN_CLUSTER_DE = 7, FN_CLUSTER_MAX = 36;
   window._fnSetCatView = function(v){ FN_CAT_VIEW = v; try{ _ccRender(); }catch(e){} try{ _discOrderSections(); }catch(e){} };
@@ -24615,7 +24625,7 @@ document.addEventListener('DOMContentLoaded',function(){
     return '<div style="margin:0 0 22px">'
       + '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
       +   '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text2);letter-spacing:0.06em">LIFESTYLE COLOR MIX · CORE / SEASONAL / ACCENT</span>'
-      +   '<span style="display:flex;gap:4px">' + tab('basic', '기본') + tab('detail', '컬러 구성 상세') + '</span>'
+      +   '<span style="font-family:var(--mono);font-size:9px;color:var(--text4)">컬러 구성 상세</span>'
       +   '<span style="margin-left:auto;display:flex;gap:12px;font-family:var(--mono);font-size:9px;color:var(--text3)">'
       +     ['Core','Seasonal','Accent'].map(function(t){ return '<span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + FN_SOLID[t] + ';margin-right:4px"></span>' + t + '</span>'; }).join('')
       +   '</span>'
