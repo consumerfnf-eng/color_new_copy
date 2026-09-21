@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v270 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v271 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20359,7 +20359,7 @@ document.addEventListener('DOMContentLoaded',function(){
     var cwBtn = e.nav.querySelector('button.tab[onclick*="colorway"]');
     if(cwBtn){
       _cwRestore.push({ el: cwBtn, html: cwBtn.innerHTML });
-      cwBtn.innerHTML = '<span class="tab-num">05</span>팔레트 리뷰';
+      cwBtn.innerHTML = '<span class="tab-num">05</span>Palette Review';
     }
     var cwPane = document.getElementById('tab-colorway');
     if(cwPane){
@@ -20415,12 +20415,12 @@ document.addEventListener('DOMContentLoaded',function(){
       if(fwd){
         _cwRestore.push({ el: fwd, html: fwd.innerHTML });
         fwd.setAttribute('onclick', "window._discGoStd && window._discGoStd()");
-        fwd.innerHTML = '04 마켓 도출 &#8594;';
+        fwd.innerHTML = '04 Market Derivation &#8594;';
       }
       var infoPal = e.navPal.querySelector('.step-nav-info');
       if(infoPal){
         _cwRestore.push({ el: infoPal, html: infoPal.innerHTML });
-        infoPal.innerHTML = 'STEP <strong>03</strong> / 05 &nbsp;&middot;&nbsp; Proposal → 마켓 도출';
+        infoPal.innerHTML = 'STEP <strong>03</strong> / 05 &nbsp;&middot;&nbsp; Proposal → Market Derivation';
       }
     }
 
@@ -24022,6 +24022,16 @@ document.addEventListener('DOMContentLoaded',function(){
       }
     } catch(e){}
 
+    // G. Sales-Based — 03 의 DISCOVERY 실판매 섹션을 그대로 가져온다 (v271)
+    try {
+      var sb = document.getElementById('disc-sales-section');
+      var box = sb ? sb.querySelector('.spp-trend-market-box') : null;
+      html += _rvCard('G. Sales-Based — DISCOVERY 25FW 실판매 (03 Palette Proposal 동일 데이터)',
+        (box && box.textContent.replace(/\s/g, '').length > 40)
+          ? '<div class="disc-rv-sales">' + box.innerHTML + '</div>'
+          : '<div class="spp-empty" style="font-size:11px">03 Palette Proposal 의 Sales-Based 데이터가 아직 로드되지 않았습니다.</div>');
+    } catch(e){}
+
     return html;
   }
   window._discReviewHtml = _rvHtml;
@@ -25242,7 +25252,7 @@ document.addEventListener('DOMContentLoaded',function(){
       btn = document.createElement('button');
       btn.className = 'tab';
       btn.setAttribute('onclick', "switchTab('" + STD_TAB_KEY + "', this)");
-      btn.innerHTML = '<span class="tab-num">04</span>마켓 도출';
+      btn.innerHTML = '<span class="tab-num">04</span>Market Derivation';
       var _cwRef = e.nav.querySelector('button.tab[onclick*="colorway"]');
       if(_cwRef) e.nav.insertBefore(btn, _cwRef); else e.nav.appendChild(btn);
     }
@@ -25260,8 +25270,8 @@ document.addEventListener('DOMContentLoaded',function(){
       nav5.className = 'step-nav';
       nav5.innerHTML =
           '<button class="btn btn-sec" onclick="switchTabByName(\'palette\')" style="' + STD_BTN_SEC + '">&#8592; 03 Palette Proposal</button>'
-        + '<div class="step-nav-info">STEP <strong>04</strong> / 05 &nbsp;&middot;&nbsp; 마켓 도출 → 팔레트 리뷰</div>'
-        + '<button class="btn btn-primary" onclick="switchTabByName(\'colorway\')" style="' + STD_BTN_PRI + '">05 팔레트 리뷰 &#8594;</button>';
+        + '<div class="step-nav-info">STEP <strong>04</strong> / 05 &nbsp;&middot;&nbsp; Market Derivation → Palette Review</div>'
+        + '<button class="btn btn-primary" onclick="switchTabByName(\'colorway\')" style="' + STD_BTN_PRI + '">05 Palette Review &#8594;</button>';
       pane.appendChild(nav5);
     }
     // 04 하단 step-nav 오른쪽에 05 이동 버튼
