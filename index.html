@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v278 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v279 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21017,10 +21017,12 @@ document.addEventListener('DOMContentLoaded',function(){
     }).join('');
     var extras = 0;
     try{ if(_tmLastBuild) ['basic','sub','key'].forEach(function(k){ extras += (_tmLastBuild.buckets[k]||[]).filter(function(x){ return x._extra; }).length; }); }catch(e){}
-    return _tgtCard('TARGET · 톤 구성 목표',
+    return _tgtCard('TARGET · 계열 × 명도 매트릭스',
       '마켓 비율 × ' + TM_TOTAL + '색 → 칸 목표 ' + tg.total + ' · 칸 채움 ' + totFill + ' · 칸 빈칸 ' + totMiss
       + (extras ? ' · 빈도 보충 ' + extras : '') + ' → 제안 ' + (totFill + extras) + '색',
-        '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">' + tiles + '</div>'
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">' + tiles + '</div>'
+      + _tgtMatrix()
+      + '<div style="height:10px"></div>'
       + (totMiss
           ? _tgtFoldBtn('cells', '펼치기 — 못 채운 칸 ' + missCells.length + '개')
             + (TGT_OPEN.cells
@@ -21055,6 +21057,86 @@ document.addEventListener('DOMContentLoaded',function(){
       + '</div>');
   }
   window._discTargetPanels = function(){ return _tgtDistPanel() + _tgtCellPanel(); };
+
+  // ── v279 — 계열 × 명도 매트릭스 (마켓 대표색 배경 · 채움/목표) ──
+  //  selfCount(hex→cell 카운트)를 주면 '자사' 수치를 함께 보여준다 (04 리뷰용)
+  function _tgtMatrix(opt){
+    opt = opt || {};
+    var tg = _tgtBuild(); if(!tg) return '';
+    var bands = TGT_BANDS.map(function(b){ return b[0]; });
+    var segMap = {}, famSet = {};
+    tg.segList.forEach(function(g){ segMap[g.fam + '|' + g.band] = g; famSet[g.fam] = 1; });
+    var cellMap = {};
+    tg.cells.forEach(function(c){ cellMap[c.fam + '|' + c.band] = c; famSet[c.fam] = 1; });
+    var self = opt.selfCount || null;
+    if(self) Object.keys(self).forEach(function(k){ famSet[k.split('|')[0]] = 1; });
+    var fams = Object.keys(famSet).sort(function(a, b){
+      var fa = tg.segList.filter(function(g){ return g.fam === a; }).reduce(function(n,g){ return n+g.freq; }, 0);
+      var fb = tg.segList.filter(function(g){ return g.fam === b; }).reduce(function(n,g){ return n+g.freq; }, 0);
+      return fb - fa;
+    });
+    var maxShare = Math.max.apply(null, tg.segList.map(function(g){ return g.share; }).concat([1]));
+    var cellHtml = function(fam, band){
+      var g = segMap[fam + '|' + band], c = cellMap[fam + '|' + band];
+      var sc = self ? (self[fam + '|' + band] || 0) : null;
+      if(!g && !c && !sc) return '<td style="padding:2px"><div style="height:44px;border-radius:5px;background:var(--bg3);opacity:0.35"></div></td>';
+      var quota = c ? c.quota : 0, filled = c ? (c.filled || 0) : 0;
+      var miss = Math.max(0, quota - filled);
+      var bg = g ? g.cHex : 'var(--bg3)';
+      var fg = g ? _dcpTextOn(String(g.cHex).slice(1)) : 'var(--text3)';
+      var border = miss ? '2px dashed var(--warn)' : (quota ? '2px solid ' + (g ? FN_SOLID[g.tier] : 'var(--border)') : '1px solid var(--border)');
+      var main = self
+        ? (sc || 0) + ' / ' + quota
+        : (quota ? filled + ' / ' + quota : '·');
+      var tip = fam + ' · ' + band
+        + (g ? ' · 마켓 ' + g.share + '% · 평균L ' + Math.round(g.cL) + ' · ' + g.tier : '')
+        + (quota ? ' · 목표 ' + quota + ' · 채움 ' + filled : ' · 목표 없음')
+        + (self ? ' · 자사 ' + (sc || 0) : '');
+      var h = g ? Math.round(30 + Math.min(1, g.share / maxShare) * 26) : 34;
+      return '<td style="padding:2px" title="' + tip + '">'
+        + '<div style="height:' + h + 'px;border-radius:5px;border:' + border + ';background:' + bg + ';'
+        +   'display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:800;color:' + fg + '">'
+        +   '<span style="padding:1px 6px;border-radius:9px;background:rgba(20,20,20,0.30);-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);color:#fff">' + main + '</span>'
+        + '</div></td>';
+    };
+    var rows = fams.map(function(f){
+      return '<tr><td style="padding:2px 8px;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text2);white-space:nowrap">' + f + '</td>'
+        + bands.map(function(b){ return cellHtml(f, b); }).join('') + '</tr>';
+    }).join('');
+    // 명도밴드 합계 — 마켓 비중 vs 제안(또는 자사) 개수 비중
+    var mktBand = {}, propBand = {};
+    bands.forEach(function(b){ mktBand[b] = 0; propBand[b] = 0; });
+    tg.segList.forEach(function(g){ mktBand[g.band] += g.share; });
+    if(self){ Object.keys(self).forEach(function(k){ propBand[k.split('|')[1]] += self[k]; }); }
+    else { tg.cells.forEach(function(c){ propBand[c.band] += (c.filled || 0); }); }
+    var propTot = bands.reduce(function(n,b){ return n + propBand[b]; }, 0) || 1;
+    var barRow = function(label, vals, tot, fmt){
+      return '<div style="display:grid;grid-template-columns:70px 1fr;gap:8px;align-items:center;margin-bottom:4px">'
+        + '<span style="font-family:var(--mono);font-size:9px;color:var(--text3);text-align:right">' + label + '</span>'
+        + '<div style="display:flex;height:16px;border-radius:4px;overflow:hidden;border:1px solid var(--border)">'
+        + bands.map(function(b, i){
+            var v = vals[b], pc = tot ? Math.round(v / tot * 1000) / 10 : 0;
+            var sh = ['#2A2A2A', '#5E5E5E', '#9A9A9A', '#D8D8D8'][i];
+            if(!pc) return '';
+            return '<div title="' + b + ' ' + pc + '%" style="flex:' + pc + ';background:' + sh + ';display:flex;align-items:center;justify-content:center;'
+              + 'font-family:var(--mono);font-size:9px;font-weight:700;color:' + (i >= 2 ? '#222' : '#fff') + '">' + (pc >= 8 ? b + ' ' + pc + '%' : '') + '</div>';
+          }).join('')
+        + '</div></div>';
+    };
+    return '<div style="overflow-x:auto"><table style="border-collapse:collapse">'
+      + '<thead><tr><th></th>' + bands.map(function(b, i){
+          return '<th style="padding:2px 8px;font-family:var(--mono);font-size:9px;color:var(--text3);text-align:center;min-width:74px">'
+            + b + '<div style="font-size:8px;color:var(--text4)">L ' + TGT_BANDS[i][1] + '~' + (TGT_BANDS[i][2] === 101 ? 100 : TGT_BANDS[i][2]) + '</div></th>';
+        }).join('') + '</tr></thead><tbody>' + rows + '</tbody></table></div>'
+      + '<div style="margin-top:10px">'
+      +   barRow('마켓', mktBand, bands.reduce(function(n,b){ return n + mktBand[b]; }, 0))
+      +   barRow(self ? '자사' : '제안', propBand, propTot)
+      + '</div>'
+      + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:6px">'
+      +   '칸 배경 = 마켓 대표색 · 칸 높이 = 마켓 비중 · 숫자 = ' + (self ? '자사 / 목표' : '채움 / 목표')
+      +   ' · 점선 주황 = 목표 미달 · 마우스 올리면 비중·평균L·등급</div>';
+  }
+  window._discTargetMatrix = _tgtMatrix;
 
   // 목표 칸을 채우는 방식으로 선발 — 칸마다 빈도 상위부터, 못 채우면 빈칸으로 남긴다
   function _tmCellPick(list, tierName, minDist){
@@ -21539,6 +21621,10 @@ document.addEventListener('DOMContentLoaded',function(){
       +     '</div>'
       +     '<div class="dcp-hex">' + t.hex + '</div>'
       +   '</div>'
+      +   (it._cell
+            ? '<div style="font-family:var(--mono);font-size:8px;text-align:center;color:' + (it._extra ? 'var(--text4)' : 'var(--gold)') + ';margin-top:2px">'
+              + it._cell + (it._extra ? ' (보충)' : '') + '</div>'
+            : '')
       +   _ovStrip(t.hex)
       + '</div>';
   }
@@ -21646,7 +21732,6 @@ document.addEventListener('DOMContentLoaded',function(){
       +   ' · 분류 디커 기준 (Accent C*≥' + STD_CUT.accent_chroma + ' · 무채·네이비 Core · 베이지·브라운 C*<' + STD_CUT.core_warm_chroma + ' Core)' + ' · 마켓 근접색 병합 Lab ΔE < ' + TM_CLUSTER_DE + ' · 브랜드 집계 Lab ΔE < ' + TM_NEAR_BRAND_DE
       + '</div>'
       + _fnMarketTierBar()
-      + _tgtDistPanel()
       + _tgtCellPanel()
       + _ovTabs()
       + (t.trendPool === 0
@@ -24298,37 +24383,39 @@ document.addEventListener('DOMContentLoaded',function(){
 
     // v264 — 04 하단 '근거 데이터'(A 트렌드 · B 큐레이션 · C 25FW 판매) 블록 제거
 
-    // E. 계열별 명도(L) 리뷰 — 자사 1차 vs 마켓 (ΔL 진단) · 04 도출 목표 참조
+    // E. 계열 × 명도 매트릭스 — 자사 1차 vs 03 목표 (v279)
     try {
+      var _selfCell = {};
+      pal.forEach(function(p2){
+        var h = String(p2.hex).toUpperCase(); if(!/^#[0-9A-F]{6}$/.test(h)) return;
+        var cl = _tgtCellOf(h), k = cl.fam + '|' + cl.band;
+        _selfCell[k] = (_selfCell[k] || 0) + 1;
+      });
+      var _mx = '';
+      try{ _mx = _tgtMatrix({ selfCount: _selfCell }); }catch(e){ _mx = ''; }
+      // 계열별 ΔL 요약 (한 줄)
       var _mkL = {}, _paL = {};
-      (market || []).forEach(function(m){ var h = String(m.hex).toUpperCase(); if(!/^#[0-9A-F]{6}$/.test(h)) return; var f = _stdHue(h), L = _tmLab(h)[0], w = m.freq || 1; _mkL[f] = _mkL[f] || { s:0, w:0 }; _mkL[f].s += L*w; _mkL[f].w += w; });
-      pal.forEach(function(p){ var h = String(p.hex).toUpperCase(); if(!/^#[0-9A-F]{6}$/.test(h)) return; var f = _stdHue(h), L = _tmLab(h)[0]; _paL[f] = _paL[f] || { s:0, n:0 }; _paL[f].s += L; _paL[f].n++; });
-      var _fams = Object.keys(_mkL).sort(function(a,b){ return _mkL[b].w - _mkL[a].w; });
-      var _lrows = _fams.map(function(f){
-        var mk = Math.round(_mkL[f].s / _mkL[f].w);
-        var pa = _paL[f] ? Math.round(_paL[f].s / _paL[f].n) : null;
-        var d = pa == null ? null : pa - mk;
-        var diag = pa == null ? '자사 1차에 없음 → 신규 검토'
-                 : (Math.abs(d) < 6 ? '명도 적정'
-                 : (d > 0 ? '자사가 ' + d + ' 밝음 → 더 어두운 톤 보강' : '자사가 ' + (-d) + ' 어두움 → 더 밝은 톤 보강'));
-        var dc = pa == null ? 'var(--warn)' : (Math.abs(d) < 6 ? 'var(--text3)' : 'var(--gold)');
-        return '<tr style="border-bottom:1px solid var(--border)">'
-          + '<td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--text2)">' + f + '</td>'
-          + '<td style="padding:5px 8px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--text3)">' + (pa == null ? '–' : pa) + '</td>'
-          + '<td style="padding:5px 8px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--text3)">' + mk + '</td>'
-          + '<td style="padding:5px 8px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:700;color:' + dc + '">' + (d == null ? '–' : (d > 0 ? '+' + d : d)) + '</td>'
-          + '<td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:' + dc + '">' + diag + '</td></tr>';
-      }).join('');
-      html += _rvCard('E. 계열별 명도(L) 리뷰 — 자사 1차 vs 마켓',
-        '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
-        + '<thead><tr style="font-family:var(--mono);font-size:9px;color:var(--text3)">'
-        +   '<th style="text-align:left;padding:5px 8px;border-bottom:2px solid var(--border)">계열</th>'
-        +   '<th style="text-align:right;padding:5px 8px;border-bottom:2px solid var(--border)">자사 평균L</th>'
-        +   '<th style="text-align:right;padding:5px 8px;border-bottom:2px solid var(--border)">마켓 평균L</th>'
-        +   '<th style="text-align:right;padding:5px 8px;border-bottom:2px solid var(--border)">ΔL</th>'
-        +   '<th style="text-align:left;padding:5px 8px;border-bottom:2px solid var(--border)">진단</th>'
-        + '</tr></thead><tbody>' + _lrows + '</tbody></table></div>'
-        + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:6px">L↑=밝음 · ΔL=자사−마켓 · |ΔL|≥6 이면 톤 조정 권장 · 계열별 명도밴드 목표는 04 마켓 도출 참조</div>');
+      (market || []).forEach(function(m){
+        var h = String(m.hex).toUpperCase(); if(!/^#[0-9A-F]{6}$/.test(h)) return;
+        var f = _stdHue(h), L = _tmLab(h)[0], w = m.freq || 1;
+        if(!_mkL[f]) _mkL[f] = { s: 0, w: 0 };
+        _mkL[f].s += L * w; _mkL[f].w += w;
+      });
+      pal.forEach(function(p2){
+        var h = String(p2.hex).toUpperCase(); if(!/^#[0-9A-F]{6}$/.test(h)) return;
+        var f = _stdHue(h), L = _tmLab(h)[0];
+        if(!_paL[f]) _paL[f] = { s: 0, n: 0 };
+        _paL[f].s += L; _paL[f].n++;
+      });
+      var _dl = Object.keys(_paL).filter(function(f){ return _mkL[f]; }).map(function(f){
+        return { fam: f, d: Math.round((_paL[f].s / _paL[f].n) - (_mkL[f].s / _mkL[f].w)) };
+      }).filter(function(x){ return Math.abs(x.d) >= 6; }).sort(function(a2, b2){ return Math.abs(b2.d) - Math.abs(a2.d); });
+      var _dlTxt = _dl.length
+        ? _dl.slice(0, 6).map(function(x){ return x.fam + ' ' + (x.d > 0 ? '+' + x.d + ' 밝음' : x.d + ' 어두움'); }).join(' · ')
+        : '모든 계열이 마켓 평균 명도와 ±6 이내';
+      html += _rvCard('E. 계열 × 명도 매트릭스 — 자사 1차 vs 03 목표',
+        (_mx || '<div class="spp-empty" style="font-size:11px">03 Palette Proposal 을 먼저 열어주세요.</div>')
+        + '<div style="font-family:var(--mono);font-size:10px;color:var(--text2);margin-top:8px">ΔL 진단 — ' + _dlTxt + '</div>');
     } catch(e){}
 
     // F. 목표 대비 과부족 (계열×명도×등급) — 04 마켓 도출 목표(_discMarketTargetV2) vs 자사 1차
