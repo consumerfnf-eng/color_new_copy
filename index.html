@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v297 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v298 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -26111,6 +26111,8 @@ document.addEventListener('DOMContentLoaded',function(){
     if(H > 205 && H <= 288) return '블루';
     if(H > 288 && H <= 330) return '퍼플';
     if(H > 330 || H < 15) return _rpSplit(a, H);
+    // v298 — H 15~30° 는 이전에 모두 '오렌지'로 떨어졌다. 저채도(모브브라운·로즈그레이)는 브라운/베이지, 선명하면 레드.
+    if(H >= 15 && H < 30) return a.C < STD_CUT.vivid_hue_c ? (a.L < 60 ? '브라운' : '베이지') : '레드';
     return '오렌지';
   }
   // 디커 등급 판정 (v266 — Core 재정의: 기본물만 Core. 청록·그린·러스트·퍼플 등은 어두워도 Seasonal)
