@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v285 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v286 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -24865,7 +24865,9 @@ document.addEventListener('DOMContentLoaded',function(){
     });
     _dcpAddList().forEach(function(x){
       var h = x.item.trend.hex;
-      if(x.item._extra) return;                                   // 03 에서 정원 보충으로 들어온 색(목표 칸 밖)은 추가 후보에서 제외
+      // 03 에서 정원 보충으로 들어온 색(목표 칸 밖)은 추가 후보에서 제외.
+      // 단 ACCENT 는 목표 칸이 평균색 기준이라 생기지 않아(보류 이슈) 전부 '보충'으로 잡히므로 예외로 둔다.
+      if(x.item._extra && x.group !== 'key') return;
       if(main.concat(add).some(function(f){ return _tmDeltaE(f.hex, h) < FN_DEDUP_DE; })) return;
       add.push({ kind: 'add', hex: h, name: (x.item.trend.sources || []).join('·') || 'Trend', x: x, ti: x.item, sn: _finSalesNear(h) });
     });
