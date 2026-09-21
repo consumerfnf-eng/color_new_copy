@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v292 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v293 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -22073,21 +22073,22 @@ document.addEventListener('DOMContentLoaded',function(){
     {name:'WHS', code:'040-92-00', hex:'F2EEE7'},
     {name:'BKS', code:'139-18-00', hex:'2B2C31'}
   ];
+  // v293 — 260915 팔레트 코드 반영: LPS 152-76-11 · LVL 135-70-13 · BLS 112-75-11 (HEX 는 팔레트 원본 스와치 기준)
   // v290 — 라이프스타일 배정은 이전(260909) 팔레트와 같은 이름 기준으로 복원.
   //   FALL 시즌 색 ≈ ACTIVE WELLNESS, WINTER 시즌 색 ≈ CASUAL COMMUTE / OUTDOOR RESORT.
   //   빠진 SBD·COL 자리는 없음, 새 색 NYD 는 네이비 계열이라 CASUAL COMMUTE(DNS 옆)에 배정. CRD 는 라이프스타일 미배정.
   var DCP_MOODS = [
     { title:'ACTIVE WELLNESS', rows:[
-      [ {name:'LPS', code:'155-72-12', hex:'DAA6B3'},
-        {name:'BLS', code:'101-66-11', hex:'81B5C2'},
-        {name:'LVL', code:'134-67-16', hex:'ACA5CF'} ],
+      [ {name:'LPS', code:'152-76-11', hex:'D4AEBB'},
+        {name:'BLS', code:'112-75-11', hex:'98B8CB'},
+        {name:'LVL', code:'135-70-13', hex:'ACA2BE'} ],
       [ {name:'SAS', code:'027-58-04', hex:'A08D7A'},
         {name:'INS', code:'120-22-18', hex:'1B344F'},
         {name:'TQL', code:'103-29-11', hex:'264D58'},
         {name:'WIS', code:'151-22-09', hex:'452B3F'} ]
     ]},
     { title:'CASUAL COMMUTE', rows:[
-      [ {name:'LPS', code:'155-72-12', hex:'DAA6B3'},
+      [ {name:'LPS', code:'152-76-11', hex:'D4AEBB'},
         {name:'WID', code:'005-23-06', hex:'472F34'},
         {name:'NYD', code:'120-21-10', hex:'253445'} ],
       [ {name:'KAD', code:'043-24-06', hex:'443C2A'},
