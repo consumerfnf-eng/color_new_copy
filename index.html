@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v303 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v304 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -22460,8 +22460,8 @@ document.addEventListener('DOMContentLoaded',function(){
       if(!_moodOf[k]) _moodOf[k] = [];
       if(!_moodOf[k].some(function(x){ return x.s === lf.s; })) _moodOf[k].push(lf);
     }); }); });
-    // v303 — 최종 탭에서는 라이프스타일 테두리·범례를 표시하지 않는다
-    function _lifeOf(it){ return DCP_TAB === 'final' ? null : (_moodOf[String(it.hex).toUpperCase()] || null); }
+    // v304 — 최종 탭: 기본은 라이프스타일 테두리 표시, 하단 미니 버튼으로 끄고 켠다
+    function _lifeOf(it){ return (DCP_TAB === 'final' && !DCP_FINAL_LIFE) ? null : (_moodOf[String(it.hex).toUpperCase()] || null); }
     var lifeLegend = '<div style="display:flex;gap:14px;flex-wrap:wrap;font-family:var(--mono);font-size:9px;color:var(--text3);margin:0 0 12px">'
       + '<span style="color:var(--text4)">라이프스타일 표기(테두리):</span>'
       + Object.keys(DCP_LIFE).map(function(t){ var x = DCP_LIFE[t]; return '<span><span style="display:inline-block;width:11px;height:11px;border-radius:3px;box-shadow:0 0 0 2px ' + x.c + ' inset;vertical-align:-2px;margin-right:5px"></span>' + t + '</span>'; }).join('')
@@ -22471,7 +22471,7 @@ document.addEventListener('DOMContentLoaded',function(){
       ['key',   TM_GROUP_LABEL.key,   '#A090F0'],
       ['basic', TM_GROUP_LABEL.basic, 'var(--gold)']
     ];
-    var core = (DCP_TAB === 'final' ? '' : lifeLegend) + '<div style="margin-bottom:22px">'
+    var core = ((DCP_TAB === 'final' && !DCP_FINAL_LIFE) ? '' : lifeLegend) + '<div style="margin-bottom:22px">'
       + tiers.map(function(t){
           var list = flat.filter(function(it){ return _tmClassify('#' + it.hex) === t[0]; });
           if(!list.length) return '';
@@ -22494,7 +22494,14 @@ document.addEventListener('DOMContentLoaded',function(){
         + '</div></div>';
     }).join('') + '</div>';
     _dcpInMood = false;
-    if(DCP_TAB === 'final'){ core = _dcpFinalAddRow() + core; }
+    if(DCP_TAB === 'final'){
+      core = _dcpFinalAddRow() + core
+        + '<div style="margin:-8px 0 18px;display:flex;justify-content:flex-end">'
+        +   '<button onclick="_dcpToggleFinalLife()" style="font-family:var(--mono);font-size:9px;padding:3px 10px;border-radius:12px;cursor:pointer;'
+        +     'border:1px solid var(--border);background:transparent;color:var(--text3)">'
+        +     (DCP_FINAL_LIFE ? '라이프스타일 표기 끄기' : '라이프스타일 표기 켜기') + '</button>'
+        + '</div>';
+    }
     if(DCP_TAB === 'watch'){ core = _dcpAddRow() + core; }
     // 라이프스타일 명칭은 위 tier 칩 라벨로 흡수 → 하단 무드 3종 블록(moods)은 표시하지 않는다.
     // (되돌리려면 아래 반환에 ' + moods' 를 다시 붙이면 됨. moods 변수는 위에서 그대로 생성됨)
@@ -24233,6 +24240,8 @@ document.addEventListener('DOMContentLoaded',function(){
   };
   // v297 — 최종 탭용: 확정색(대문자 HEX) → 최종 판정
   var _dcpFinKindCache = null;
+  var DCP_FINAL_LIFE = true;          // v304 — 최종 탭 라이프스타일 테두리 표시 여부 (기본 켬)
+  window._dcpToggleFinalLife = function(){ DCP_FINAL_LIFE = !DCP_FINAL_LIFE; _dcpRender(); try{ _discOrderSections(); }catch(e){} };
   function _dcpFinalKindMap(){
     if(_dcpFinKindCache) return _dcpFinKindCache;
     var out = {}, r = null;
