@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v305 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v306 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -24571,7 +24571,9 @@ document.addEventListener('DOMContentLoaded',function(){
     // ── C. 계열 매트릭스 [제안 | 트렌드 | 최종] ──────────────
     var FAM_ORDER = ['무채','네이비','베이지','브라운','옐로','오렌지','레드','핑크','퍼플','블루','틸','그린'];
     var swatch = function(hex, tip, badge){
-      return '<div title="' + tip + '" style="width:30px;text-align:center">'
+      // v306 — 클릭하면 컬러 코드(자사·트렌드 코드, 가까운 COLORO·팬톤)를 모달로
+      return '<div title="' + tip + ' · 클릭 = 컬러 코드" onclick="_swOpen(event,\'' + hex + '\',\'' + encodeURIComponent(String(tip || '')) + '\',\'' + encodeURIComponent(badge && badge.t ? badge.t : '') + '\')"'
+        + ' style="width:30px;text-align:center;cursor:pointer">'
         + '<div style="height:24px;border-radius:4px;background:' + hex + ';border:' + ((badge&&badge.b)||'1px solid var(--border)') + ';box-sizing:border-box"></div>'
         + ((badge&&badge.t) ? '<div style="font-family:var(--mono);font-size:7px;font-weight:700;color:' + badge.c + ';line-height:1.1;margin-top:1px">' + badge.t + '</div>' : '')
         + '</div>';
@@ -24842,6 +24844,34 @@ document.addEventListener('DOMContentLoaded',function(){
     md.scrollTop = 0;
   }
   window._discUiModal = _uiModal;
+
+  // v306 — 리뷰 표의 작은 칩 클릭 → 컬러 코드 모달
+  window._swOpen = function(evt, hex, tipEnc, badgeEnc){
+    if(evt) evt.stopPropagation();
+    var h = String(hex).toUpperCase(), tip = decodeURIComponent(tipEnc || ''), badge = decodeURIComponent(badgeEnc || '');
+    var palCode = ''; try{ palCode = _rptPalMeta(h) || ''; }catch(e){}
+    var tr = null; try{ tr = _tmIndex[h] ? _tmIndex[h].trend : null; }catch(e){}
+    if(!tr){ try{ _tmTrendPool().some(function(t){ if(String(t.hex).toUpperCase() === h){ tr = t; return true; } return false; }); }catch(e){} }
+    var trCode = ''; try{ trCode = tr ? _rptTrendCode(tr) : ''; }catch(e){}
+    var near = null;
+    // 자사·트렌드 코드가 COLORO 면 그 코드를 그대로 쓰고, 아니면 3,500색에서 가장 가까운 코드
+    var _own = String(palCode + ' ' + trCode).match(/COLORO\s*(\d{3}-\d{2}-\d{2})/i);
+    if(_own){ var _lh = (typeof COLORO_LIB !== 'undefined') ? COLORO_LIB.map[_own[1]] : null; near = { code: _own[1], hex: _lh || h, de: 0, own: true }; }
+    else { try{ near = coloroNearest(h); }catch(e){} }
+    var hc = null; try{ hc = window.hexToColoro ? window.hexToColoro(h) : null; }catch(e){}
+    var main = palCode || trCode || (near ? 'COLORO ≈ ' + near.code : h);
+    var rows = [];
+    if(palCode) rows.push(['자사 코드', palCode]);
+    if(tr) rows.push(['트렌드', ((tr.sources || []).join(' · ') || 'Trend') + (trCode ? ' · ' + trCode : '')]);
+    if(near) rows.push(['COLORO', near.code + ' · ' + near.hex + (near.own ? ' (지정 코드)' : (near.de === 0 ? ' (일치)' : ' · 가장 가까운 칩 ΔE ' + near.de))]);
+    if(hc && hc.pantone) rows.push(['Pantone ≈', hc.pantone + ' TCX']);
+    rows.push(['등급 · 계열', _stdTier(h) + ' · ' + _stdHue(h)]);
+    if(tip) rows.push(['표시', tip]);
+    _uiModal({ hex: h, badge: badge || '컬러', tone: 'gold', right: _stdTier(h),
+      body: _uiCard(h, palCode ? '자사 팔레트' : (tr ? 'TREND COLOR' : 'COLOR'), main, h)
+          + _uiSection('컬러 코드', _uiRows(rows)),
+      tags: (tr && tr.sources ? tr.sources : []).concat(near ? ['COLORO ' + near.code] : []) });
+  };
 
 
   // ══════════════════════════════════════════════════════════════
