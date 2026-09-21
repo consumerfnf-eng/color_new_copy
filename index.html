@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v279 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v280 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21732,7 +21732,6 @@ document.addEventListener('DOMContentLoaded',function(){
       +   ' · 분류 디커 기준 (Accent C*≥' + STD_CUT.accent_chroma + ' · 무채·네이비 Core · 베이지·브라운 C*<' + STD_CUT.core_warm_chroma + ' Core)' + ' · 마켓 근접색 병합 Lab ΔE < ' + TM_CLUSTER_DE + ' · 브랜드 집계 Lab ΔE < ' + TM_NEAR_BRAND_DE
       + '</div>'
       + _fnMarketTierBar()
-      + _tgtCellPanel()
       + _ovTabs()
       + (t.trendPool === 0
           ? '<div class="spp-empty">02 Trend Collection에서 WGSN 또는 Peclers 데이터를 먼저 로드하세요.</div>'
@@ -21751,6 +21750,7 @@ document.addEventListener('DOMContentLoaded',function(){
                   : _tmRow(TM_GROUP_LABEL.sub, 'var(--blue)', b.sub, TM_CAPS.sub, t.raw.sub, t.families.sub)
                     + _tmRow(TM_GROUP_LABEL.key, '#A090F0', b.key, TM_CAPS.key, t.raw.key, t.families.key))
               + _tmRow(TM_GROUP_LABEL.basic, 'var(--gold)', b.basic, TM_CAPS.basic, t.raw.basic, t.families.basic))
+      + _tgtCellPanel()
       + _tgtConclusion());
   }
   window._discRenderTrendMatched = _tmRender;
@@ -24795,6 +24795,7 @@ document.addEventListener('DOMContentLoaded',function(){
       + '<div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;margin-top:2px">' + (f.name || '') + '</div>'
       + '<div style="font-family:var(--mono);font-size:8.5px;color:var(--text3)">' + f.hex + '</div>'
       + '<div style="font-family:var(--mono);font-size:8.5px;font-weight:700;color:' + k[1] + '">' + k[0] + '</div>'
+      + (function(){ try{ var cl = _tgtCellOf(f.hex); return '<div style="font-family:var(--mono);font-size:8px;color:var(--text4)">' + cl.fam + '·' + cl.band + '</div>'; }catch(e){ return ''; } })()
       + '</div>';
   }
   function _finHtml(){
@@ -24816,9 +24817,50 @@ document.addEventListener('DOMContentLoaded',function(){
       var b = k === 'watch' ? '3px solid var(--gold)' : (k === 'add' ? '2px dashed var(--warn)' : (k === 'sales' ? '3px solid #3E8ED0' : '1px solid var(--border)'));
       return '<span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;border:' + b + ';vertical-align:-2px;margin-right:4px"></span>' + FIN_KIND[k][0] + '</span>';
     }).join('') + '<span><span style="font-weight:800;padding:0 3px;border-radius:2px;background:#3E8ED0;color:#fff">S</span> 25FW 판매 근거</span>';
+    // v280 — 명도밴드 반영: 최종 제안 vs 03 목표 밴드 분포 + 진단
+    var _bandBox = (function(){
+      var tg = null; try{ tg = _tgtBuild(); }catch(e){}
+      if(!tg) return '';
+      var bands = TGT_BANDS.map(function(x){ return x[0]; });
+      var fin = {}, tgtB = {}, mkt = {};
+      bands.forEach(function(b){ fin[b] = 0; tgtB[b] = 0; mkt[b] = 0; });
+      r.main.concat(r.add).forEach(function(f){ fin[_tgtCellOf(f.hex).band]++; });
+      tg.cells.forEach(function(c){ tgtB[c.band] += c.quota; });
+      tg.segList.forEach(function(g){ mkt[g.band] += g.share; });
+      var fTot = bands.reduce(function(n2,b){ return n2 + fin[b]; }, 0) || 1;
+      var tTot = bands.reduce(function(n2,b){ return n2 + tgtB[b]; }, 0) || 1;
+      var mTot = bands.reduce(function(n2,b){ return n2 + mkt[b]; }, 0) || 1;
+      var bar = function(label, v, tot, unit){
+        return '<div style="display:grid;grid-template-columns:78px 1fr;gap:8px;align-items:center;margin-bottom:4px">'
+          + '<span style="font-family:var(--mono);font-size:9px;color:var(--text3);text-align:right">' + label + '</span>'
+          + '<div style="display:flex;height:18px;border-radius:4px;overflow:hidden;border:1px solid var(--border)">'
+          + bands.map(function(b, i){
+              var pc = Math.round(v[b] / tot * 1000) / 10;
+              if(!pc) return '';
+              var sh = ['#2A2A2A','#5E5E5E','#9A9A9A','#D8D8D8'][i];
+              return '<div title="' + b + ' ' + pc + '%' + (unit ? ' (' + v[b] + unit + ')' : '') + '" style="flex:' + pc + ';background:' + sh
+                + ';display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:9px;font-weight:700;color:' + (i >= 2 ? '#222' : '#fff') + '">'
+                + (pc >= 8 ? b + ' ' + pc + '%' : '') + '</div>';
+            }).join('')
+          + '</div></div>';
+      };
+      var diag = bands.map(function(b){
+        var f = Math.round(fin[b] / fTot * 1000) / 10, t2 = Math.round(tgtB[b] / tTot * 1000) / 10, d = Math.round((f - t2) * 10) / 10;
+        return { b: b, d: d };
+      }).filter(function(x){ return Math.abs(x.d) >= 5; }).sort(function(a2, b2){ return Math.abs(b2.d) - Math.abs(a2.d); });
+      var txt = diag.length
+        ? diag.slice(0, 3).map(function(x){ return x.b + (x.d > 0 ? ' +' + x.d + '%p 과다' : ' ' + x.d + '%p 부족'); }).join(' · ')
+        : '명도 분포가 목표와 ±5%p 이내';
+      return '<div style="margin:0 0 14px;padding:10px 12px;border:1px solid var(--border);border-radius:8px">'
+        + '<div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--gold);margin-bottom:6px">명도 구성 — 최종 제안 vs 03 목표 vs 마켓</div>'
+        + bar('최종 제안', fin, fTot, '색') + bar('03 목표', tgtB, tTot, '색') + bar('마켓', mkt, mTot, '')
+        + '<div style="font-family:var(--mono);font-size:10px;color:' + (diag.length ? 'var(--warn)' : '#5FA85F') + ';margin-top:4px">' + txt + '</div>'
+        + '</div>';
+    })();
     return _rvCard('★ 최종 컬러 제안 — 확정 ' + r.main.length + '색 + 추가 ' + r.add.length + '색',
         '<div style="display:flex;gap:16px;font-family:var(--mono);font-size:12px;color:var(--text2);margin-bottom:16px;flex-wrap:wrap;align-items:center">'
       +   '<span style="font-weight:700">유지 ' + n('keep') + ' · 보완 ' + n('watch') + ' · 세일즈 유지 ' + n('sales') + ' · 제외 ' + r.out.length + '</span>' + legend + '</div>'
+      + _bandBox
       + '<div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">'
       +   '<div style="flex:3 1 560px;min-width:0">' + col(r.main) + '</div>'
       +   '<div style="flex:1 1 300px;min-width:0;padding-left:18px;border-left:2px dashed var(--border)">'
