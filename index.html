@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v277 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v278 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -25700,6 +25700,7 @@ document.addEventListener('DOMContentLoaded',function(){
   var STD_SECT_ID = 'disc-std-page';
   var STD_CUT = { accent_chroma: 50.0, achro_gate: 5.0, core_warm_chroma: 22.5, core_warm_light: 82.0,   // v246: 35 → 22.5
                   olive_h: 85, olive_l: 50,
+                  vivid_hue_c: 35,            // v278 선명한 색 계열 판정 기준
                   navy_c: 25,                 // v248 네이비 채도 상한
                   cream_l: 85, cream_c: 15,   // v248 크림·아이보리
                   dark_l: 30, dark_c: 20 };   // v248 어두운 저채도
@@ -25716,6 +25717,12 @@ document.addEventListener('DOMContentLoaded',function(){
     var H = a.H;
     if(H >= 260 && H <= 300 && a.L < 45 && a.C < STD_CUT.navy_c) return '네이비';   // v272: 하한 245→260 (#10364B H253 등 틸빛 다크블루는 네이비에서 제외)
     if(a.L >= STD_CUT.cream_l && a.C < STD_CUT.cream_c && H >= 30 && H <= 110) return '베이지';   // v248: 크림·아이보리
+    // v278 — 선명한 색(C*≥35)은 베이지·브라운으로 보지 않는다. 레드/오렌지/옐로로 구분.
+    if(a.C >= STD_CUT.vivid_hue_c){
+      if(H < 40 || H > 330) return '레드핑크';
+      if(H <= 70) return '오렌지';
+      if(H <= 95) return '옐로';
+    }
     if(H >= 40 && H <= 75  && a.L >= 60 && a.C < 25) return '베이지';
     if(H >= 30 && H <= 95) return (a.L < 60 ? '브라운' : '베이지');
     if(H > 95  && H <= 115) return '옐로';
