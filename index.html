@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v295 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v296 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -24185,7 +24185,7 @@ document.addEventListener('DOMContentLoaded',function(){
     if(_dcpInMood) return '';
     if(DCP_TAB === 'sales')
       return _dcpSalesMap().map[String(hex).toUpperCase()] ? '' : ';opacity:0.22';
-    if(DCP_TAB !== 'keep' && DCP_TAB !== 'watch') return '';
+    if(DCP_TAB !== 'keep') return '';          // v296 — 보완+추가 탭은 전체 레이아웃 그대로(흐림 없음), 보완 칩만 띠로 표시
     var st = _dcpStatusMap()[String(hex).toUpperCase()];
     return (st && st.tier === DCP_TAB) ? '' : ';opacity:0.22';
   }
