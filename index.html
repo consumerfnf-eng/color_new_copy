@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v304 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v305 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -22495,11 +22495,13 @@ document.addEventListener('DOMContentLoaded',function(){
     }).join('') + '</div>';
     _dcpInMood = false;
     if(DCP_TAB === 'final'){
-      core = _dcpFinalAddRow() + core
-        + '<div style="margin:-8px 0 18px;display:flex;justify-content:flex-end">'
-        +   '<button onclick="_dcpToggleFinalLife()" style="font-family:var(--mono);font-size:9px;padding:3px 10px;border-radius:12px;cursor:pointer;'
-        +     'border:1px solid var(--border);background:transparent;color:var(--text3)">'
+      // v305 — 라이프스타일 켜기/끄기 버튼을 팔레트 판 오른쪽 위(SEASONAL 줄 높이)에 둔다
+      core = _dcpFinalAddRow()
+        + '<div style="position:relative">'
+        +   '<button onclick="_dcpToggleFinalLife()" style="position:absolute;top:0;right:0;z-index:2;font-family:var(--mono);font-size:9px;'
+        +     'padding:3px 10px;border-radius:12px;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text3)">'
         +     (DCP_FINAL_LIFE ? '라이프스타일 표기 끄기' : '라이프스타일 표기 켜기') + '</button>'
+        +   core
         + '</div>';
     }
     if(DCP_TAB === 'watch'){ core = _dcpAddRow() + core; }
