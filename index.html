@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v266 (2026-09-18) — Core 재정의(기본물만: 무채·네이비·뉴트럴 베이지/브라운·니어블랙 · 청록/그린/러스트/퍼플은 어두워도 Seasonal) · 네이비 하한 245(페트롤→Seasonal) · 카키 Core 유지 · v2 칩 자기 등급 칸 배치 -->
+<!-- BUILD_VERSION: DISC_STD_v269 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20359,7 +20359,7 @@ document.addEventListener('DOMContentLoaded',function(){
     var cwBtn = e.nav.querySelector('button.tab[onclick*="colorway"]');
     if(cwBtn){
       _cwRestore.push({ el: cwBtn, html: cwBtn.innerHTML });
-      cwBtn.innerHTML = '<span class="tab-num">04</span>Palette Review';
+      cwBtn.innerHTML = '<span class="tab-num">05</span>팔레트 리뷰';
     }
     var cwPane = document.getElementById('tab-colorway');
     if(cwPane){
@@ -20414,12 +20414,13 @@ document.addEventListener('DOMContentLoaded',function(){
       var fwd = e.navPal.querySelector('button[onclick*="colorway"]');
       if(fwd){
         _cwRestore.push({ el: fwd, html: fwd.innerHTML });
-        fwd.innerHTML = '04 Palette Review &#8594;';
+        fwd.setAttribute('onclick', "window._discGoStd && window._discGoStd()");
+        fwd.innerHTML = '04 마켓 도출 &#8594;';
       }
       var infoPal = e.navPal.querySelector('.step-nav-info');
       if(infoPal){
         _cwRestore.push({ el: infoPal, html: infoPal.innerHTML });
-        infoPal.innerHTML = 'STEP <strong>03</strong> / 04 &nbsp;&middot;&nbsp; Proposal → Review';
+        infoPal.innerHTML = 'STEP <strong>03</strong> / 05 &nbsp;&middot;&nbsp; Proposal → 마켓 도출';
       }
     }
 
@@ -20521,7 +20522,7 @@ document.addEventListener('DOMContentLoaded',function(){
   // ══════════════════════════════════════════════════════════════
   var TM_DIST   = 30;                                   // 매칭 임계값 (엄격)
   var TM_CAPS   = { sub: 18, key: 8, basic: 18 };        // 그룹별 표시 상한 (v239: 마켓 비율로 매번 재계산)
-  var TM_TOTAL  = 46;                                      // 표시 총량 — 마켓 등급 비율대로 나눈다
+  var TM_TOTAL  = 60;                                      // v267: 46→60 — 표시 총량(03·04·05 공통). Accent floor 2 → 2/60≈3.3%로 시장(≈2%)에 근접
   // 등급별 최소 칩 수. ACCENT(key)는 마켓 비중이 낮아도(≈2%) 포인트를 2개는 제안하도록 2로 둔다.
   // 단, 해당 등급 마켓 비중이 0이면(=매칭된 색이 없으면) 최소치를 적용하지 않는다.
   var TM_MIN = { basic: 1, sub: 1, key: 2 };
@@ -23864,6 +23865,8 @@ document.addEventListener('DOMContentLoaded',function(){
       return { main: main, out: out };
     }
 
+    // v269 · item5 — 라이프스타일별 명도 진단용: 마켓 전체 평균 L
+    var _mAllL = (function(){ var s=0,w=0; (market||[]).forEach(function(m){ var h=String(m.hex).toUpperCase(); if(!/^#[0-9A-F]{6}$/.test(h)) return; var f=m.freq||1; s+=_tmLab(h)[0]*f; w+=f; }); return w? Math.round(s/w):null; })();
     var lifeCards = defs.map(function(def){
       var c = catBy[def.key] || { pct:null };
       var moodCols = moodByName[String(def.name).toUpperCase()] || [];
@@ -23905,7 +23908,9 @@ document.addEventListener('DOMContentLoaded',function(){
 
       var nk = function(k){ return fin2.main.filter(function(f){ return f.kind === k; }).length; };
       var tc = function(T){ return fin2.main.filter(function(f){ return _stdTier(f.hex) === T; }).length; };
-      var finLine = '최종 ' + fin2.main.length + '색 (Core ' + tc('Core') + '/' + LIFE_CAP.Core + ' · Seasonal ' + tc('Seasonal') + '/' + LIFE_CAP.Seasonal + ' · Accent ' + tc('Accent') + '/' + LIFE_CAP.Accent + ') — 유지 ' + nk('keep') + ' · 보완 ' + nk('watch') + ' · 세일즈 ' + nk('sales') + ' · 추가 ' + nk('add') + (fin2.out.length ? ' · 제외 ' + fin2.out.length : '');
+      var _moodAvgL = (function(){ var s=0,n=0; moodCols.forEach(function(x){ var h=String(x.hex).toUpperCase(); if(!/^#[0-9A-F]{6}$/.test(h)) return; s+=_tmLab(h)[0]; n++; }); return n? Math.round(s/n):null; })();
+      var _lifeLdiag = (_moodAvgL==null || _mAllL==null) ? '' : (function(){ var d=_moodAvgL-_mAllL; var t=Math.abs(d)<6?'명도 적정':(d>0?'자사가 '+d+' 밝음':'자사가 '+(-d)+' 어두움'); return ' · 명도 제안L' + _moodAvgL + ' vs 마켓L' + _mAllL + ' (' + t + ')'; })();
+      var finLine = '최종 ' + fin2.main.length + '색 (Core ' + tc('Core') + '/' + LIFE_CAP.Core + ' · Seasonal ' + tc('Seasonal') + '/' + LIFE_CAP.Seasonal + ' · Accent ' + tc('Accent') + '/' + LIFE_CAP.Accent + ') — 유지 ' + nk('keep') + ' · 보완 ' + nk('watch') + ' · 세일즈 ' + nk('sales') + ' · 추가 ' + nk('add') + (fin2.out.length ? ' · 제외 ' + fin2.out.length : '') + _lifeLdiag;
 
       return '<div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px">'
         + '<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:2px">'
@@ -23930,6 +23935,82 @@ document.addEventListener('DOMContentLoaded',function(){
       + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:6px;line-height:1.7">지정 마켓 = 각 라이프스타일에 배정한 브랜드 · 제안 = 27FW 팔레트에서 이 라이프스타일로 배정된 색 · 트렌드 = 03 Category Curation 이 라이프스타일 픽<br>최종 등급 상한: <b>Core ' + LIFE_CAP.Core + ' · Seasonal ' + LIFE_CAP.Seasonal + ' · Accent ' + LIFE_CAP.Accent + '</b> · <b>유지</b>=확정색이 트렌드와 같음(ΔE≤5) · <b>보완</b>=트렌드 톤으로 조정(ΔE 5~10) · <b>세일즈</b>=25FW 판매 성과로 유지 · <b>추가</b>=남은 슬롯을 마켓 빈도 높은 트렌드색으로 보충 · <b>제외</b>=근거 부족 · 등급=디커 기준</div>');
 
     // v264 — 04 하단 '근거 데이터'(A 트렌드 · B 큐레이션 · C 25FW 판매) 블록 제거
+
+    // E. 계열별 명도(L) 리뷰 — 자사 1차 vs 마켓 (ΔL 진단) · 04 도출 목표 참조
+    try {
+      var _mkL = {}, _paL = {};
+      (market || []).forEach(function(m){ var h = String(m.hex).toUpperCase(); if(!/^#[0-9A-F]{6}$/.test(h)) return; var f = _stdHue(h), L = _tmLab(h)[0], w = m.freq || 1; _mkL[f] = _mkL[f] || { s:0, w:0 }; _mkL[f].s += L*w; _mkL[f].w += w; });
+      pal.forEach(function(p){ var h = String(p.hex).toUpperCase(); if(!/^#[0-9A-F]{6}$/.test(h)) return; var f = _stdHue(h), L = _tmLab(h)[0]; _paL[f] = _paL[f] || { s:0, n:0 }; _paL[f].s += L; _paL[f].n++; });
+      var _fams = Object.keys(_mkL).sort(function(a,b){ return _mkL[b].w - _mkL[a].w; });
+      var _lrows = _fams.map(function(f){
+        var mk = Math.round(_mkL[f].s / _mkL[f].w);
+        var pa = _paL[f] ? Math.round(_paL[f].s / _paL[f].n) : null;
+        var d = pa == null ? null : pa - mk;
+        var diag = pa == null ? '자사 1차에 없음 → 신규 검토'
+                 : (Math.abs(d) < 6 ? '명도 적정'
+                 : (d > 0 ? '자사가 ' + d + ' 밝음 → 더 어두운 톤 보강' : '자사가 ' + (-d) + ' 어두움 → 더 밝은 톤 보강'));
+        var dc = pa == null ? 'var(--warn)' : (Math.abs(d) < 6 ? 'var(--text3)' : 'var(--gold)');
+        return '<tr style="border-bottom:1px solid var(--border)">'
+          + '<td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--text2)">' + f + '</td>'
+          + '<td style="padding:5px 8px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--text3)">' + (pa == null ? '–' : pa) + '</td>'
+          + '<td style="padding:5px 8px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--text3)">' + mk + '</td>'
+          + '<td style="padding:5px 8px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:700;color:' + dc + '">' + (d == null ? '–' : (d > 0 ? '+' + d : d)) + '</td>'
+          + '<td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:' + dc + '">' + diag + '</td></tr>';
+      }).join('');
+      html += _rvCard('E. 계열별 명도(L) 리뷰 — 자사 1차 vs 마켓',
+        '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
+        + '<thead><tr style="font-family:var(--mono);font-size:9px;color:var(--text3)">'
+        +   '<th style="text-align:left;padding:5px 8px;border-bottom:2px solid var(--border)">계열</th>'
+        +   '<th style="text-align:right;padding:5px 8px;border-bottom:2px solid var(--border)">자사 평균L</th>'
+        +   '<th style="text-align:right;padding:5px 8px;border-bottom:2px solid var(--border)">마켓 평균L</th>'
+        +   '<th style="text-align:right;padding:5px 8px;border-bottom:2px solid var(--border)">ΔL</th>'
+        +   '<th style="text-align:left;padding:5px 8px;border-bottom:2px solid var(--border)">진단</th>'
+        + '</tr></thead><tbody>' + _lrows + '</tbody></table></div>'
+        + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:6px">L↑=밝음 · ΔL=자사−마켓 · |ΔL|≥6 이면 톤 조정 권장 · 계열별 명도밴드 목표는 04 마켓 도출 참조</div>');
+    } catch(e){}
+
+    // F. 목표 대비 과부족 (계열×명도×등급) — 04 마켓 도출 목표(_discMarketTargetV2) vs 자사 1차
+    try {
+      var tgt = (typeof window !== 'undefined') ? window._discMarketTargetV2 : null;
+      if(tgt && tgt.tiers){
+        var _B2 = [['다크',0,35],['미드',35,58],['라이트',58,78],['페일',78,101]];
+        var _bandOf = function(L){ for(var i=0;i<_B2.length;i++){ if(L>=_B2[i][1] && L<_B2[i][2]) return _B2[i][0]; } return '페일'; };
+        var selfCell = {};
+        pal.forEach(function(p){ var h=String(p.hex).toUpperCase(); if(!/^#[0-9A-F]{6}$/.test(h)) return; var k=_stdTier(h)+'|'+_stdHue(h)+'|'+_bandOf(_tmLab(h)[0]); selfCell[k]=(selfCell[k]||0)+1; });
+        var tgtCell = {};
+        ['Core','Seasonal','Accent'].forEach(function(T){ (tgt.tiers[T]||[]).forEach(function(c){ var k=T+'|'+c.fam+'|'+c.band; tgtCell[k]=(tgtCell[k]||0)+1; }); });
+        var _ord={Core:0,Seasonal:1,Accent:2};
+        var _keys=Object.keys(tgtCell).concat(Object.keys(selfCell)).filter(function(v,i,a){ return a.indexOf(v)===i; })
+          .sort(function(a,b){ var pa=a.split('|'),pb=b.split('|'); return (_ord[pa[0]]-_ord[pb[0]]) || ((tgtCell[b]||0)-(tgtCell[a]||0)); });
+        var _need=0,_over=0;
+        var _frows=_keys.map(function(k){ var p=k.split('|'); var tg=tgtCell[k]||0, sf=selfCell[k]||0, d=sf-tg;
+          if(d<0)_need+=-d; if(d>0)_over+=d;
+          var st=d<0?('부족 '+(-d)):(d>0?('과잉 '+d):'적정'); var sc=d<0?'var(--warn)':(d>0?'var(--blue)':'var(--text3)');
+          return '<tr style="border-bottom:1px solid var(--border)">'
+            +'<td style="padding:5px 8px;font-family:var(--mono);font-size:10px;font-weight:700;color:'+(FN_SOLID[p[0]]||'var(--text2)')+'">'+p[0]+'</td>'
+            +'<td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--text2)">'+p[1]+'</td>'
+            +'<td style="padding:5px 8px;font-family:var(--mono);font-size:10px;color:var(--text3)">'+p[2]+'</td>'
+            +'<td style="padding:5px 8px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--gold);font-weight:700">'+tg+'</td>'
+            +'<td style="padding:5px 8px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--text)">'+sf+'</td>'
+            +'<td style="padding:5px 8px;font-family:var(--mono);font-size:10px;font-weight:700;color:'+sc+'">'+st+'</td></tr>';
+        }).join('');
+        html += _rvCard('F. 목표 대비 과부족 (계열×명도×등급) — 04 도출 목표 vs 자사 1차',
+          '<div style="font-family:var(--mono);font-size:10px;color:var(--text2);margin-bottom:8px">추가 필요 <b style="color:var(--warn)">'+_need+'색</b> · 정리 검토 <b style="color:var(--blue)">'+_over+'색</b> · 목표 총 '+(tgt.total||0)+'색</div>'
+          + '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
+          + '<thead><tr style="font-family:var(--mono);font-size:9px;color:var(--text3)">'
+          +   '<th style="text-align:left;padding:5px 8px;border-bottom:2px solid var(--border)">등급</th>'
+          +   '<th style="text-align:left;padding:5px 8px;border-bottom:2px solid var(--border)">계열</th>'
+          +   '<th style="text-align:left;padding:5px 8px;border-bottom:2px solid var(--border)">명도</th>'
+          +   '<th style="text-align:right;padding:5px 8px;border-bottom:2px solid var(--border);color:var(--gold)">목표</th>'
+          +   '<th style="text-align:right;padding:5px 8px;border-bottom:2px solid var(--border)">자사</th>'
+          +   '<th style="text-align:left;padding:5px 8px;border-bottom:2px solid var(--border)">판정</th>'
+          + '</tr></thead><tbody>'+_frows+'</tbody></table></div>'
+          + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:6px">목표=04 마켓 도출 정제 팔레트의 셀별 개수 · 부족=마켓 대비 자사에 없는 톤(추가 검토) · 과잉=자사에 과다(정리 검토)</div>');
+      } else {
+        html += _rvCard('F. 목표 대비 과부족 (계열×명도×등급)',
+          '<div class="spp-empty" style="font-size:11px">04 마켓 도출 탭을 먼저 열면 목표 대비 과부족 분석이 채워집니다.</div>');
+      }
+    } catch(e){}
 
     return html;
   }
@@ -25151,8 +25232,9 @@ document.addEventListener('DOMContentLoaded',function(){
       btn = document.createElement('button');
       btn.className = 'tab';
       btn.setAttribute('onclick', "switchTab('" + STD_TAB_KEY + "', this)");
-      btn.innerHTML = '<span class="tab-num">05</span>Trend-Matched v2';
-      e.nav.appendChild(btn);
+      btn.innerHTML = '<span class="tab-num">04</span>마켓 도출';
+      var _cwRef = e.nav.querySelector('button.tab[onclick*="colorway"]');
+      if(_cwRef) e.nav.insertBefore(btn, _cwRef); else e.nav.appendChild(btn);
     }
     if(!pane){
       var host = document.getElementById('tab-palette');
@@ -25167,9 +25249,9 @@ document.addEventListener('DOMContentLoaded',function(){
       var nav5 = document.createElement('div');
       nav5.className = 'step-nav';
       nav5.innerHTML =
-          '<button class="btn btn-sec" onclick="switchTabByName(\'colorway\')" style="' + STD_BTN_SEC + '">&#8592; 04 Palette Review</button>'
-        + '<div class="step-nav-info">STEP <strong>05</strong> / 05 &nbsp;&middot;&nbsp; Trend-Matched v2</div>'
-        + '<div style="flex:1"></div>';
+          '<button class="btn btn-sec" onclick="switchTabByName(\'palette\')" style="' + STD_BTN_SEC + '">&#8592; 03 Palette Proposal</button>'
+        + '<div class="step-nav-info">STEP <strong>04</strong> / 05 &nbsp;&middot;&nbsp; 마켓 도출 → 팔레트 리뷰</div>'
+        + '<button class="btn btn-primary" onclick="switchTabByName(\'colorway\')" style="' + STD_BTN_PRI + '">05 팔레트 리뷰 &#8594;</button>';
       pane.appendChild(nav5);
     }
     // 04 하단 step-nav 오른쪽에 05 이동 버튼
@@ -25626,6 +25708,19 @@ document.addEventListener('DOMContentLoaded',function(){
       s.tier=_stdTier(s.cHex);
       s.share=totalF? Math.round(s.freq/totalF*1000)/10 : 0;
     });
+    // v269 · item4 — 희소 밴드(share<1%)를 같은 계열의 최대 밴드로 흡수해 과분할 방지
+    (function(){
+      var byF={}; segList.forEach(function(s){ (byF[s.fam]=byF[s.fam]||[]).push(s); });
+      var keep=[];
+      Object.keys(byF).forEach(function(f){
+        var arr=byF[f].slice().sort(function(a,b){ return b.freq-a.freq; });
+        var big=arr[0];
+        arr.forEach(function(s){ if(s!==big && s.share<1){ big.freq+=s.freq; s._m=true; } });
+        arr.forEach(function(s){ if(!s._m) keep.push(s); });
+      });
+      segList=keep;
+      segList.forEach(function(s){ s.share=totalF? Math.round(s.freq/totalF*1000)/10 : 0; });
+    })();
     segList.sort(function(x,y){ return y.freq-x.freq; });
 
     // 마켓 등급 비율(caps) — 시즈널/코어/악센트를 마켓 평균에 맞춤
@@ -25642,11 +25737,16 @@ document.addEventListener('DOMContentLoaded',function(){
       return { hex:h, name:t.name, sources:t.sources||[], fam:_stdHue(h), L:lab[0], tier:_stdTier(h) };
     }).filter(Boolean);
     var usedHex={};
-    // 세그먼트별 후보: 같은 계열 + 같은 등급 + 명도밴드(±8) 안에서 centroid ΔE 가까운 순
-    //  (같은 등급만 허용 → 러스트 같은 Seasonal 색이 Core 칸에 잘못 뜨지 않음)
+    // 세그먼트별 후보 (v269 · item3 — 밴드 폴백): 같은 계열+등급에서
+    //  ① 명도밴드(±8) → ② 인접밴드(±20) → ③ 밴드 무시(계열·등급 전체) 순으로 넓혀 빈칸을 줄인다
     function candsFor(s){
-      return tcol.filter(function(c){ return c.fam===s.fam && c.tier===s.tier && c.L>=s.bandLo-8 && c.L<s.bandHi+8; })
-        .map(function(c){ return { c:c, de: Math.round(_tmDeltaE(c.hex, s.cHex)*10)/10 }; })
+      var pool=function(tol, anyBand){
+        return tcol.filter(function(c){ return c.fam===s.fam && c.tier===s.tier && (anyBand || (c.L>=s.bandLo-tol && c.L<s.bandHi+tol)); });
+      };
+      var list=pool(8,false);
+      if(!list.length) list=pool(20,false);
+      if(!list.length) list=pool(0,true);
+      return list.map(function(c){ return { c:c, de: Math.round(_tmDeltaE(c.hex, s.cHex)*10)/10 }; })
         .sort(function(a,b){ return a.de-b.de; });
     }
 
@@ -25761,7 +25861,20 @@ document.addEventListener('DOMContentLoaded',function(){
         + '</div>'
       : '';
 
-    wrap.innerHTML = head + secA + secB + secC;
+    // 3단 · 최종 결론 "27FW는 이렇게 가야 한다" + 공유 타깃(05 리뷰가 소비)
+    window._discMarketTargetV2 = { capTier: capTier, tiers: picked, mktTierPct: mktTierPct, segList: segList, total: totalPick };
+    var _topSeg = segList.slice(0, 5).map(function(s){ return s.fam + '·' + s.band + ' ' + s.share + '%'; }).join(' · ');
+    var secConcl = '<div style="border:2px solid var(--gold);border-radius:10px;padding:14px 16px;margin-bottom:8px;background:rgba(160,120,64,0.12)">'
+      + '<div style="font-family:var(--mono);font-size:12px;font-weight:800;color:var(--gold);margin-bottom:8px">■ 3단 · 최종 결론 — 27FW는 이렇게 가야 한다</div>'
+      + '<div style="font-family:var(--mono);font-size:12px;color:var(--text);line-height:1.8">'
+      +   '· 등급 구성: <b style="color:' + tierCol.Core + '">Core ' + picked.Core.length + '</b> · <b style="color:' + tierCol.Seasonal + '">Seasonal ' + picked.Seasonal.length + '</b> · <b style="color:' + tierCol.Accent + '">Accent ' + picked.Accent.length + '</b> (총 ' + totalPick + '색)<br>'
+      +   '· 마켓 상위 세그먼트(계열·명도): ' + (_topSeg || '–') + '<br>'
+      +   '· 명도 방향: 각 계열의 명도밴드 빈도대로 톤을 배분 (아래 B 팔레트가 그 목표색)'
+      + '</div>'
+      + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:8px">이 목표(계열×명도×등급 구성)를 05 팔레트 리뷰가 받아 자사 1차 팔레트를 유지·보완·추가·제외로 정리한다</div>'
+      + '</div>';
+    var _stages = '<div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin:-4px 0 14px">1차 마켓 원본(A) → 2차 정제 팔레트(B) → 최종 결론(C)</div>';
+    wrap.innerHTML = head + _stages + secA + secB + secConcl + secC;
   }
   window._discRenderStd = _stdRender;
   window._discGoStd = function(){
