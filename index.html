@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v306 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v307 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -26168,8 +26168,8 @@ document.addEventListener('DOMContentLoaded',function(){
   //  하단에는 표준 75칩(보유)과 실제 사용 30칩(SKU>0)을 비교한다.
   // ══════════════════════════════════════════════════════════════
   var STD_SECT_ID = 'disc-std-page';
-  var STD_CUT = { accent_chroma: 50.0, achro_gate: 5.0, core_warm_chroma: 22.5, core_warm_light: 82.0,   // v246: 35 → 22.5
-                  olive_h: 85, olive_l: 50,
+  var STD_CUT = { accent_chroma: 50.0, achro_gate: 5.0, core_warm_chroma: 19,   /* v307: 22.5 → 19 (탠·초콜릿 Seasonal, 베이지·모카·카키 Core) */ core_warm_light: 82.0,   // v246: 35 → 22.5
+                  olive_h: 88, olive_l: 50,   // v307: 85 → 88 (베이지 STD-N09 H87 Core 유지)
                   vivid_hue_c: 35,            // v278 선명한 색 계열 판정 기준
                   navy_c: 25,                 // v248 네이비 채도 상한
                   cream_l: 80, cream_c: 15,   // v291: 85 → 80 (IVS 아이보리 L83 Core 로)
@@ -26191,7 +26191,8 @@ document.addEventListener('DOMContentLoaded',function(){
     var a = _tmLCh(hex);
     if(a.C < STD_CUT.achro_gate) return '무채';
     var H = a.H;
-    if(H >= 260 && H <= 300 && a.L < 45 && a.C < STD_CUT.navy_c) return '네이비';   // v272: 하한 245→260 (#10364B H253 등 틸빛 다크블루는 네이비에서 제외)
+    // v307 — 인디고(L*≥32 · C*≥12)는 네이비가 아니라 블루(Seasonal). 진한 네이비와 저채도 네이비만 Core
+    if(H >= 260 && H <= 300 && a.L < 45 && a.C < STD_CUT.navy_c && (a.L < 32 || a.C < 12)) return '네이비';   // v272: 하한 245→260 (#10364B H253 등 틸빛 다크블루는 네이비에서 제외)
     if(a.L >= STD_CUT.cream_l && a.C < STD_CUT.cream_c && H >= 30 && H <= 110) return '베이지';   // v248: 크림·아이보리
     // v278 — 선명한 색(C*≥35)은 베이지·브라운으로 보지 않는다. 레드/오렌지/옐로로 구분.
     if(a.C >= STD_CUT.vivid_hue_c){
@@ -26232,7 +26233,7 @@ document.addEventListener('DOMContentLoaded',function(){
     // 밝은 저채도 크림·아이보리
     if(h === '베이지' && a.L >= STD_CUT.cream_l && a.C < STD_CUT.cream_c) return 'Core';
     // v291 — 붉은기 브라운(코코아·마호가니·로즈브라운, H<55° · C*≥10)과 다크 카키·올리브(H≥85° · L*<40 · C*≥12)는 Seasonal
-    if((h === '베이지' || h === '브라운') && a.H < STD_CUT.redbrown_h && a.C >= STD_CUT.redbrown_c) return 'Seasonal';
+    if((h === '베이지' || h === '브라운') && a.H < STD_CUT.redbrown_h && a.C >= STD_CUT.redbrown_c && a.L >= 20) return 'Seasonal';   // v307: L*<20 에스프레소는 Core
     if((h === '베이지' || h === '브라운') && a.H >= STD_CUT.khaki_h && a.L < STD_CUT.khaki_l && a.C >= STD_CUT.khaki_c) return 'Seasonal';
     // ③ 베이지·브라운 뉴트럴(샌드·토프·탠·초콜릿·모카). 밝은 올리브베이지 제외
     if((h === '베이지' || h === '브라운')
