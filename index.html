@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v275 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v276 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20359,7 +20359,7 @@ document.addEventListener('DOMContentLoaded',function(){
     var cwBtn = e.nav.querySelector('button.tab[onclick*="colorway"]');
     if(cwBtn){
       _cwRestore.push({ el: cwBtn, html: cwBtn.innerHTML });
-      cwBtn.innerHTML = '<span class="tab-num">05</span>Palette Review';
+      cwBtn.innerHTML = '<span class="tab-num">04</span>Palette Review';
     }
     var cwPane = document.getElementById('tab-colorway');
     if(cwPane){
@@ -20414,13 +20414,13 @@ document.addEventListener('DOMContentLoaded',function(){
       var fwd = e.navPal.querySelector('button[onclick*="colorway"]');
       if(fwd){
         _cwRestore.push({ el: fwd, html: fwd.innerHTML });
-        fwd.setAttribute('onclick', "window._discGoStd && window._discGoStd()");
-        fwd.innerHTML = '04 Market Derivation &#8594;';
+        fwd.setAttribute('onclick', "switchTabByName('colorway')");
+        fwd.innerHTML = '04 Palette Review &#8594;';
       }
       var infoPal = e.navPal.querySelector('.step-nav-info');
       if(infoPal){
         _cwRestore.push({ el: infoPal, html: infoPal.innerHTML });
-        infoPal.innerHTML = 'STEP <strong>03</strong> / 05 &nbsp;&middot;&nbsp; Proposal → Market Derivation';
+        infoPal.innerHTML = 'STEP <strong>03</strong> / 04 &nbsp;&middot;&nbsp; Proposal → Palette Review';
       }
     }
 
@@ -20463,7 +20463,7 @@ document.addEventListener('DOMContentLoaded',function(){
     try{ if(typeof _purgeNewsletter === 'function') _purgeNewsletter(); }catch(err){}
     try{ if(typeof _dcpRender === 'function') _dcpRender(); }catch(err){}
     try{ if(typeof _gapRender === 'function') _gapRender(); }catch(err){}
-    try{ if(_inScope()){ if(_stdEnsureTab()) _stdRender(); } else _stdHideTab(); }catch(err){}
+    try{ if(_inScope()){ if(_stdEnsureTab()) _stdRender(); _hideSalesSection(); } else _stdHideTab(); }catch(err){}
     try{ if(typeof _contempSeed === 'function') _contempSeed(); }catch(err){}
     try{ if(typeof _ccRender === 'function') _ccRender(); }catch(err){}
     try{ if(typeof _discOrderSections === 'function') _discOrderSections(); }catch(err){}
@@ -20854,12 +20854,21 @@ document.addEventListener('DOMContentLoaded',function(){
     });
 
     var rawAll = {};
+    try{ _tgtBuild(true); }catch(e){}          // v276 — 목표 칸은 그룹 순회 전에 한 번만 계산 (채움 집계 유지)
     ['sub','key','basic'].forEach(function(k){
       buckets[k].sort(function(a,b){ return b.mkFreq - a.mkFreq; });
       totals.raw[k] = buckets[k].length;
       rawAll[k] = buckets[k].slice();                      // 캡 적용 전 전체 — 보완 후보 계산용
-      buckets[k] = _tmPick(buckets[k], TM_CAPS[k], TM_MINDIST[k]);
-      if(k === 'basic') buckets[k] = _tmEnforceBasicMix(buckets[k], rawAll[k], TM_CAPS[k]);
+      // v276 — 목표 칸(계열×명도×등급)을 채우는 순서로 선발. 목표가 없으면 기존 방식.
+      var _tierName = { basic: 'Core', sub: 'Seasonal', key: 'Accent' }[k];
+      var _byCell = null;
+      try{ _byCell = _tmCellPick(buckets[k], _tierName, TM_MINDIST[k]); }catch(e){ _byCell = null; }
+      if(_byCell){
+        buckets[k] = _byCell;
+      } else {
+        buckets[k] = _tmPick(buckets[k], TM_CAPS[k], TM_MINDIST[k]);
+        if(k === 'basic') buckets[k] = _tmEnforceBasicMix(buckets[k], rawAll[k], TM_CAPS[k]);
+      }
       totals.families[k] = _tmFamilyCount(buckets[k]);
       // 선발은 계열 라운드로빈으로 하되, 출력 순서는 다시 빈도순으로 —
       // 라운드로빈 순서 그대로 내보내면 106 → 1 → 77 처럼 들쭉날쭉해 읽기 어렵다
@@ -20870,6 +20879,207 @@ document.addEventListener('DOMContentLoaded',function(){
     return out;
   }
   var _tmLastBuild = null;
+
+  // ══════════════════════════════════════════════════════════════
+  //  v276 — 04 Market Derivation 흡수: 마켓에서 '톤 구성 목표(칸별 개수)'만 계산
+  //   색은 03 Trend-Matched(마켓에 실재하는 색)로 채우고, 못 채운 칸은 빈칸으로 남긴다
+  // ══════════════════════════════════════════════════════════════
+  var TGT_BANDS = [ ['다크',0,35], ['미드',35,58], ['라이트',58,78], ['페일',78,101] ];
+  function _tgtBandOf(L){
+    for(var i=0;i<TGT_BANDS.length;i++){ if(L>=TGT_BANDS[i][1] && L<TGT_BANDS[i][2]) return TGT_BANDS[i][0]; }
+    return TGT_BANDS[TGT_BANDS.length-1][0];
+  }
+  function _tgtCellOf(hex){
+    var h = String(hex).toUpperCase();
+    return { tier: _stdTier(h), fam: _stdHue(h), band: _tgtBandOf(_tmLab(h)[0]) };
+  }
+  var _tgtCache = null;
+  function _tgtBuild(force){
+    if(_tgtCache && !force) return _tgtCache;
+    var mkt = []; try{ mkt = _tmMarketPool(); }catch(e){}
+    if(!mkt.length) return null;
+    var seg = {}, totalF = 0;
+    mkt.forEach(function(m){
+      var h = String(m.hex).toUpperCase(); if(!/^#[0-9A-F]{6}$/.test(h)) return;
+      var f = m.freq || 1, lab = _tmLab(h), fam = _stdHue(h), band = _tgtBandOf(lab[0]), k = fam + '|' + band;
+      if(!seg[k]) seg[k] = { fam: fam, band: band, freq: 0, L: 0, a: 0, b: 0 };
+      var g = seg[k]; g.freq += f; g.L += lab[0]*f; g.a += lab[1]*f; g.b += lab[2]*f; totalF += f;
+    });
+    var segList = Object.keys(seg).map(function(k){ return seg[k]; });
+    segList.forEach(function(g){
+      g.cL = g.L/g.freq; g.ca = g.a/g.freq; g.cb = g.b/g.freq;
+      g.cHex = _labToHex(g.cL, g.ca, g.cb);
+      g.tier = _stdTier(g.cHex);
+      g.share = totalF ? Math.round(g.freq/totalF*1000)/10 : 0;
+    });
+    // 희소 밴드(<1%)는 같은 계열 최대 밴드로 흡수
+    (function(){
+      var byF = {}; segList.forEach(function(g){ (byF[g.fam] = byF[g.fam] || []).push(g); });
+      var keep = [];
+      Object.keys(byF).forEach(function(f){
+        var arr = byF[f].slice().sort(function(a,b){ return b.freq-a.freq; }), big = arr[0];
+        arr.forEach(function(g){ if(g !== big && g.share < 1){ big.freq += g.freq; g._m = true; } });
+        arr.forEach(function(g){ if(!g._m) keep.push(g); });
+      });
+      segList = keep;
+      segList.forEach(function(g){ g.share = totalF ? Math.round(g.freq/totalF*1000)/10 : 0; });
+    })();
+    segList.sort(function(a,b){ return b.freq-a.freq; });
+    var caps; try{ caps = _tmMarketCaps(mkt); }catch(e){ caps = { basic:0, sub:0, key:0 }; }
+    var capTier = { Core: caps.basic||0, Seasonal: caps.sub||0, Accent: caps.key||0 };
+    var mktF = { Core:0, Seasonal:0, Accent:0 };
+    mkt.forEach(function(m){ var h=String(m.hex).toUpperCase(); if(/^#[0-9A-F]{6}$/.test(h)) mktF[_stdTier(h)] += (m.freq||1); });
+    var mktTierPct = {}; ['Core','Seasonal','Accent'].forEach(function(t){ mktTierPct[t] = totalF ? Math.round(mktF[t]/totalF*1000)/10 : 0; });
+    // 등급별 quota 를 세그먼트 빈도에 비례 배분
+    var cells = [], tiers = { Core: [], Seasonal: [], Accent: [] };
+    ['Core','Seasonal','Accent'].forEach(function(T){
+      var quota = capTier[T] || 0;
+      var segs = segList.filter(function(g){ return g.tier === T && g.freq > 0; });
+      if(!quota || !segs.length) return;
+      var alloc; try{ alloc = _fnAlloc(quota, segs.map(function(g){ return g.freq; })); }catch(e){ alloc = segs.map(function(){ return 0; }); }
+      segs.forEach(function(g, i){
+        var n = alloc[i] || 0; if(!n) return;
+        cells.push({ tier: T, fam: g.fam, band: g.band, quota: n, freq: g.freq, share: g.share, cHex: g.cHex, cL: Math.round(g.cL) });
+        for(var j=0;j<n;j++) tiers[T].push({ fam: g.fam, band: g.band, cHex: g.cHex });   // 05 F 섹션 호환
+      });
+    });
+    var total = cells.reduce(function(n,c){ return n + c.quota; }, 0);
+    _tgtCache = { capTier: capTier, mktTierPct: mktTierPct, segList: segList, cells: cells, tiers: tiers, total: total, mktFreq: totalF };
+    try{ window._discMarketTargetV2 = _tgtCache; }catch(e){}
+    return _tgtCache;
+  }
+  window._discTargetBuild = _tgtBuild;
+
+  // ── 03 화면 패널 (v276) — 마켓 분포 / 톤 구성 목표 / 결론 ──
+  var TGT_OPEN = { dist: false, cells: false };
+  window._tgtToggle = function(k){ TGT_OPEN[k] = !TGT_OPEN[k]; try{ _tmRender(); }catch(e){} try{ _discOrderSections(); }catch(e){} };
+  function _tgtFoldBtn(k, label){
+    return '<button onclick="_tgtToggle(\'' + k + '\')" style="font-family:var(--mono);font-size:10px;padding:4px 11px;border-radius:4px;cursor:pointer;'
+      + 'border:1px solid var(--border);background:transparent;color:var(--text3)">' + (TGT_OPEN[k] ? '▲ 접기' : '▼ ' + label) + '</button>';
+  }
+  function _tgtCard(title, sub, inner){
+    return '<div style="margin:0 0 16px;padding:14px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px">'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">'
+      +   '<div style="width:3px;height:16px;background:var(--gold);border-radius:2px"></div>'
+      +   '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--gold);letter-spacing:0.06em;text-transform:uppercase">' + title + '</span>'
+      +   '<span style="font-family:var(--mono);font-size:9px;color:var(--text3)">' + sub + '</span>'
+      + '</div>' + inner + '</div>';
+  }
+  // 마켓 계열 × 명도 분포
+  function _tgtDistPanel(){
+    var tg = _tgtBuild(); if(!tg) return '';
+    var rows = tg.segList.slice(0, 40).map(function(g){
+      return '<tr style="border-bottom:1px solid var(--border)">'
+        + '<td style="padding:4px 8px"><span style="display:inline-block;width:26px;height:14px;border-radius:3px;border:1px solid var(--border);background:' + g.cHex + ';vertical-align:-3px"></span></td>'
+        + '<td style="padding:4px 8px;font-family:var(--mono);font-size:10px;color:var(--text2)">' + g.fam + '</td>'
+        + '<td style="padding:4px 8px;font-family:var(--mono);font-size:10px;color:var(--text3)">' + g.band + '</td>'
+        + '<td style="padding:4px 8px;font-family:var(--mono);font-size:10px;font-weight:700;color:' + (FN_SOLID[g.tier] || 'var(--text2)') + '">' + g.tier + '</td>'
+        + '<td style="padding:4px 8px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--text)">' + g.share + '%</td>'
+        + '<td style="padding:4px 8px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--text4)">L ' + Math.round(g.cL) + '</td>'
+        + '</tr>';
+    }).join('');
+    return _tgtCard('MARKET · 계열 × 명도 분포', '마켓 ' + tg.segList.length + '칸 · 빈도 ' + tg.mktFreq.toLocaleString() + ' · 대표색 = 칸 평균',
+        _tgtFoldBtn('dist', '펼치기 — 칸별 빈도·대표색')
+      + (TGT_OPEN.dist
+          ? '<div style="overflow-x:auto;margin-top:8px"><table style="width:100%;border-collapse:collapse">'
+            + '<thead><tr style="font-family:var(--mono);font-size:9px;color:var(--text3)">'
+            + ['대표','계열','명도','등급','비중','평균L'].map(function(h,i){ return '<th style="text-align:' + (i>=4?'right':'left') + ';padding:4px 8px;border-bottom:2px solid var(--border)">' + h + '</th>'; }).join('')
+            + '</tr></thead><tbody>' + rows + '</tbody></table></div>'
+          : ''));
+  }
+  // 톤 구성 목표 vs 채움
+  function _tgtCellPanel(){
+    var tg = _tgtBuild(); if(!tg) return '';
+    var fill = { Core:0, Seasonal:0, Accent:0 }, miss = { Core:0, Seasonal:0, Accent:0 }, missCells = [];
+    tg.cells.forEach(function(c){
+      var f = c.filled || 0, m = Math.max(0, c.quota - f);
+      fill[c.tier] += f; miss[c.tier] += m;
+      if(m > 0) missCells.push(c);
+    });
+    var totFill = fill.Core + fill.Seasonal + fill.Accent, totMiss = miss.Core + miss.Seasonal + miss.Accent;
+    var tiles = ['Core','Seasonal','Accent'].map(function(T){
+      return '<div style="flex:1 1 150px;border:1px solid var(--border);border-left:4px solid ' + FN_SOLID[T] + ';border-radius:8px;padding:8px 12px">'
+        + '<div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text2)">' + T + ' · 목표 ' + (tg.capTier[T]||0) + '</div>'
+        + '<div style="font-family:var(--mono);font-size:20px;font-weight:800;color:var(--text)">' + fill[T]
+        +   '<span style="font-size:11px;color:var(--text4)"> 채움</span>'
+        +   (miss[T] ? '<span style="font-size:12px;color:var(--warn);margin-left:8px">빈칸 ' + miss[T] + '</span>' : '') + '</div></div>';
+    }).join('');
+    var missRows = missCells.sort(function(a,b){ return b.freq - a.freq; }).map(function(c){
+      return '<tr style="border-bottom:1px solid var(--border)">'
+        + '<td style="padding:4px 8px"><span style="display:inline-block;width:26px;height:14px;border-radius:3px;border:1px dashed var(--warn);background:' + c.cHex + ';vertical-align:-3px"></span></td>'
+        + '<td style="padding:4px 8px;font-family:var(--mono);font-size:10px;font-weight:700;color:' + (FN_SOLID[c.tier]||'var(--text2)') + '">' + c.tier + '</td>'
+        + '<td style="padding:4px 8px;font-family:var(--mono);font-size:10px;color:var(--text2)">' + c.fam + ' · ' + c.band + '</td>'
+        + '<td style="padding:4px 8px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--text3)">' + (c.filled||0) + ' / ' + c.quota + '</td>'
+        + '<td style="padding:4px 8px;text-align:right;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--warn)">빈칸 ' + (c.quota - (c.filled||0)) + '</td>'
+        + '<td style="padding:4px 8px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--text4)">마켓 ' + c.share + '%</td>'
+        + '</tr>';
+    }).join('');
+    return _tgtCard('TARGET · 톤 구성 목표', '마켓 비율 × ' + TM_TOTAL + '색 → 칸별 목표 ' + tg.total + ' · 채움 ' + totFill + ' · 빈칸 ' + totMiss,
+        '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">' + tiles + '</div>'
+      + (totMiss
+          ? _tgtFoldBtn('cells', '펼치기 — 못 채운 칸 ' + missCells.length + '개')
+            + (TGT_OPEN.cells
+                ? '<div style="overflow-x:auto;margin-top:8px"><table style="width:100%;border-collapse:collapse">'
+                  + '<thead><tr style="font-family:var(--mono);font-size:9px;color:var(--text3)">'
+                  + ['마켓 대표','등급','칸','채움/목표','상태','마켓 비중'].map(function(h,i){ return '<th style="text-align:' + (i>=3?'right':'left') + ';padding:4px 8px;border-bottom:2px solid var(--border)">' + h + '</th>'; }).join('')
+                  + '</tr></thead><tbody>' + missRows + '</tbody></table>'
+                  + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:6px">빈칸 = 마켓에는 있는 톤이지만 WGSN·Peclers 색과 겹치지 않아 제안에 못 넣은 칸 (색은 채우지 않음)</div></div>'
+                : '')
+          : '<div style="font-family:var(--mono);font-size:10px;color:#5FA85F">목표 칸을 모두 채웠습니다.</div>'));
+  }
+  // 결론
+  function _tgtConclusion(){
+    var tg = _tgtBuild(); if(!tg || !_tmLastBuild) return '';
+    var b = _tmLastBuild.buckets;
+    var n = { Core: (b.basic||[]).length, Seasonal: (b.sub||[]).length, Accent: (b.key||[]).length };
+    var tot = n.Core + n.Seasonal + n.Accent;
+    var pct = {}; ['Core','Seasonal','Accent'].forEach(function(T){ pct[T] = tot ? Math.round(n[T]/tot*1000)/10 : 0; });
+    var top = tg.segList.slice(0, 5).map(function(g){ return g.fam + '·' + g.band + ' ' + g.share + '%'; }).join(' · ');
+    var dark = tg.segList.filter(function(g){ return g.band === '다크' || g.band === '미드'; }).reduce(function(x,g){ return x + g.share; }, 0);
+    return _tgtCard('CONCLUSION · 27FW 방향', '03 제안 ' + tot + '색 · 05 Palette Review 로 이 목표가 넘어간다',
+        '<div style="display:flex;gap:16px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:8px">'
+      +   ['Core','Seasonal','Accent'].map(function(T){
+            return '<span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:' + FN_SOLID[T] + ';margin-right:5px"></span>'
+              + T + ' <b style="color:var(--text)">' + n[T] + '색 ' + pct[T] + '%</b> <span style="color:var(--text4)">/ 마켓 ' + (tg.mktTierPct[T]||0) + '%</span></span>';
+          }).join('')
+      + '</div>'
+      + '<div style="font-size:12px;color:var(--text);line-height:1.7">'
+      +   '· 마켓 상위 톤: ' + top + '<br>'
+      +   '· 다크·미드 비중 ' + Math.round(dark) + '% — ' + (dark >= 55 ? '어두운 톤 중심으로 간다' : '밝은 톤 비중이 높다') + '<br>'
+      +   '· Accent 목표 ' + (tg.capTier.Accent||0) + '색 (마켓 ' + (tg.mktTierPct.Accent||0) + '%) — 포인트 컬러는 소량 운영'
+      + '</div>');
+  }
+  window._discTargetPanels = function(){ return _tgtDistPanel() + _tgtCellPanel(); };
+
+  // 목표 칸을 채우는 방식으로 선발 — 칸마다 빈도 상위부터, 못 채우면 빈칸으로 남긴다
+  function _tmCellPick(list, tierName, minDist){
+    var tgt = _tgtBuild();
+    if(!tgt) return null;
+    var cells = tgt.cells.filter(function(c){ return c.tier === tierName; });
+    if(!cells.length) return null;
+    var out = [], usedIdx = {};
+    var ok = function(it){
+      return !out.some(function(p){ return rgbDist(p.trend.hex, it.trend.hex) < minDist; });
+    };
+    cells.slice().sort(function(a,b){ return b.freq - a.freq; }).forEach(function(c){
+      var pool = list.filter(function(it, i){
+        if(usedIdx[i]) return false;
+        var cell = _tgtCellOf(it.trend.hex);
+        return cell.fam === c.fam && cell.band === c.band;
+      });
+      var got = 0;
+      for(var i = 0; i < list.length && got < c.quota; i++){
+        if(usedIdx[i]) continue;
+        var it = list[i], cell = _tgtCellOf(it.trend.hex);
+        if(cell.fam !== c.fam || cell.band !== c.band) continue;
+        if(!ok(it)) continue;
+        usedIdx[i] = 1; it._cell = c.fam + '·' + c.band; out.push(it); got++;
+      }
+      c.filled = (c.filled || 0) + got;
+      c.missing = c.quota - c.filled;
+    });
+    return out;
+  }
 
   // 클러스터 멤버 중 트렌드 색과 TM_DIST 이내인 것만 추려 hex·빈도·브랜드 반환
   function _tmNearMembers(mc, trendHex){
@@ -21417,6 +21627,8 @@ document.addEventListener('DOMContentLoaded',function(){
       +   ' · 분류 디커 기준 (Accent C*≥' + STD_CUT.accent_chroma + ' · 무채·네이비 Core · 베이지·브라운 C*<' + STD_CUT.core_warm_chroma + ' Core)' + ' · 마켓 근접색 병합 Lab ΔE < ' + TM_CLUSTER_DE + ' · 브랜드 집계 Lab ΔE < ' + TM_NEAR_BRAND_DE
       + '</div>'
       + _fnMarketTierBar()
+      + _tgtDistPanel()
+      + _tgtCellPanel()
       + _ovTabs()
       + (t.trendPool === 0
           ? '<div class="spp-empty">02 Trend Collection에서 WGSN 또는 Peclers 데이터를 먼저 로드하세요.</div>'
@@ -21434,9 +21646,18 @@ document.addEventListener('DOMContentLoaded',function(){
                     + '</div>'
                   : _tmRow(TM_GROUP_LABEL.sub, 'var(--blue)', b.sub, TM_CAPS.sub, t.raw.sub, t.families.sub)
                     + _tmRow(TM_GROUP_LABEL.key, '#A090F0', b.key, TM_CAPS.key, t.raw.key, t.families.key))
-              + _tmRow(TM_GROUP_LABEL.basic, 'var(--gold)', b.basic, TM_CAPS.basic, t.raw.basic, t.families.basic)));
+              + _tmRow(TM_GROUP_LABEL.basic, 'var(--gold)', b.basic, TM_CAPS.basic, t.raw.basic, t.families.basic))
+      + _tgtConclusion());
   }
   window._discRenderTrendMatched = _tmRender;
+
+  // v276 — 03 하단 Sales-Based(DISCOVERY) 섹션 제거 (05 Palette Review 의 '세일즈' 탭으로 이동)
+  function _hideSalesSection(){
+    if(!_inScope()) return;
+    var el = document.getElementById('disc-sales-section');
+    if(el) el.style.display = 'none';
+  }
+  window._discHideSalesSection = _hideSalesSection;
 
 
   // ══════════════════════════════════════════════════════════════
@@ -25359,6 +25580,14 @@ document.addEventListener('DOMContentLoaded',function(){
   var STD_TAB_KEY = 'discstd';
   var _stdTabEls = null;
   function _stdEnsureTab(){
+    // v276 — 04 Market Derivation 탭 폐지(03 Palette Proposal 에 흡수). 남은 탭·패널은 숨긴다.
+    var _old = document.querySelector('button.tab[onclick*="' + STD_TAB_KEY + '"]');
+    if(_old) _old.style.display = 'none';
+    var _oldPane = document.getElementById('tab-' + STD_TAB_KEY);
+    if(_oldPane) _oldPane.style.display = 'none';
+    return false;
+  }
+  function _stdEnsureTab_legacy(){
     var e = _els();
     if(!e || !e.nav) return false;
     var btn = e.nav.querySelector('button.tab[onclick*="' + STD_TAB_KEY + '"]');
