@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v283 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v284 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21274,7 +21274,9 @@ document.addEventListener('DOMContentLoaded',function(){
           + '</div></td></tr>';
       }).join('');
     }).join('');
-    return '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
+    // v284 — 열 폭 고정: 빈칸 원인 열을 위 Accent 타일 시작선(약 2/3 지점)에 맞춘다
+    return '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;table-layout:fixed">'
+      + '<colgroup><col style="width:7%"><col style="width:13%"><col style="width:46.5%"><col style="width:33.5%"></colgroup>'
       + '<thead><tr style="font-family:var(--mono);font-size:9px;color:var(--text3)">'
       +   '<th style="text-align:left;padding:6px 8px;border-bottom:2px solid var(--border)">계열</th>'
       +   '<th style="text-align:left;padding:6px 8px;border-bottom:2px solid var(--border)">마켓 톤<div style="font-size:8px;color:var(--text4)">명도밴드 대표색 · 비중</div></th>'
