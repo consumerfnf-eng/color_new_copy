@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v293 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v294 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20663,8 +20663,16 @@ document.addEventListener('DOMContentLoaded',function(){
         if(h === '#888888') return;                      // 미매핑 플레이스홀더
         // v292 — COLORO 코드에서 계산된 색은 올바른 변환으로 HEX 를 다시 낸다 (예: 136-32-33 보라가 초록으로 들어가던 문제)
         try{
-          var _cc = String(c.code || c.name || '').match(/(\d{3})[\s-](\d{2})[\s-](\d{2})/);
-          var _isColoro = _cc && (/coloro/i.test(String(c.src||'')) || /coloro/i.test(String(c.system||'')) || /coloro/i.test(String(c.label||'')) || !c.src);
+          // v294 — COLORO 코드가 code·name·pantone·label 어디에 있든 찾는다 (예: pantone:'COLORO 115-52-06')
+          var _fields = [c.pantone, c.tcxCode, c.code, c.name, c.label, c.coloroRef].map(function(v){ return String(v || ''); });
+          var _cc = null;
+          for(var _fi = 0; _fi < _fields.length && !_cc; _fi++){
+            var _f = _fields[_fi];
+            if(/TCX|TPG|TPX|PANTONE/i.test(_f) && !/COLORO/i.test(_f)) continue;      // 팬톤 코드는 제외
+            var _m = _f.match(/(\d{3})[\s-](\d{2})[\s-](\d{2})/);
+            if(_m && (/COLORO/i.test(_f) || /^\s*\d{3}[\s-]\d{2}[\s-]\d{2}\s*$/.test(_f))) _cc = _m;
+          }
+          var _isColoro = !!_cc;
           if(_isColoro && typeof coloroToHex === 'function'){
             var _nh = coloroToHex(_cc[1]+'-'+_cc[2]+'-'+_cc[3]);
             if(_nh && _nh[0] && _nh[0].toUpperCase() !== h){ c.hexOld = c.hexOld || h; c.hex = _nh[0]; h = _nh[0].toUpperCase(); }
