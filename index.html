@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v281 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v282 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20875,6 +20875,23 @@ document.addEventListener('DOMContentLoaded',function(){
       // 라운드로빈 순서 그대로 내보내면 106 → 1 → 77 처럼 들쭉날쭉해 읽기 어렵다
       buckets[k].sort(function(a,b){ return b.mkFreq - a.mkFreq; });
     });
+    // v282 — 채움 수는 '최종 칩' 기준으로 다시 센다 (구성 규칙·보충 이후 상태와 일치)
+    try{
+      var _tg = _tgtBuild();
+      if(_tg){
+        var _cm = {};
+        _tg.cells.forEach(function(c){ c.filled = 0; _cm[c.tier + '|' + c.fam + '|' + c.band] = c; });
+        ['basic','sub','key'].forEach(function(k){
+          (buckets[k] || []).forEach(function(it){
+            var cl = _tgtCellOf(it.trend.hex), c = _cm[cl.tier + '|' + cl.fam + '|' + cl.band];
+            it._cell = cl.fam + '·' + cl.band;
+            if(c && c.filled < c.quota){ c.filled++; it._extra = false; }
+            else it._extra = true;                 // 목표 칸 밖이거나 칸 정원 초과 → 보충
+          });
+        });
+        _tg.cells.forEach(function(c){ c.missing = c.quota - c.filled; });
+      }
+    }catch(e){}
     var out = { buckets: buckets, raw: rawAll, totals: totals };
     _tmLastBuild = out;
     return out;
@@ -21017,13 +21034,13 @@ document.addEventListener('DOMContentLoaded',function(){
     }).join('');
     var extras = 0;
     try{ if(_tmLastBuild) ['basic','sub','key'].forEach(function(k){ extras += (_tmLastBuild.buckets[k]||[]).filter(function(x){ return x._extra; }).length; }); }catch(e){}
-    return _tgtCard('TARGET · 계열 × 명도 매트릭스',
+    return _tgtCard('TARGET · 계열 × 명도 비교',
       '마켓 비율 × ' + TM_TOTAL + '색 → 칸 목표 ' + tg.total + ' · 칸 채움 ' + totFill + ' · 칸 빈칸 ' + totMiss
       + (extras ? ' · 빈도 보충 ' + extras : '') + ' → 제안 ' + (totFill + extras) + '색',
         '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">' + tiles + '</div>'
       + _tgtCompare()
       + '<div style="height:12px"></div>'
-      + _tgtMatrix()
+      + _tgtMatrix({ barsOnly: true })
       + '<div style="height:10px"></div>'
       + (totMiss
           ? _tgtFoldBtn('cells', '펼치기 — 못 채운 칸 ' + missCells.length + '개')
@@ -21064,6 +21081,7 @@ document.addEventListener('DOMContentLoaded',function(){
   //  selfCount(hex→cell 카운트)를 주면 '자사' 수치를 함께 보여준다 (04 리뷰용)
   function _tgtMatrix(opt){
     opt = opt || {};
+    var barsOnly = !!opt.barsOnly;
     var tg = _tgtBuild(); if(!tg) return '';
     var bands = TGT_BANDS.map(function(b){ return b[0]; });
     var segMap = {}, famSet = {};
@@ -21125,6 +21143,13 @@ document.addEventListener('DOMContentLoaded',function(){
           }).join('')
         + '</div></div>';
     };
+    if(barsOnly){
+      return '<div style="margin-top:4px">'
+        + '<div style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--gold);margin-bottom:6px">명도 분포 — 마켓 vs ' + (self ? '자사' : '제안') + '</div>'
+        +   barRow('마켓', mktBand, bands.reduce(function(n,b){ return n + mktBand[b]; }, 0))
+        +   barRow(self ? '자사' : '제안', propBand, propTot)
+        + '</div>';
+    }
     return '<div style="overflow-x:auto"><table style="border-collapse:collapse">'
       + '<thead><tr><th></th>' + bands.map(function(b, i){
           return '<th style="padding:2px 8px;font-family:var(--mono);font-size:9px;color:var(--text3);text-align:center;min-width:74px">'
