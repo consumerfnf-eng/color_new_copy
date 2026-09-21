@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v282 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v283 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21165,6 +21165,18 @@ document.addEventListener('DOMContentLoaded',function(){
   }
   window._discTargetMatrix = _tgtMatrix;
 
+  // v283 — 빈칸 원인: 칸 대표색에 가장 가까운 트렌드 색과 거리
+  function _tgtNearestTrend(cHex, fam, band, tier){
+    var pool = []; try{ pool = _tmTrendPool(); }catch(e){}
+    var best = null, bd = 1e9, bestSame = null, bdSame = 1e9;
+    pool.forEach(function(t){
+      var d = rgbDist(t.hex, cHex);
+      if(d < bd){ bd = d; best = t; }
+      var cl = _tgtCellOf(t.hex);
+      if(cl.fam === fam && cl.band === band && (!tier || cl.tier === tier) && d < bdSame){ bdSame = d; bestSame = t; }
+    });
+    return { best: best, d: Math.round(bd), same: bestSame, dSame: Math.round(bdSame) };
+  }
   // ── v281 — 03 비교 대조표: 계열별 [마켓 톤] vs [제안 칩] vs [빈칸] ──
   function _tgtCompare(){
     var tg = _tgtBuild(); if(!tg) return '';
@@ -21213,18 +21225,51 @@ document.addEventListener('DOMContentLoaded',function(){
         var pk = (picks[key] || []).slice().sort(function(a,b){ return bandIdx(a.band) - bandIdx(b.band); });
         var ms = (missCell[key] || []).slice().sort(function(a,b){ return bandIdx(a.band) - bandIdx(b.band); });
         var cell = 'padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:top';
+        var missBand = {}; ms.forEach(function(x){ missBand[x.band] = x.n; });
+        var mkSw = function(g){
+          var n = missBand[g.band] || 0;
+          return '<div style="width:52px;text-align:center;position:relative" title="' + f + ' ' + g.band + ' · 마켓 ' + g.share + '%' + (n ? ' · 목표 대비 ' + n + '색 부족' : '') + '">'
+            + '<div style="height:34px;border-radius:5px;background:' + g.cHex + ';' + (n ? 'border:2px dashed var(--warn)' : 'border:1px solid var(--border)') + '"></div>'
+            + (n ? '<span style="position:absolute;top:-6px;right:-4px;font-family:var(--mono);font-size:9px;font-weight:800;padding:0 4px;border-radius:8px;background:var(--warn);color:#fff">−' + n + '</span>' : '')
+            + '<div style="font-family:var(--mono);font-size:8px;color:' + (n ? 'var(--warn)' : 'var(--text4)') + ';white-space:nowrap;overflow:hidden">' + g.band + ' ' + g.share + '%</div></div>';
+        };
         return '<tr>'
           + '<td style="' + cell + ';font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text2);white-space:nowrap">' + f
           +   '<div style="font-size:8px;font-weight:400;color:var(--text4)">목표 ' + (quotaOf[key] || 0) + ' · 제안 ' + pk.length + '</div></td>'
           + '<td style="' + cell + '"><div style="display:flex;gap:4px;flex-wrap:wrap">'
-          +   (mk.length ? mk.map(function(g){ return sw(g.cHex, f + ' ' + g.band, g.band + ' ' + g.share + '%'); }).join('') : '<span style="font-size:10px;color:var(--text4)">—</span>')
+          +   (mk.length ? mk.map(mkSw).join('') : '<span style="font-size:10px;color:var(--text4)">—</span>')
           + '</div></td>'
           + '<td style="' + cell + '"><div style="display:flex;gap:4px;flex-wrap:wrap">'
           +   (pk.length ? pk.map(function(x){ return sw(x.hex, (x.src || '') + ' ' + x.hex, x.band + (x.extra ? '·보충' : ''),
                 'border:1px solid ' + (x.extra ? 'var(--border2)' : 'var(--gold)')); }).join('') : '<span style="font-size:10px;color:var(--text4)">—</span>')
           + '</div></td>'
           + '<td style="' + cell + ';border-left:2px solid var(--warn);background:rgba(200,90,70,0.05)"><div style="display:flex;gap:4px;flex-wrap:wrap">'
-          +   (ms.length ? ms.map(function(x){ return sw(x.cHex, '빈칸 ' + f + ' ' + x.band, x.band + ' ×' + x.n, 'border:2px dashed var(--warn)'); }).join('')
+          +   (ms.length ? ms.map(function(x){
+                  var nt = _tgtNearestTrend(x.cHex, f, x.band, T);
+                  var t0 = nt.same || nt.best;
+                  var d0 = nt.same ? nt.dSame : nt.d;
+                  var why = !t0 ? '트렌드 데이터 없음'
+                    : !nt.same ? '같은 칸(' + T + ') 트렌드 색 없음 · 가장 가까운 색은 ' + _tgtCellOf(t0.hex).tier + ' ' + _tgtCellOf(t0.hex).fam + '·' + _tgtCellOf(t0.hex).band
+                    : (d0 > TM_DIST ? 'ΔRGB ' + d0 + ' > ' + TM_DIST + ' — 칸 대표색과 거리 멀어 탈락'
+                       : (function(){
+                           // 그 트렌드 색이 03 매칭 후보(raw)에 있었는지로 원인을 가른다
+                           var inRaw = false, picked = false, rawTier = null;
+                           try{
+                             ['basic','sub','key'].forEach(function(k){
+                               (_tmLastBuild.raw[k] || []).forEach(function(it){ if(it.trend.hex === t0.hex){ inRaw = true; rawTier = k; } });
+                               (_tmLastBuild.buckets[k] || []).forEach(function(it){ if(it.trend.hex === t0.hex) picked = true; });
+                             });
+                           }catch(e){}
+                           if(picked) return 'ΔRGB ' + d0 + ' — 이 칸에 이미 사용 · 더 채울 트렌드 후보 없음';
+                           if(inRaw)  return 'ΔRGB ' + d0 + ' — 후보였으나 유사색 배제·정원 초과로 탈락';
+                           return 'ΔRGB ' + d0 + ' — 개별 마켓 색과 ΔRGB ' + TM_DIST + ' 이내로 겹치지 않아 매칭 안 됨';
+                         })());
+                  return '<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px" title="' + why + '">'
+                    + '<span style="font-family:var(--mono);font-size:9px;font-weight:700;color:var(--warn);min-width:48px">' + x.band + ' −' + x.n + '</span>'
+                    + (t0 ? '<span style="display:inline-block;width:26px;height:20px;border-radius:4px;background:' + t0.hex + ';border:1px solid var(--border)"></span>' : '')
+                    + '<span style="font-family:var(--mono);font-size:9px;color:var(--text3);line-height:1.35">'
+                    +   (t0 ? (t0.sources || []).join('·') + ' ' + t0.hex + '<br>' : '') + why + '</span></div>';
+                }).join('')
                         : '<span style="font-size:10px;color:#5FA85F">충족</span>')
           + '</div></td></tr>';
       }).join('');
@@ -21234,10 +21279,10 @@ document.addEventListener('DOMContentLoaded',function(){
       +   '<th style="text-align:left;padding:6px 8px;border-bottom:2px solid var(--border)">계열</th>'
       +   '<th style="text-align:left;padding:6px 8px;border-bottom:2px solid var(--border)">마켓 톤<div style="font-size:8px;color:var(--text4)">명도밴드 대표색 · 비중</div></th>'
       +   '<th style="text-align:left;padding:6px 8px;border-bottom:2px solid var(--border)">제안 칩<div style="font-size:8px;color:var(--text4)">03 Trend-Matched</div></th>'
-      +   '<th style="text-align:left;padding:6px 8px;border-bottom:2px solid var(--border);color:var(--warn);border-left:2px solid var(--warn)">빈칸<div style="font-size:8px;color:var(--text4)">트렌드에 없어 못 채운 칸</div></th>'
+      +   '<th style="text-align:left;padding:6px 8px;border-bottom:2px solid var(--border);color:var(--warn);border-left:2px solid var(--warn)">빈칸 원인<div style="font-size:8px;color:var(--text4)">가장 가까운 트렌드 색 · 탈락 이유</div></th>'
       + '</tr></thead><tbody>' + rows + '</tbody></table></div>'
       + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:6px">'
-      + '마켓 톤 = 계열×명도 칸의 마켓 평균색 · 제안 칩 금색 테두리 = 목표 칸을 채운 색, 회색 = 빈도 보충 · 빈칸 = 목표 미달 칸(개수 ×N)</div>';
+      + '마켓 톤 = 계열×명도 칸의 마켓 평균색 (주황 점선·−N = 그 칸 목표 대비 부족) · 제안 칩 금색 테두리 = 목표 칸을 채운 색, 회색 = 빈도 보충 · 빈칸 원인 = 그 칸에 가장 가까운 WGSN·Peclers 색과 탈락 이유</div>';
   }
   window._discTargetCompare = _tgtCompare;
 
