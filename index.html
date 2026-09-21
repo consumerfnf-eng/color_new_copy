@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v272 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v273 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21915,6 +21915,7 @@ document.addEventListener('DOMContentLoaded',function(){
     // 라이프스타일 명칭은 위 tier 칩 라벨로 흡수 → 하단 무드 3종 블록(moods)은 표시하지 않는다.
     // (되돌리려면 아래 반환에 ' + moods' 를 다시 붙이면 됨. moods 변수는 위에서 그대로 생성됨)
     void moods;
+    if(DCP_TAB === 'sales') core = _dcpSalesHtml();
     return '<div class="dcp-body">' + _dcpUploadPanel() + _dcpTabBar() + core
       + (cv ? '' : '<div class="dcp-note">' + DCP_NOTE + '</div>') + '</div>';
   }
@@ -23356,7 +23357,8 @@ document.addEventListener('DOMContentLoaded',function(){
   var DCP_TABS = [
     ['all',   '전체',  'var(--text3)'],
     ['keep',  '유지',  '#5FA85F'],
-    ['watch', '보완',  'var(--gold)']
+    ['watch', '보완',  'var(--gold)'],
+    ['sales', '세일즈', '#3E8ED0']     // v273 — 03 Sales-Based(DISCOVERY 25FW 실판매) 흡수
   ];   // v252: '최종' 탭 제거 — 최종 제안은 ✎ REVIEW 맨 아래
   var DCP_TIER_META = { keep: ['유지', '#5FA85F'], watch: ['보완', 'var(--gold)'], risk: ['위험', 'var(--warn)'] };
   var _dcpStatus = null, _dcpStatusKey = null;
@@ -23407,6 +23409,16 @@ document.addEventListener('DOMContentLoaded',function(){
     _dcpRender();
     try{ _discOrderSections(); }catch(e){}
   };
+  // 03 Palette Proposal 의 Sales-Based(DISCOVERY) 섹션을 그대로 가져온다 (v273)
+  function _dcpSalesHtml(){
+    var sb = document.getElementById('disc-sales-section');
+    var box = sb ? sb.querySelector('.spp-trend-market-box') : null;
+    if(!box || box.textContent.replace(/\s/g, '').length < 40)
+      return '<div class="spp-empty" style="font-size:11px">03 Palette Proposal 의 Sales-Based 데이터가 아직 로드되지 않았습니다.</div>';
+    return '<div style="margin-bottom:6px;font-family:var(--mono);font-size:10px;color:var(--text4)">'
+      + '03 Palette Proposal · Sales-Based(DISCOVERY 25FW 실판매)와 같은 데이터</div>'
+      + '<div class="disc-rv-sales">' + box.innerHTML + '</div>';
+  }
   function _dcpTabBar(){
     var m = _dcpStatusMap(), cnt = { all: 0, keep: 0, watch: 0, risk: 0 };
     Object.keys(m).forEach(function(h){ cnt[m[h].tier]++; cnt.all++; });
@@ -23416,6 +23428,7 @@ document.addEventListener('DOMContentLoaded',function(){
           var on = (DCP_TAB === t[0]);
           var n = (t[0] === 'final') ? cnt.final
                 : (t[0] === 'watch') ? (cnt.watch + ' + 추가 ' + _dcpAddList().length)
+                : (t[0] === 'sales') ? (function(){ try{ return _cmpSales().length; }catch(e){ return ''; } })()
                 : (cnt[t[0]] || 0);
           return '<button onclick="_dcpSetTab(\'' + t[0] + '\')" style="font-family:var(--mono);font-size:11px;'
             + 'padding:5px 13px;border-radius:4px;cursor:pointer;'
@@ -24020,16 +24033,6 @@ document.addEventListener('DOMContentLoaded',function(){
         html += _rvCard('F. 목표 대비 과부족 (계열×명도×등급)',
           '<div class="spp-empty" style="font-size:11px">04 마켓 도출 탭을 먼저 열면 목표 대비 과부족 분석이 채워집니다.</div>');
       }
-    } catch(e){}
-
-    // G. Sales-Based — 03 의 DISCOVERY 실판매 섹션을 그대로 가져온다 (v271)
-    try {
-      var sb = document.getElementById('disc-sales-section');
-      var box = sb ? sb.querySelector('.spp-trend-market-box') : null;
-      html += _rvCard('G. Sales-Based — DISCOVERY 25FW 실판매 (03 Palette Proposal 동일 데이터)',
-        (box && box.textContent.replace(/\s/g, '').length > 40)
-          ? '<div class="disc-rv-sales">' + box.innerHTML + '</div>'
-          : '<div class="spp-empty" style="font-size:11px">03 Palette Proposal 의 Sales-Based 데이터가 아직 로드되지 않았습니다.</div>');
     } catch(e){}
 
     return html;
