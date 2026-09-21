@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v296 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v297 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -22371,6 +22371,7 @@ document.addEventListener('DOMContentLoaded',function(){
   }
 
   function _dcpBodyHtml(){
+    _dcpFinKindCache = null;
     var cv = _dcpCustomView();
     var coreRows = cv ? [cv.core] : [DCP_CORE_1, DCP_CORE_2];
     var moodDefs = cv ? cv.moods : DCP_MOODS;
@@ -22433,7 +22434,7 @@ document.addEventListener('DOMContentLoaded',function(){
         + '</div></div>';
     }).join('') + '</div>';
     _dcpInMood = false;
-    if(DCP_TAB === 'final'){ core = _dcpFinalBoard(); }
+    if(DCP_TAB === 'final'){ core = _dcpFinalAddRow() + core; }
     if(DCP_TAB === 'watch'){ core = _dcpAddRow() + core; }
     // 라이프스타일 명칭은 위 tier 칩 라벨로 흡수 → 하단 무드 3종 블록(moods)은 표시하지 않는다.
     // (되돌리려면 아래 반환에 ' + moods' 를 다시 붙이면 됨. moods 변수는 위에서 그대로 생성됨)
@@ -23933,11 +23934,31 @@ document.addEventListener('DOMContentLoaded',function(){
     _dcpRender();
     try{ _discOrderSections(); }catch(e){}
   };
+  // v297 — 최종 탭 상단: 새로 추가하는 색 줄 (보완 탭의 '추가할 색' 과 같은 형식)
+  function _dcpFinalAddRow(){
+    var r = null; try{ r = _finBuild(); }catch(e){}
+    if(!r) return '';
+    var all = r.main.concat(r.add);
+    var cnt = function(k){ return all.filter(function(f){ return f.kind === k; }).length; };
+    var sum = ['keep','watch','sales','gap','add'].filter(function(k){ return cnt(k); })
+      .map(function(k){ return '<span style="color:' + FIN_KIND[k][1] + ';font-weight:700">' + FIN_KIND[k][0] + ' ' + cnt(k) + '</span>'; }).join(' · ');
+    return '<div style="margin:0 0 22px;padding:12px 14px;border:1px solid var(--border);border-radius:8px">'
+      + '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px;flex-wrap:wrap">'
+      +   '<span style="font-family:var(--mono);font-size:12px;font-weight:800;color:var(--text)">최종 ' + all.length + '색</span>'
+      +   '<span style="font-family:var(--mono);font-size:10px">' + sum + ' · <span style="color:var(--text4)">제외 ' + r.out.length + '</span></span>'
+      + '</div>'
+      + (r.add.length
+          ? '<div style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--warn);margin-bottom:6px">+ 추가 컬러칩 ' + r.add.length + '</div>'
+            + '<div style="display:flex;gap:7px;flex-wrap:wrap">' + r.add.map(_finChip).join('') + '</div>'
+          : '<div style="font-family:var(--mono);font-size:10px;color:var(--text4)">추가 없음</div>')
+      + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:8px">아래 팔레트 판 = 기존 레이아웃 그대로 · 칩 아래 표시 = 보완(반반 띠) · 세일즈 유지 · 공백 유지 · 제외(흐리게)</div>'
+      + '</div>';
+  }
   // v295 — 최종 탭: 현재 디스커버리 팔레트 판에 보완·추가를 반영한 최종 컬러칩
   function _dcpFinalBoard(){
     var r = null; try{ r = _finBuild(); }catch(e){}
     if(!r) return '<div class="spp-empty" style="font-size:11px">03 Palette Proposal 데이터가 필요합니다. 01·02 를 먼저 로드하세요.</div>';
-    _finIdx = [];
+    // v297 — 인덱스는 누적(여러 영역에서 같은 팝업을 쓰므로 초기화하지 않음)
     var tiers = [['Seasonal','SEASONAL','var(--blue)'], ['Accent','ACCENT','#A090F0'], ['Core','CORE','var(--gold)']];
     var cnt = function(list, k){ return list.filter(function(f){ return f.kind === k; }).length; };
     var all = r.main.concat(r.add);
@@ -24150,7 +24171,37 @@ document.addEventListener('DOMContentLoaded',function(){
           ])),
       tags: [c.code || '25FW'] });
   };
+  // v297 — 최종 탭용: 확정색(대문자 HEX) → 최종 판정
+  var _dcpFinKindCache = null;
+  function _dcpFinalKindMap(){
+    if(_dcpFinKindCache) return _dcpFinKindCache;
+    var out = {}, r = null;
+    try{ r = _finBuild(); }catch(e){}
+    if(r){
+      r.main.forEach(function(f){ out[String(f.orig || f.hex).toUpperCase()] = f; });
+      r.out.forEach(function(f){ out[String(f.hex).toUpperCase()] = f; });
+    }
+    _dcpFinKindCache = out;
+    return out;
+  }
   function _dcpStatusStrip(hex){
+    if(DCP_TAB === 'final'){
+      var f = _dcpFinalKindMap()[String(hex).toUpperCase()];
+      if(!f || f.kind === 'keep') return '';
+      if(f.kind === 'watch'){
+        // 보완 — 보완 탭과 같은 반반 띠 (왼쪽 확정색 / 오른쪽 최종 톤)
+        return '<div onclick="_dcpOpenStatus(event,\'' + hex + '\')" style="margin-top:4px;cursor:pointer;border:1px solid var(--gold);border-radius:4px;overflow:hidden"'
+          + ' title="클릭 — 보완 사유 · ΔE ' + f.st.de + '">'
+          +   '<div style="display:flex;height:30px"><div style="flex:1;background:' + hex + '"></div><div style="flex:1;background:' + f.hex + '"></div></div>'
+          +   '<div style="font-family:var(--mono);font-size:8.5px;text-align:center;padding:2px;color:var(--gold);white-space:nowrap">보완 · ' + _dcpShortDir(hex, f.hex) + '</div>'
+          + '</div>';
+      }
+      var lab = { sales: ['세일즈 유지', '#3E8ED0'], gap: ['공백 유지', '#8E6BB5'], out: ['제외', 'var(--text4)'] }[f.kind];
+      if(!lab) return '';
+      var idx = _finIdx.length; _finIdx.push(f);
+      return '<div onclick="_finOpen(event,' + idx + ')" style="margin-top:4px;cursor:pointer;border:1px solid ' + lab[1] + ';border-radius:4px;'
+        + 'font-family:var(--mono);font-size:8.5px;font-weight:700;text-align:center;padding:3px 2px;color:' + lab[1] + '" title="클릭 — 선정 사유">' + lab[0] + '</div>';
+    }
     if(DCP_TAB === 'sales'){
       var sr = _dcpSalesMap().map[String(hex).toUpperCase()];
       if(!sr) return '';
@@ -24185,7 +24236,12 @@ document.addEventListener('DOMContentLoaded',function(){
     if(_dcpInMood) return '';
     if(DCP_TAB === 'sales')
       return _dcpSalesMap().map[String(hex).toUpperCase()] ? '' : ';opacity:0.22';
-    if(DCP_TAB !== 'keep') return '';          // v296 — 보완+추가 탭은 전체 레이아웃 그대로(흐림 없음), 보완 칩만 띠로 표시
+    if(DCP_TAB === 'final'){
+      // v297 — 최종 탭: 전체 레이아웃 그대로, 제외된 색만 흐리게
+      var fk = _dcpFinalKindMap()[String(hex).toUpperCase()];
+      return (fk && fk.kind === 'out') ? ';opacity:0.25' : '';
+    }
+    if(DCP_TAB !== 'keep' && DCP_TAB !== 'watch') return '';
     var st = _dcpStatusMap()[String(hex).toUpperCase()];
     return (st && st.tier === DCP_TAB) ? '' : ';opacity:0.22';
   }
@@ -24981,7 +25037,7 @@ document.addEventListener('DOMContentLoaded',function(){
   function _finHtml(){
     var r = _finBuild();
     if(!r) return '';
-    _finIdx = [];
+    // v297 — 인덱스는 누적(여러 영역에서 같은 팝업을 쓰므로 초기화하지 않음)
     var tiers = [['Core', 'var(--gold)'], ['Seasonal', 'var(--blue)'], ['Accent', '#A090F0']];
     var col = function(list){
       return tiers.map(function(t){
