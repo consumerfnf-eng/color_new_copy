@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v276 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v277 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20865,6 +20865,7 @@ document.addEventListener('DOMContentLoaded',function(){
       try{ _byCell = _tmCellPick(buckets[k], _tierName, TM_MINDIST[k]); }catch(e){ _byCell = null; }
       if(_byCell){
         buckets[k] = _byCell;
+        if(k === 'basic') buckets[k] = _tmEnforceBasicMix(buckets[k], rawAll[k], TM_CAPS[k]);
       } else {
         buckets[k] = _tmPick(buckets[k], TM_CAPS[k], TM_MINDIST[k]);
         if(k === 'basic') buckets[k] = _tmEnforceBasicMix(buckets[k], rawAll[k], TM_CAPS[k]);
@@ -21014,7 +21015,11 @@ document.addEventListener('DOMContentLoaded',function(){
         + '<td style="padding:4px 8px;text-align:right;font-family:var(--mono);font-size:10px;color:var(--text4)">마켓 ' + c.share + '%</td>'
         + '</tr>';
     }).join('');
-    return _tgtCard('TARGET · 톤 구성 목표', '마켓 비율 × ' + TM_TOTAL + '색 → 칸별 목표 ' + tg.total + ' · 채움 ' + totFill + ' · 빈칸 ' + totMiss,
+    var extras = 0;
+    try{ if(_tmLastBuild) ['basic','sub','key'].forEach(function(k){ extras += (_tmLastBuild.buckets[k]||[]).filter(function(x){ return x._extra; }).length; }); }catch(e){}
+    return _tgtCard('TARGET · 톤 구성 목표',
+      '마켓 비율 × ' + TM_TOTAL + '색 → 칸 목표 ' + tg.total + ' · 칸 채움 ' + totFill + ' · 칸 빈칸 ' + totMiss
+      + (extras ? ' · 빈도 보충 ' + extras : '') + ' → 제안 ' + (totFill + extras) + '색',
         '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">' + tiles + '</div>'
       + (totMiss
           ? _tgtFoldBtn('cells', '펼치기 — 못 채운 칸 ' + missCells.length + '개')
@@ -21023,7 +21028,7 @@ document.addEventListener('DOMContentLoaded',function(){
                   + '<thead><tr style="font-family:var(--mono);font-size:9px;color:var(--text3)">'
                   + ['마켓 대표','등급','칸','채움/목표','상태','마켓 비중'].map(function(h,i){ return '<th style="text-align:' + (i>=3?'right':'left') + ';padding:4px 8px;border-bottom:2px solid var(--border)">' + h + '</th>'; }).join('')
                   + '</tr></thead><tbody>' + missRows + '</tbody></table>'
-                  + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:6px">빈칸 = 마켓에는 있는 톤이지만 WGSN·Peclers 색과 겹치지 않아 제안에 못 넣은 칸 (색은 채우지 않음)</div></div>'
+                  + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:6px">빈칸 = 마켓에는 있는 톤이지만 WGSN·Peclers 색과 겹치지 않아 그 칸을 못 채운 경우 · 남은 정원은 빈도 상위 색으로 보충해 총 ' + TM_TOTAL + '색을 유지</div></div>'
                 : '')
           : '<div style="font-family:var(--mono);font-size:10px;color:#5FA85F">목표 칸을 모두 채웠습니다.</div>'));
   }
@@ -21078,6 +21083,20 @@ document.addEventListener('DOMContentLoaded',function(){
       c.filled = (c.filled || 0) + got;
       c.missing = c.quota - c.filled;
     });
+    // v277 — 목표 칸을 채운 뒤 남은 정원은 빈도 상위로 채운다 (총 개수는 종전과 동일)
+    var cap = (tgt.capTier[tierName] || 0);
+    if(out.length < cap){
+      for(var i = 0; i < list.length && out.length < cap; i++){
+        if(usedIdx[i]) continue;
+        var it2 = list[i];
+        if(!ok(it2)) continue;
+        usedIdx[i] = 1;
+        var cl2 = _tgtCellOf(it2.trend.hex);
+        it2._cell = cl2.fam + '·' + cl2.band;
+        it2._extra = true;                      // 목표 칸 밖에서 보충
+        out.push(it2);
+      }
+    }
     return out;
   }
 
