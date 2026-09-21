@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v290 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v292 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -6386,28 +6386,45 @@ const COLORO_DB={
   '000-08-00':['#141413','Rich Black'],       '000-05-00':['#0D0D0C','Deep Black'],
 };
 
-// COLORO 번호 → HEX 변환
-function coloroToHex(code){
-  // "040-85-24" 또는 "040 85 24" 형태 정규화
-  const clean=code.replace(/[\s]/g,'-').replace(/[^0-9-]/g,'');
-  // 정확 매칭
-  if(COLORO_DB[clean]) return COLORO_DB[clean];
-  // 근사 매칭: 각 세그먼트 ±5 범위 검색
-  const parts=clean.split('-');
-  if(parts.length!==3) return null;
-  const [h,l,c]=[parseInt(parts[0]),parseInt(parts[1]),parseInt(parts[2])];
-  let bestKey=null, bestDist=Infinity;
-  for(const key of Object.keys(COLORO_DB)){
-    const kp=key.split('-');
-    if(kp.length!==3) continue;
-    const [kh,kl,kc]=[parseInt(kp[0]),parseInt(kp[1]),parseInt(kp[2])];
-    // 색조는 원형 거리
-    const hdiff=Math.min(Math.abs(h-kh),360-Math.abs(h-kh));
-    const dist=hdiff*2+Math.abs(l-kl)+Math.abs(c-kc);
-    if(dist<bestDist){bestDist=dist;bestKey=key;}
-  }
-  return bestDist<=15 ? COLORO_DB[bestKey] : null;
+// COLORO 번호 → HEX 변환 (v292 전면 교체)
+//  COLORO 코드 = 색조(001~160, 1칸 ≈ 2.25°) - 명도(L*) - 채도.
+//  이전 방식은 색조를 0~360° 로 보고 HSL 로 바꿔서 136(보라)을 초록으로 만드는 등 틀린 색이 나왔다.
+//  ① 공식 대응표(COLORO_MAP, 실측 HEX)에 있으면 그 값 ② 없으면 CIELCh 모델로 계산 (H = 2.25×색조 + 3°, L* = 명도, C* = 1.6×채도)
+//  COLORO_DB(구 수기 표)는 색조 체계가 달라 65/126 항목이 어긋나므로 이름 참고로만 쓴다.
+function coloroModelHex(clean){
+  const parts=clean.split('-'); if(parts.length!==3) return null;
+  const h=parseInt(parts[0],10), l=parseInt(parts[1],10), c=parseInt(parts[2],10);
+  if(isNaN(h)||isNaN(l)||isNaN(c)) return null;
+  const H=((2.25*h+3)%360)*Math.PI/180;
+  let C=1.6*c;
+  const toHex=function(L,A,B){
+    const fy=(L+16)/116, fx=fy+A/500, fz=fy-B/200;
+    const inv=function(t){ const t3=t*t*t; return t3>0.008856 ? t3 : (t-16/116)/7.787; };
+    const X=inv(fx)*0.95047, Y=inv(fy), Z=inv(fz)*1.08883;
+    const lin=[ 3.2406*X-1.5372*Y-0.4986*Z, -0.9689*X+1.8758*Y+0.0415*Z, 0.0557*X-0.2040*Y+1.0570*Z ];
+    const g=function(v){ return v<=0.0031308 ? 12.92*v : 1.055*Math.pow(v,1/2.4)-0.055; };
+    const rgb=lin.map(g);
+    const ok=rgb.every(function(v){ return v>=-0.001 && v<=1.001; });
+    return { ok: ok, hex: '#'+rgb.map(function(v){ return Math.max(0,Math.min(255,Math.round(v*255))).toString(16).padStart(2,'0'); }).join('').toUpperCase() };
+  };
+  let r=null;
+  for(let i=0;i<40;i++){ r=toHex(l, C*Math.cos(H), C*Math.sin(H)); if(r.ok) break; C*=0.95; }
+  return r ? r.hex : null;
 }
+function coloroToHex(code){
+  const clean=String(code||'').replace(/[\s]/g,'-').replace(/[^0-9-]/g,'');
+  const parts=clean.split('-'); if(parts.length!==3) return null;
+  const norm=parts[0].padStart(3,'0')+'-'+parts[1].padStart(2,'0')+'-'+parts[2].padStart(2,'0');
+  const dbName=(typeof COLORO_DB!=='undefined' && COLORO_DB[norm]) ? COLORO_DB[norm][1] : '';
+  try{
+    if(typeof COLORO_MAP!=='undefined'){
+      for(let i=0;i<COLORO_MAP.length;i++){ if(COLORO_MAP[i].c===norm) return [COLORO_MAP[i].ch.toUpperCase(), dbName || norm]; }
+    }
+  }catch(e){}
+  const hx=coloroModelHex(norm);
+  return hx ? [hx, norm] : null;
+}
+window._coloroToHex = coloroToHex;
 
 function hslToHex(h,s,l){
   h=h%360; if(h<0)h+=360;
@@ -20644,6 +20661,15 @@ document.addEventListener('DOMContentLoaded',function(){
         var h = String(c.hex).toUpperCase();
         if(!/^#[0-9A-F]{6}$/.test(h)) return;
         if(h === '#888888') return;                      // 미매핑 플레이스홀더
+        // v292 — COLORO 코드에서 계산된 색은 올바른 변환으로 HEX 를 다시 낸다 (예: 136-32-33 보라가 초록으로 들어가던 문제)
+        try{
+          var _cc = String(c.code || c.name || '').match(/(\d{3})[\s-](\d{2})[\s-](\d{2})/);
+          var _isColoro = _cc && (/coloro/i.test(String(c.src||'')) || /coloro/i.test(String(c.system||'')) || /coloro/i.test(String(c.label||'')) || !c.src);
+          if(_isColoro && typeof coloroToHex === 'function'){
+            var _nh = coloroToHex(_cc[1]+'-'+_cc[2]+'-'+_cc[3]);
+            if(_nh && _nh[0] && _nh[0].toUpperCase() !== h){ c.hexOld = c.hexOld || h; c.hex = _nh[0]; h = _nh[0].toUpperCase(); }
+          }
+        }catch(e){}
         if(seen[h]){
           if(seen[h].sources.indexOf(srcLabel) < 0) seen[h].sources.push(srcLabel);
           return;
@@ -25947,7 +25973,9 @@ document.addEventListener('DOMContentLoaded',function(){
                   olive_h: 85, olive_l: 50,
                   vivid_hue_c: 35,            // v278 선명한 색 계열 판정 기준
                   navy_c: 25,                 // v248 네이비 채도 상한
-                  cream_l: 85, cream_c: 15,   // v248 크림·아이보리
+                  cream_l: 80, cream_c: 15,   // v291: 85 → 80 (IVS 아이보리 L83 Core 로)
+                  redbrown_h: 55, redbrown_c: 10,          // v291 붉은기 브라운 → Seasonal
+                  khaki_h: 85, khaki_l: 40, khaki_c: 12,   // v291 다크 카키·올리브 → Seasonal   // v248 크림·아이보리
                   dark_l: 30, dark_c: 20 };   // v248 어두운 저채도
   var STD_TIERS = [
     ['Seasonal', 'var(--blue)'],
@@ -25997,7 +26025,10 @@ document.addEventListener('DOMContentLoaded',function(){
     if(h === '무채' || h === '네이비') return 'Core';            // ② 블랙·화이트·그레이·아이보리·네이비 = 기본물
     // 밝은 저채도 크림·아이보리
     if(h === '베이지' && a.L >= STD_CUT.cream_l && a.C < STD_CUT.cream_c) return 'Core';
-    // ③ 베이지·브라운 뉴트럴(샌드·토프·탠·초콜릿·모카·카키). 밝은 올리브베이지 제외 · 카키(#574D35 등)는 Core 유지
+    // v291 — 붉은기 브라운(코코아·마호가니·로즈브라운, H<55° · C*≥10)과 다크 카키·올리브(H≥85° · L*<40 · C*≥12)는 Seasonal
+    if((h === '베이지' || h === '브라운') && a.H < STD_CUT.redbrown_h && a.C >= STD_CUT.redbrown_c) return 'Seasonal';
+    if((h === '베이지' || h === '브라운') && a.H >= STD_CUT.khaki_h && a.L < STD_CUT.khaki_l && a.C >= STD_CUT.khaki_c) return 'Seasonal';
+    // ③ 베이지·브라운 뉴트럴(샌드·토프·탠·초콜릿·모카). 밝은 올리브베이지 제외
     if((h === '베이지' || h === '브라운')
        && a.C < STD_CUT.core_warm_chroma && a.L < STD_CUT.core_warm_light
        && !(a.H > STD_CUT.olive_h && a.L >= STD_CUT.olive_l && a.C >= 10)) return 'Core';   // ③ (v272: 올리브 제외는 C*≥10 일 때만 — 토프·그레이지는 Core 유지)
