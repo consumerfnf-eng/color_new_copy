@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v288 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v290 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -22012,37 +22012,44 @@ document.addEventListener('DOMContentLoaded',function(){
   var DCP_STYLE_ID = 'dcp-style';
   var _dcpCollapsed = false;   // 04 에서는 항상 펼침 (토글 제거)
 
+  // v289 — 27FW 팔레트 교체: DISCOVERY_27FW_COLOR_PALETTE_260915 (CORE + FALL + WINTER)
   var DCP_CORE_1 = [
     {name:'CRS', code:'036-90-02', hex:'F3F0E6'},
-    {name:'CRD', code:'033-90-02', hex:'F4EDE4'},
     {name:'IVS', code:'034-80-03', hex:'D4CFC2'},
     {name:'BES', code:'032-69-05', hex:'B9AC97'},
+    {name:'NBS', code:'025-72-10', hex:'D4B198'},
     {name:'BGL', code:'037-61-06', hex:'A69B83'},
     {name:'BGS', code:'035-51-09', hex:'978065'},
-    {name:'DWS', code:'029-25-07', hex:'493A2F'},
     {name:'SAD', code:'032-49-04', hex:'87796A'},
+    {name:'BRD', code:'031-31-11', hex:'5E442E'},
+    {name:'DWS', code:'029-25-07', hex:'493A2F'},
     {name:'CGS', code:'007-40-01', hex:'685E61'},
-    {name:'NYL', code:'122-36-01', hex:'4E5862'},
-    {name:'DGL', code:'122-28-04', hex:'3C4550'},
-    {name:'NYD', code:'120-21-10', hex:'253445'},
+    {name:'SPS', pantone:'19-0910 TPG', pname:'Mulch', hex:'53433E'},
     {gap:true},
-    {name:'IVM', pct:'',    tag:'B1020', melange:true, hex:'F5EEE4'},
-    {name:'MGL', pct:'1%',  tag:'BC02',  melange:true, hex:'D1CED4'},
-    {name:'MGS', pct:'8%',  tag:'BC06',  melange:true, hex:'9996A7'},
-    {name:'MGD', pct:'35%', tag:'B38',   melange:true, hex:'565661'}
+    {name:'IVM', pct:'', tag:'B1020', melange:true, hex:'F5EEE4'},
+    {name:'MGL', pct:'1%', tag:'BC02', melange:true, hex:'D1CED4'},
+    {name:'MGS', pct:'8%', tag:'BC06', melange:true, hex:'9996A7'},
+    {name:'MGD', pct:'35%', tag:'B38', melange:true, hex:'565661'},
+    {name:'MDS', pct:'60%', tag:'BN65', melange:true, hex:'434449'}
   ];
   var DCP_CORE_2 = [
     {name:'GRL', code:'129-84-00', hex:'D4D8DE'},
     {name:'LGL', code:'123-76-02', hex:'B8C4CE'},
     {name:'SIL', pantone:'14-4105 TPG', pname:'Micro Chip', hex:'BDBDC5'},
-    {name:'GRS', pantone:'17-3914 TCX', pname:'Sharkskin',  hex:'80848B'},
+    {name:'GRS', pantone:'17-3914 TCX', pname:'Sharkskin', hex:'80848B'},
     {name:'GRD', code:'149-40-00', hex:'5E5E67'},
     {name:'DGS', code:'142-27-00', hex:'443F46'},
     {name:'CGD', code:'152-25-00', hex:'3E3A42'},
+    {name:'NYL', code:'122-36-01', hex:'4E5862'},
+    {name:'DGL', code:'122-28-04', hex:'3C4550'},
+    {name:'DNS', code:'124-20-03', hex:'262F3A'},
     {gap:true},
     {name:'WHS', code:'040-92-00', hex:'F2EEE7'},
     {name:'BKS', code:'139-18-00', hex:'2B2C31'}
   ];
+  // v290 — 라이프스타일 배정은 이전(260909) 팔레트와 같은 이름 기준으로 복원.
+  //   FALL 시즌 색 ≈ ACTIVE WELLNESS, WINTER 시즌 색 ≈ CASUAL COMMUTE / OUTDOOR RESORT.
+  //   빠진 SBD·COL 자리는 없음, 새 색 NYD 는 네이비 계열이라 CASUAL COMMUTE(DNS 옆)에 배정. CRD 는 라이프스타일 미배정.
   var DCP_MOODS = [
     { title:'ACTIVE WELLNESS', rows:[
       [ {name:'LPS', code:'155-72-12', hex:'DAA6B3'},
@@ -22055,8 +22062,8 @@ document.addEventListener('DOMContentLoaded',function(){
     ]},
     { title:'CASUAL COMMUTE', rows:[
       [ {name:'LPS', code:'155-72-12', hex:'DAA6B3'},
-        {name:'SBD', code:'117-44-09', hex:'506F88'},
-        {name:'WID', code:'005-23-06', hex:'472F34'} ],
+        {name:'WID', code:'005-23-06', hex:'472F34'},
+        {name:'NYD', code:'120-21-10', hex:'253445'} ],
       [ {name:'KAD', code:'043-24-06', hex:'443C2A'},
         {name:'KAS', code:'049-34-04', hex:'585740'},
         {name:'DNS', code:'124-20-03', hex:'262F3A'},
@@ -22065,15 +22072,17 @@ document.addEventListener('DOMContentLoaded',function(){
     { title:'OUTDOOR RESORT', rows:[
       [ {name:'BLL', code:'107-77-11', hex:'9FCADB'},
         {name:'LPL', code:'154-81-12', hex:'EBC0CE'},
-        {name:'COL', code:'016-72-17', hex:'EBA491'},
         {name:'MTS', code:'082-72-06', hex:'9FC5B8'},
         {name:'LDS', code:'131-69-13', hex:'A1A4CF'} ],
       [ {name:'NBS', code:'025-72-10', hex:'D4B198'},
         {name:'SPS', pantone:'19-0910 TPG', pname:'Mulch', hex:'53433E'},
         {name:'BDD', code:'004-23-16', hex:'5C2733'} ]
+    ]},
+    { title:'FALL', rows:[
+      [ {name:'CRD', code:'033-90-02', hex:'F4EDE4'} ]
     ]}
   ];
-  var DCP_NOTE = 'CORE 컬러군과 BLS, LVL은 채도 +3%p 버전 HEX, 그 외 컬러(ACTIVE WELLNESS의 LPS·SAS·INS·TQL·WIS / CASUAL COMMUTE 전체 / OUTDOOR RESORT 전체)는 채도 +8%p·명도 -1%p 버전 HEX를 적용. Coloro/Pantone/멜란지 코드는 원본과 동일.';
+  var DCP_NOTE = 'DISCOVERY 27FW COLOR PALETTE (260915) — 라이프스타일 배정은 이전 팔레트(260909)와 같은 컬러명 기준 (FALL≈ACTIVE WELLNESS · WINTER≈CASUAL COMMUTE/OUTDOOR RESORT). HEX 는 컬러 코드 매칭표(260909) 기준, MDS(BN65 멜란지 60%)는 팔레트 원본에서 추출.';
 
 
   // ══════════════════════════════════════════════════════════════
@@ -22436,7 +22445,7 @@ document.addEventListener('DOMContentLoaded',function(){
     sect.innerHTML = '<div class="spp-trend-market-hd" style="margin-bottom:0">'
       +   '<span class="spp-trend-market-flame" style="color:var(--gold)">▣ 27FW PALETTE</span>'
       +   '<span class="spp-trend-market-title">' + (cv0 ? '업로드 팔레트' : 'DISCOVERY 27FW Color Palette') + '</span>'
-      +   '<span class="spp-trend-market-sub">' + (cv0 ? cv0.fileName : '사내 확정 팔레트 · CORE + 무드 3종')
+      +   '<span class="spp-trend-market-sub">' + (cv0 ? cv0.fileName : '사내 확정 팔레트 260915 · CORE + 라이프스타일 3종')
       +     ' · 총 ' + cnt + '색</span>'
       + '</div>'
       + _dcpBodyHtml()
@@ -24365,7 +24374,7 @@ document.addEventListener('DOMContentLoaded',function(){
       + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:6px">등급 = 디커 기준 · 1차 자사·권장 = 색 수 · 마켓 = 빈도 가중 · 권장 = 최종 제안(유지·보완·세일즈·추가) 구성</div>');
 
     // ── C. 계열 매트릭스 [제안 | 트렌드 | 최종] ──────────────
-    var FAM_ORDER = ['무채','네이비','베이지','브라운','옐로','오렌지','레드핑크','퍼플','블루','틸','그린'];
+    var FAM_ORDER = ['무채','네이비','베이지','브라운','옐로','오렌지','레드','핑크','퍼플','블루','틸','그린'];
     var swatch = function(hex, tip, badge){
       return '<div title="' + tip + '" style="width:30px;text-align:center">'
         + '<div style="height:24px;border-radius:4px;background:' + hex + ';border:' + ((badge&&badge.b)||'1px solid var(--border)') + ';box-sizing:border-box"></div>'
@@ -25947,6 +25956,10 @@ document.addEventListener('DOMContentLoaded',function(){
   ];
 
   // 디커 기준의 색상군(hue) 판정 — 칩 라이브러리의 분포에 맞춰 Lab 으로 근사
+  // v289 — 레드와 핑크를 분리: 마젠타·로즈 쪽(H>330 또는 <12)이면서 L*≥35 → 핑크, 그 외(스칼렛·와인·버건디) → 레드
+  function _rpSplit(a, H){
+    return ((H > 330 || H < 12) && a.L >= 35) ? '핑크' : '레드';
+  }
   function _stdHue(hex){
     var a = _tmLCh(hex);
     if(a.C < STD_CUT.achro_gate) return '무채';
@@ -25955,7 +25968,7 @@ document.addEventListener('DOMContentLoaded',function(){
     if(a.L >= STD_CUT.cream_l && a.C < STD_CUT.cream_c && H >= 30 && H <= 110) return '베이지';   // v248: 크림·아이보리
     // v278 — 선명한 색(C*≥35)은 베이지·브라운으로 보지 않는다. 레드/오렌지/옐로로 구분.
     if(a.C >= STD_CUT.vivid_hue_c){
-      if(H < 40 || H > 330) return '레드핑크';
+      if(H < 40 || H > 330) return _rpSplit(a, H);
       // v288 — 어두운 웜(L*<40)은 선명해도 오렌지·옐로가 아니라 브라운(러스트·새들)으로 본다
       if(a.L >= 40){
         if(H <= 70) return '오렌지';
@@ -25971,7 +25984,7 @@ document.addEventListener('DOMContentLoaded',function(){
     if(H > 165 && H <= 205) return '틸';
     if(H > 205 && H <= 288) return '블루';
     if(H > 288 && H <= 330) return '퍼플';
-    if(H > 330 || H < 15) return '레드핑크';
+    if(H > 330 || H < 15) return _rpSplit(a, H);
     return '오렌지';
   }
   // 디커 등급 판정 (v266 — Core 재정의: 기본물만 Core. 청록·그린·러스트·퍼플 등은 어두워도 Seasonal)
@@ -26178,7 +26191,7 @@ document.addEventListener('DOMContentLoaded',function(){
   //  03·04 는 우리 Lab 계열을 쓰고, 여기서만 디스커버리팀 축으로 본다.
   //  한 줄에 [우리 제안 / 디커 보유 / 디커 실사용] 을 나란히 놓아
   //  "보유는 많은데 안 쓰고, 우리도 제안 안 한" 구간이 드러나게 한다.
-  var STD_HUE_ORDER = ['무채','네이비','베이지','브라운','옐로','오렌지','레드핑크','그린','틸','블루','퍼플'];
+  var STD_HUE_ORDER = ['무채','네이비','베이지','브라운','옐로','오렌지','레드','핑크','그린','틸','블루','퍼플'];
   var STD_CHROMA_BANDS = [[10,'무채'],[25,'뮤트'],[50,'클리어'],[1e9,'비비드']];
   var STD_VALUE_BANDS  = [[40,'다크'],[70,'미드'],[1e9,'라이트']];
   var STD_ACHRO_BANDS  = [[15,'블랙'],[30,'차콜'],[45,'딥그레이'],[72,'미드그레이'],[90,'라이트그레이'],[1e9,'화이트']];
