@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v280 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v281 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -21021,6 +21021,8 @@ document.addEventListener('DOMContentLoaded',function(){
       '마켓 비율 × ' + TM_TOTAL + '색 → 칸 목표 ' + tg.total + ' · 칸 채움 ' + totFill + ' · 칸 빈칸 ' + totMiss
       + (extras ? ' · 빈도 보충 ' + extras : '') + ' → 제안 ' + (totFill + extras) + '색',
         '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">' + tiles + '</div>'
+      + _tgtCompare()
+      + '<div style="height:12px"></div>'
       + _tgtMatrix()
       + '<div style="height:10px"></div>'
       + (totMiss
@@ -21137,6 +21139,82 @@ document.addEventListener('DOMContentLoaded',function(){
       +   ' · 점선 주황 = 목표 미달 · 마우스 올리면 비중·평균L·등급</div>';
   }
   window._discTargetMatrix = _tgtMatrix;
+
+  // ── v281 — 03 비교 대조표: 계열별 [마켓 톤] vs [제안 칩] vs [빈칸] ──
+  function _tgtCompare(){
+    var tg = _tgtBuild(); if(!tg) return '';
+    var bandOrder = TGT_BANDS.map(function(b){ return b[0]; });
+    var bandIdx = function(b){ return bandOrder.indexOf(b); };
+    // 제안 칩을 계열별로 모은다
+    var picks = {};
+    try{
+      if(_tmLastBuild) ['basic','sub','key'].forEach(function(k){
+        (_tmLastBuild.buckets[k] || []).forEach(function(it){
+          var cl = _tgtCellOf(it.trend.hex), key = cl.tier + '|' + cl.fam;
+          (picks[key] = picks[key] || []).push({ hex: it.trend.hex, band: cl.band, name: it.trend.name,
+                                                 src: (it.trend.sources || []).join('·'), freq: it.mkFreq, extra: !!it._extra });
+        });
+      });
+    }catch(e){}
+    var mktSeg = {}, missCell = {}, quotaOf = {};
+    tg.segList.forEach(function(g){ (mktSeg[g.tier + '|' + g.fam] = mktSeg[g.tier + '|' + g.fam] || []).push(g); });
+    tg.cells.forEach(function(c){
+      var key = c.tier + '|' + c.fam;
+      quotaOf[key] = (quotaOf[key] || 0) + c.quota;
+      var m = Math.max(0, c.quota - (c.filled || 0));
+      if(m) (missCell[key] = missCell[key] || []).push({ band: c.band, n: m, cHex: c.cHex, share: c.share });
+    });
+    var sw = function(hex, label, sub, style){
+      return '<div style="width:52px;text-align:center" title="' + (label || hex) + (sub ? ' · ' + sub : '') + '">'
+        + '<div style="height:34px;border-radius:5px;background:' + hex + ';' + (style || 'border:1px solid var(--border)') + '"></div>'
+        + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);white-space:nowrap;overflow:hidden">' + (sub || '') + '</div></div>';
+    };
+    var rows = ['Core','Seasonal','Accent'].map(function(T){
+      var fams = Object.keys(mktSeg).concat(Object.keys(picks)).concat(Object.keys(missCell))
+        .filter(function(k){ return k.indexOf(T + '|') === 0; })
+        .map(function(k){ return k.split('|')[1]; })
+        .filter(function(v, i, a){ return a.indexOf(v) === i; });
+      if(!fams.length) return '';
+      fams.sort(function(a, b){
+        var fa = (mktSeg[T + '|' + a] || []).reduce(function(n,g){ return n+g.freq; }, 0);
+        var fb = (mktSeg[T + '|' + b] || []).reduce(function(n,g){ return n+g.freq; }, 0);
+        return fb - fa;
+      });
+      var head = '<tr><td colspan="4" style="padding:8px 8px 4px;font-family:var(--mono);font-size:11px;font-weight:800;color:'
+        + (FN_SOLID[T] || 'var(--text2)') + ';letter-spacing:0.08em">' + T.toUpperCase() + '</td></tr>';
+      return head + fams.map(function(f){
+        var key = T + '|' + f;
+        var mk = (mktSeg[key] || []).slice().sort(function(a,b){ return bandIdx(a.band) - bandIdx(b.band); });
+        var pk = (picks[key] || []).slice().sort(function(a,b){ return bandIdx(a.band) - bandIdx(b.band); });
+        var ms = (missCell[key] || []).slice().sort(function(a,b){ return bandIdx(a.band) - bandIdx(b.band); });
+        var cell = 'padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:top';
+        return '<tr>'
+          + '<td style="' + cell + ';font-family:var(--mono);font-size:10px;font-weight:700;color:var(--text2);white-space:nowrap">' + f
+          +   '<div style="font-size:8px;font-weight:400;color:var(--text4)">목표 ' + (quotaOf[key] || 0) + ' · 제안 ' + pk.length + '</div></td>'
+          + '<td style="' + cell + '"><div style="display:flex;gap:4px;flex-wrap:wrap">'
+          +   (mk.length ? mk.map(function(g){ return sw(g.cHex, f + ' ' + g.band, g.band + ' ' + g.share + '%'); }).join('') : '<span style="font-size:10px;color:var(--text4)">—</span>')
+          + '</div></td>'
+          + '<td style="' + cell + '"><div style="display:flex;gap:4px;flex-wrap:wrap">'
+          +   (pk.length ? pk.map(function(x){ return sw(x.hex, (x.src || '') + ' ' + x.hex, x.band + (x.extra ? '·보충' : ''),
+                'border:1px solid ' + (x.extra ? 'var(--border2)' : 'var(--gold)')); }).join('') : '<span style="font-size:10px;color:var(--text4)">—</span>')
+          + '</div></td>'
+          + '<td style="' + cell + ';border-left:2px solid var(--warn);background:rgba(200,90,70,0.05)"><div style="display:flex;gap:4px;flex-wrap:wrap">'
+          +   (ms.length ? ms.map(function(x){ return sw(x.cHex, '빈칸 ' + f + ' ' + x.band, x.band + ' ×' + x.n, 'border:2px dashed var(--warn)'); }).join('')
+                        : '<span style="font-size:10px;color:#5FA85F">충족</span>')
+          + '</div></td></tr>';
+      }).join('');
+    }).join('');
+    return '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
+      + '<thead><tr style="font-family:var(--mono);font-size:9px;color:var(--text3)">'
+      +   '<th style="text-align:left;padding:6px 8px;border-bottom:2px solid var(--border)">계열</th>'
+      +   '<th style="text-align:left;padding:6px 8px;border-bottom:2px solid var(--border)">마켓 톤<div style="font-size:8px;color:var(--text4)">명도밴드 대표색 · 비중</div></th>'
+      +   '<th style="text-align:left;padding:6px 8px;border-bottom:2px solid var(--border)">제안 칩<div style="font-size:8px;color:var(--text4)">03 Trend-Matched</div></th>'
+      +   '<th style="text-align:left;padding:6px 8px;border-bottom:2px solid var(--border);color:var(--warn);border-left:2px solid var(--warn)">빈칸<div style="font-size:8px;color:var(--text4)">트렌드에 없어 못 채운 칸</div></th>'
+      + '</tr></thead><tbody>' + rows + '</tbody></table></div>'
+      + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:6px">'
+      + '마켓 톤 = 계열×명도 칸의 마켓 평균색 · 제안 칩 금색 테두리 = 목표 칸을 채운 색, 회색 = 빈도 보충 · 빈칸 = 목표 미달 칸(개수 ×N)</div>';
+  }
+  window._discTargetCompare = _tgtCompare;
 
   // 목표 칸을 채우는 방식으로 선발 — 칸마다 빈도 상위부터, 못 채우면 빈칸으로 남긴다
   function _tmCellPick(list, tierName, minDist){
