@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v287 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v288 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -25956,9 +25956,14 @@ document.addEventListener('DOMContentLoaded',function(){
     // v278 — 선명한 색(C*≥35)은 베이지·브라운으로 보지 않는다. 레드/오렌지/옐로로 구분.
     if(a.C >= STD_CUT.vivid_hue_c){
       if(H < 40 || H > 330) return '레드핑크';
-      if(H <= 70) return '오렌지';
-      if(H <= 95) return '옐로';
+      // v288 — 어두운 웜(L*<40)은 선명해도 오렌지·옐로가 아니라 브라운(러스트·새들)으로 본다
+      if(a.L >= 40){
+        if(H <= 70) return '오렌지';
+        if(H <= 95) return '옐로';
+      }
     }
+    // v288 — 저채도 올리브·카키(H 95~120, C*<25)는 옐로가 아니라 브라운(카키)/베이지(그레이지)
+    if(H > 95 && H <= 120 && a.C < 25) return (a.L < 60 ? '브라운' : '베이지');
     if(H >= 40 && H <= 75  && a.L >= 60 && a.C < 25) return '베이지';
     if(H >= 30 && H <= 95) return (a.L < 60 ? '브라운' : '베이지');
     if(H > 95  && H <= 115) return '옐로';
