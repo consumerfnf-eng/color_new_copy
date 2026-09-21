@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v274 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v275 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -23531,23 +23531,27 @@ document.addEventListener('DOMContentLoaded',function(){
     return '→' + _dcpHueWord(_tmLCh(palHex).H + (dh > 0 ? 25 : -25));
   }
   // ── 세일즈 탭 (v274) — 25FW 판매색을 확정 팔레트에 얹는다 ──
-  var SALES_TAB_DE = 12;
+  var SALES_TAB_DE = 8;     // v275: 12 → 8 (느슨한 매칭 축소)
   var _dcpSalesCache = null, _dcpSalesIdx = {};
   function _dcpSalesMap(){
     if(_dcpSalesCache) return _dcpSalesCache;
     var sales = [];
     try{ sales = _cmpSales(); }catch(e){}
-    var pal = _dcpPalUnique(), map = {}, used = {};
+    // v275 — 1:1 배정. 가까운 쌍부터 차례로 묶어 한 판매색이 여러 확정색에 붙지 않게 한다.
+    var pal = _dcpPalUnique(), map = {}, used = {}, pairs = [];
     pal.forEach(function(p){
-      var best = null, bd = SALES_TAB_DE;
       sales.forEach(function(c){
         var dd = _tmDeltaE(p.hex, c.hex);
-        if(dd < bd){ bd = dd; best = c; }
+        if(dd < SALES_TAB_DE) pairs.push({ p: p, c: c, de: dd });
       });
-      if(best){
-        map[String(p.hex).toUpperCase()] = { c: best, de: Math.round(bd * 10) / 10, name: p.name };
-        used[best.hex] = 1;
-      }
+    });
+    pairs.sort(function(a, b){ return a.de - b.de; });
+    var takenPal = {};
+    pairs.forEach(function(x){
+      var pk = String(x.p.hex).toUpperCase();
+      if(takenPal[pk] || used[x.c.hex]) return;
+      takenPal[pk] = 1; used[x.c.hex] = 1;
+      map[pk] = { c: x.c, de: Math.round(x.de * 10) / 10, name: x.p.name };
     });
     var miss = sales.filter(function(c){ return !used[c.hex]; })
       .sort(function(a, b){ return (b.style_cnt || 0) - (a.style_cnt || 0); });
@@ -23600,8 +23604,9 @@ document.addEventListener('DOMContentLoaded',function(){
         +     '<div style="flex:1;background:' + hex + '"></div>'
         +     '<div style="flex:1;background:' + sr.c.hex + '"></div>'
         +   '</div>'
-        +   '<div style="font-family:var(--mono);font-size:8.5px;text-align:center;padding:2px;color:#3E8ED0;white-space:nowrap">'
-        +     (sr.c.code || '25FW') + ' ' + sr.c.sell_rate + '% · ΔE' + sr.de + '</div>'
+        +   '<div style="font-family:var(--mono);font-size:8.5px;text-align:center;padding:2px 1px 0;color:#3E8ED0;white-space:nowrap;overflow:hidden">'
+        +     (sr.c.code || '25FW') + ' ' + sr.c.sell_rate + '%</div>'
+        +   '<div style="font-family:var(--mono);font-size:8px;text-align:center;padding:0 1px 2px;color:var(--text4)">ΔE ' + sr.de + '</div>'
         + '</div>';
     }
     if(DCP_TAB !== 'keep' && DCP_TAB !== 'watch') return '';
