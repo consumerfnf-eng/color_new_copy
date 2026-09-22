@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v312 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v313 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -24015,7 +24015,7 @@ document.addEventListener('DOMContentLoaded',function(){
     return '<div style="margin:0 0 22px;padding:12px 14px;border:1px solid var(--border);border-radius:8px">'
       + '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px;flex-wrap:wrap">'
       +   '<span style="font-family:var(--mono);font-size:12px;font-weight:800;color:var(--text)">최종 ' + all.length + '색</span>'
-      +   '<span style="font-family:var(--mono);font-size:10px">' + sum + ' · <span style="color:var(--text4)">제외 ' + r.out.length + '</span></span>'
+      +   '<span style="font-family:var(--mono);font-size:10px">' + sum + ' · <span style="color:var(--text4)">제외 ' + r.out.length + '</span> · ' + _finFitLine() + '</span>'
       + '</div>'
       + (r.add.length
           ? '<div style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--warn);margin-bottom:6px">+ 추가 컬러칩 ' + r.add.length + '</div>'
@@ -25278,7 +25278,8 @@ document.addEventListener('DOMContentLoaded',function(){
       var h = x.item.trend.hex;
       // 03 에서 정원 보충으로 들어온 색(목표 칸 밖)은 추가 후보에서 제외.
       // 단 ACCENT 는 목표 칸이 평균색 기준이라 생기지 않아(보류 이슈) 전부 '보충'으로 잡히므로 예외로 둔다.
-      if(x.item._extra && x.group !== 'key') return;
+      // v313 — 트렌드 우선: 03 보충 색도 자사 팔레트에 없는 톤이면 제안한다 (FIN_SKIP_EXTRA=false)
+      if(FIN_SKIP_EXTRA && x.item._extra && x.group !== 'key') return;
       if(main.concat(add).some(function(f){ return _tmDeltaE(f.hex, h) < FN_DEDUP_DE; })) return;
       add.push({ kind: 'add', hex: h, name: (x.item.trend.sources || []).join('·') || 'Trend', x: x, ti: x.item, sn: _finSalesNear(h) });
     });
@@ -25287,6 +25288,8 @@ document.addEventListener('DOMContentLoaded',function(){
     return { main: main, add: add, out: out };
   }
   var FIN_FIT_RATIO = true;
+  var FIN_SKIP_EXTRA = false;          // v313 — true 로 두면 03 보충 색을 추가 후보에서 제외(v285 방식)
+  var _finFitInfo = null;
   function _finFitRatio(main, add, out){
     if(!FIN_FIT_RATIO) return;
     var mk = []; try{ mk = _tmMarketPool(); }catch(e){}
@@ -25300,22 +25303,22 @@ document.addEventListener('DOMContentLoaded',function(){
     T.forEach(function(t, i){ if(w[t] > 0 && cap[i] < 1){ cap[i] = 1; } });
     var over = cap.reduce(function(a2, b2){ return a2 + b2; }, 0) - total;
     while(over > 0){ var bi = cap.indexOf(Math.max.apply(null, cap)); cap[bi]--; over--; }
-    // 줄일 때 먼저 빼는 순서: 추가(빈도 낮은 순) → 공백 유지 → 세일즈 유지 → 보완 → 유지
-    var DROP = { add: 0, gap: 1, sales: 2, watch: 3, keep: 4 };
+    // v313 — 트렌드 우선: 넘치는 등급은 '자사 색 중 근거가 약한 것'부터 뺀다.
+    //   공백 유지 → 세일즈 유지 → 보완(트렌드와 ΔE 큰 순). 유지·트렌드 추가는 빼지 않는다.
+    var DROP = { gap: 0, sales: 1, watch: 2 };
+    _finFitInfo = { cap: {}, cur: {}, target: {} };
     T.forEach(function(t, i){
       var inT = function(f){ return _stdTier(f.hex) === t; };
       var cur = main.filter(inT).length + add.filter(inT).length;
-      // 1) 과다 → 제거
+      // 1) 과다 → 자사 약한 근거부터 제거
       while(cur > cap[i]){
-        var cand = main.concat(add).filter(inT).sort(function(a2, b2){
+        var cand = main.filter(function(f){ return inT(f) && DROP[f.kind] != null; }).sort(function(a2, b2){
           var d = DROP[a2.kind] - DROP[b2.kind]; if(d) return d;
-          var fa = (a2.ti && a2.ti.mkFreq) || (a2.x && a2.x.item.mkFreq) || 0, fb = (b2.ti && b2.ti.mkFreq) || (b2.x && b2.x.item.mkFreq) || 0;
-          return fa - fb;
+          return ((b2.st && b2.st.de) || 0) - ((a2.st && a2.st.de) || 0);
         })[0];
-        if(!cand) break;
-        var ai = add.indexOf(cand);
-        if(ai >= 0) add.splice(ai, 1);
-        else { main.splice(main.indexOf(cand), 1); out.push({ kind: 'out', hex: cand.orig || cand.hex, name: cand.name, st: cand.st, sn: cand.sn, ratioCut: true }); }
+        if(!cand) break;                                   // 더 뺄 자사 색이 없으면 비율보다 트렌드를 우선
+        main.splice(main.indexOf(cand), 1);
+        out.push({ kind: 'out', hex: cand.orig || cand.hex, name: cand.name, st: cand.st, sn: cand.sn, ratioCut: true });
         cur--;
       }
       // 2) 부족 → 03 트렌드 칩(빈도순)으로 채우고, 그래도 모자라면 제외됐던 자사 색을 되살린다
@@ -25337,7 +25340,21 @@ document.addEventListener('DOMContentLoaded',function(){
           out.splice(k2, 1); cur++;
         }
       }
+      _finFitInfo.cap[t] = cap[i]; _finFitInfo.cur[t] = cur;
     });
+    var tot2 = main.length + add.length || 1, mt = T.reduce(function(n, t){ return n + w[t]; }, 0) || 1;
+    T.forEach(function(t){ _finFitInfo.target[t] = Math.round(w[t] / mt * 1000) / 10; });
+    _finFitInfo.pct = {}; T.forEach(function(t){ _finFitInfo.pct[t] = Math.round(_finFitInfo.cur[t] / tot2 * 1000) / 10; });
+  }
+  // 최종 구성 vs 마켓 비율 차이 한 줄 (±3%p 이상만)
+  function _finFitLine(){
+    if(!_finFitInfo || !_finFitInfo.pct) return '';
+    var diffs = ['Core','Seasonal','Accent'].map(function(t){
+      return { t: t, d: Math.round((_finFitInfo.pct[t] - _finFitInfo.target[t]) * 10) / 10 };
+    }).filter(function(x){ return Math.abs(x.d) >= 3; });
+    return '<span style="color:' + (diffs.length ? 'var(--warn)' : '#5FA85F') + '">'
+      + (diffs.length ? '마켓 대비 ' + diffs.map(function(x){ return x.t + ' ' + (x.d > 0 ? '+' : '') + x.d + '%p'; }).join(' · ') + ' (트렌드 추가 우선)'
+                      : '마켓 등급 비율과 일치') + '</span>';
   }
   var FIN_KIND = {
     keep:  ['유지', '#5FA85F'],
@@ -25424,7 +25441,8 @@ document.addEventListener('DOMContentLoaded',function(){
     })();
     return _rvCard('★ 최종 컬러 제안 — 확정 ' + r.main.length + '색 + 추가 ' + r.add.length + '색',
         '<div style="display:flex;gap:16px;font-family:var(--mono);font-size:12px;color:var(--text2);margin-bottom:16px;flex-wrap:wrap;align-items:center">'
-      +   '<span style="font-weight:700">유지 ' + n('keep') + ' · 보완 ' + n('watch') + ' · 세일즈 유지 ' + n('sales') + ' · 공백 유지 ' + n('gap') + ' · 제외 ' + r.out.length + '</span>' + legend + '</div>'
+      +   '<span style="font-weight:700">유지 ' + n('keep') + ' · 보완 ' + n('watch') + ' · 세일즈 유지 ' + n('sales') + ' · 공백 유지 ' + n('gap') + ' · 제외 ' + r.out.length + '</span>'
+      +   _finFitLine() + legend + '</div>'
       + _bandBox
       + '<div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">'
       +   '<div style="flex:3 1 560px;min-width:0">' + col(r.main) + '</div>'
