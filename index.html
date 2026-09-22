@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v307 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v308 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -25109,7 +25109,62 @@ document.addEventListener('DOMContentLoaded',function(){
       if(main.concat(add).some(function(f){ return _tmDeltaE(f.hex, h) < FN_DEDUP_DE; })) return;
       add.push({ kind: 'add', hex: h, name: (x.item.trend.sources || []).join('·') || 'Trend', x: x, ti: x.item, sn: _finSalesNear(h) });
     });
+    // v308 — 최종 등급 구성을 '전체 마켓' 비율(디커 기준 · 빈도 가중)에 맞춘다. 총 색 수는 그대로.
+    try{ _finFitRatio(main, add, out); }catch(e){}
     return { main: main, add: add, out: out };
+  }
+  var FIN_FIT_RATIO = true;
+  function _finFitRatio(main, add, out){
+    if(!FIN_FIT_RATIO) return;
+    var mk = []; try{ mk = _tmMarketPool(); }catch(e){}
+    if(!mk.length) return;
+    var w = { Core: 0, Seasonal: 0, Accent: 0 };
+    mk.forEach(function(m){ var h = String(m.hex).toUpperCase(); if(/^#[0-9A-F]{6}$/.test(h)) w[_stdTier(h)] += (m.freq || 1); });
+    var T = ['Core','Seasonal','Accent'];
+    var total = main.length + add.length;
+    if(!total) return;
+    var cap = _fnAlloc(total, T.map(function(t){ return w[t]; }));
+    T.forEach(function(t, i){ if(w[t] > 0 && cap[i] < 1){ cap[i] = 1; } });
+    var over = cap.reduce(function(a2, b2){ return a2 + b2; }, 0) - total;
+    while(over > 0){ var bi = cap.indexOf(Math.max.apply(null, cap)); cap[bi]--; over--; }
+    // 줄일 때 먼저 빼는 순서: 추가(빈도 낮은 순) → 공백 유지 → 세일즈 유지 → 보완 → 유지
+    var DROP = { add: 0, gap: 1, sales: 2, watch: 3, keep: 4 };
+    T.forEach(function(t, i){
+      var inT = function(f){ return _stdTier(f.hex) === t; };
+      var cur = main.filter(inT).length + add.filter(inT).length;
+      // 1) 과다 → 제거
+      while(cur > cap[i]){
+        var cand = main.concat(add).filter(inT).sort(function(a2, b2){
+          var d = DROP[a2.kind] - DROP[b2.kind]; if(d) return d;
+          var fa = (a2.ti && a2.ti.mkFreq) || (a2.x && a2.x.item.mkFreq) || 0, fb = (b2.ti && b2.ti.mkFreq) || (b2.x && b2.x.item.mkFreq) || 0;
+          return fa - fb;
+        })[0];
+        if(!cand) break;
+        var ai = add.indexOf(cand);
+        if(ai >= 0) add.splice(ai, 1);
+        else { main.splice(main.indexOf(cand), 1); out.push({ kind: 'out', hex: cand.orig || cand.hex, name: cand.name, st: cand.st, sn: cand.sn, ratioCut: true }); }
+        cur--;
+      }
+      // 2) 부족 → 03 트렌드 칩(빈도순)으로 채우고, 그래도 모자라면 제외됐던 자사 색을 되살린다
+      if(cur < cap[i]){
+        var chosen = main.concat(add);
+        var pool = _dcpTrendChips().filter(function(c){ return _stdTier(c.item.trend.hex) === t; })
+          .sort(function(a2, b2){ return (b2.item.mkFreq || 0) - (a2.item.mkFreq || 0); });
+        for(var k = 0; k < pool.length && cur < cap[i]; k++){
+          var h2 = pool[k].item.trend.hex;
+          if(chosen.some(function(f){ return _tmDeltaE(f.hex, h2) < FN_DEDUP_DE; })) continue;
+          var nf = { kind: 'add', hex: h2, name: (pool[k].item.trend.sources || []).join('·') || 'Trend',
+                     x: { item: pool[k].item, group: pool[k].group, near: null, de: 0, covered: false }, ti: pool[k].item,
+                     sn: _finSalesNear(h2), ratioFill: true };
+          add.push(nf); chosen.push(nf); cur++;
+        }
+        for(var k2 = out.length - 1; k2 >= 0 && cur < cap[i]; k2--){
+          var o = out[k2]; if(_stdTier(o.hex) !== t) continue;
+          main.push({ kind: 'keep', hex: o.hex, name: o.name, st: o.st, sn: o.sn, ti: null, ratioFill: true });
+          out.splice(k2, 1); cur++;
+        }
+      }
+    });
   }
   var FIN_KIND = {
     keep:  ['유지', '#5FA85F'],
@@ -25227,7 +25282,9 @@ document.addEventListener('DOMContentLoaded',function(){
     if(f.kind === 'add'){
       why.push(['판정', f.x.group === 'key' ? '확정 팔레트에 포인트 컬러가 부족 — ' + TM_GROUP_LABEL.key + ' 보강' : '확정 팔레트에 없는 톤(ΔE ' + DCP_WATCH_DE + ' 초과) — 신규 추가']);
     }
-    if(f.kind === 'out') why.push(['판정', '트렌드 칩과 ΔE ' + f.st.de + ' · 25FW 판매 근거도 약해 제외 검토']);
+    if(f.kind === 'out' && f.ratioCut) why.push(['판정', '마켓 등급 비율에 맞추기 위해 이 등급에서 우선순위가 낮아 제외']);
+    else if(f.kind === 'out') why.push(['판정', '트렌드 칩과 ' + (f.st ? 'ΔE ' + f.st.de : '거리') + ' · 25FW 판매 근거도 약해 제외 검토']);
+    if(f.ratioFill) why.push(['비율 조정', '마켓 등급 비율에 맞추기 위해 이 등급에 보충한 색']);
     if(f.kind === 'gap'){
       why.push(['판정', '트렌드 칩과 ΔE ' + f.st.de + ' 로 거리가 있지만, 03 에서 트렌드로 못 채운 칸이라 자사 색으로 유지']);
       why.push(['03 공백', f.cell.tier + ' ' + f.cell.fam + '·' + f.cell.band + ' — 목표 ' + f.gap.quota + ' 중 트렌드 채움 ' + f.gap.filled + ' · 부족 ' + f.gap.miss + ' · 마켓 비중 ' + f.gap.share + '%']);
