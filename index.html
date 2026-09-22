@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v309 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v310 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -24849,7 +24849,7 @@ document.addEventListener('DOMContentLoaded',function(){
   // v306 — 리뷰 표의 작은 칩 클릭 → 컬러 코드 모달
 
   // ══════════════════════════════════════════════════════════════
-  //  v309 — 05 Color Classification : 표준 75칩 등급 분류 확인
+  //  v309 — 05 Color Classification : 등급 분류 확인 (v310: 대상 = 01 마켓 컬러)
   //   ① 원본 기준 = 등급분류기준 rev v3.0 (JSON 규칙)   ② 조정 기준 = 현재 툴(_stdTier)
   // ══════════════════════════════════════════════════════════════
   var CLS_TAB_KEY = 'disccls';
@@ -24857,53 +24857,67 @@ document.addEventListener('DOMContentLoaded',function(){
     rev: 'v3.0', accent_chroma: 50.0, core_warm_chroma: 35.0, core_warm_light: 82.0,
     rule: ['① 형광 안료이거나 C* ≥ 50 → Accent', '② 색상군 무채·네이비 → Core', '③ 색상군 베이지·브라운 · C* < 35 · L* < 82 → Core', '④ 그 밖 → Seasonal']
   };
-  // 원본 규칙: 칩 데이터의 색상군(hue)·좌표(L,C)로 JSON 규칙을 그대로 적용
-  function _clsTierV3(c){
-    if(c.pigment === '형광' || c.C >= CLS_RULE_V3.accent_chroma) return 'Accent';
-    if(c.hue === '무채' || c.hue === '네이비') return 'Core';
-    if((c.hue === '베이지' || c.hue === '브라운') && c.C < CLS_RULE_V3.core_warm_chroma && c.L < CLS_RULE_V3.core_warm_light) return 'Core';
+  // v310 — 원본(rev v3.0) 색상군 판정 (조정 전 로직 그대로 · achro_gate 10)
+  function _clsHueV3(hex){
+    var a = _tmLCh(hex), H = a.H;
+    if(a.C < 10) return '무채';
+    if(H >= 230 && H <= 300 && a.L < 45) return '네이비';
+    if(H >= 40 && H <= 75  && a.L >= 60 && a.C < 25) return '베이지';
+    if(H >= 30 && H <= 95) return (a.L < 60 ? '브라운' : '베이지');
+    if(H > 95  && H <= 115) return '옐로';
+    if(H > 115 && H <= 165) return '그린';
+    if(H > 165 && H <= 205) return '틸';
+    if(H > 205 && H <= 288) return '블루';
+    if(H > 288 && H <= 330) return '퍼플';
+    if(H > 330 || H < 15) return '레드핑크';
+    return '오렌지';
+  }
+  // 원본 규칙: 등급분류기준 JSON (rev v3.0) 을 좌표에 그대로 적용
+  function _clsTierV3(hex){
+    var a = _tmLCh(hex);
+    if(a.C >= CLS_RULE_V3.accent_chroma) return 'Accent';
+    var h = _clsHueV3(hex);
+    if(h === '무채' || h === '네이비') return 'Core';
+    if((h === '베이지' || h === '브라운') && a.C < CLS_RULE_V3.core_warm_chroma && a.L < CLS_RULE_V3.core_warm_light) return 'Core';
     return 'Seasonal';
   }
-  function _clsChips(){
-    var lib = (typeof DISC_STD75 !== 'undefined') ? DISC_STD75 : [];
-    return lib.map(function(c){
-      var h = String(c.hex).toUpperCase();
-      return { code: c.code, nm: c.nm, hex: h, coloro: c.coloro || '', pantone: c.pantone || '', family: c.family,
-               hueV3: c.hue, tV3: _clsTierV3(c), tFile: c.tier, tAdj: _stdTier(h), hueAdj: _stdHue(h), L: c.L, C: c.C, H: c.H, pigment: c.pigment };
-    });
+  // 01 마켓 컬러 (선택 브랜드 · GL/KR · 품목 필터 · ΔE<7 병합) 를 두 기준으로 분류
+  function _clsItems(){
+    var mk = []; try{ mk = _tmMarketPool(); }catch(e){}
+    return mk.map(function(m){
+      var h = String(m.hex).toUpperCase(), a = _tmLCh(h);
+      return { hex: h, freq: m.freq || 1, brands: m.brands || [], L: a.L, C: a.C, H: a.H,
+               hueV3: _clsHueV3(h), tV3: _clsTierV3(h), hueAdj: _stdHue(h), tAdj: _stdTier(h) };
+    }).filter(function(x){ return /^#[0-9A-F]{6}$/.test(x.hex); })
+      .sort(function(a, b){ return b.freq - a.freq; });
   }
-  function _clsCard(c, which){
-    var t = which === 'v3' ? c.tV3 : c.tAdj;
-    var other = which === 'v3' ? c.tAdj : c.tV3;
-    var changed = t !== other;
-    var tip = c.nm + ' · ' + c.code + ' · ' + c.hex + ' · L' + Math.round(c.L) + ' C' + Math.round(c.C) + ' H' + Math.round(c.H) + ' · ' + (which === 'v3' ? c.hueV3 : c.hueAdj);
-    return '<div onclick="_swOpen(event,\'' + c.hex + '\',\'' + encodeURIComponent(tip) + '\',\'' + encodeURIComponent(t) + '\')" title="' + tip + '"'
-      + ' style="width:86px;cursor:pointer;border:1px solid ' + (changed ? 'var(--warn)' : 'var(--border)') + ';border-radius:6px;overflow:hidden;background:var(--surface)">'
-      + '<div style="position:relative;height:50px;background:' + c.hex + '">'
-      +   (changed ? '<span style="position:absolute;top:3px;right:3px;font-family:var(--mono);font-size:8px;font-weight:800;padding:0 4px;border-radius:3px;background:var(--warn);color:#fff">'
-                     + (which === 'v3' ? '→' + other : '원본 ' + other) + '</span>' : '')
-      + '</div>'
-      + '<div style="padding:4px 5px">'
-      +   '<div style="font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden">' + c.nm + '</div>'
-      +   '<div style="font-family:var(--mono);font-size:8px;color:var(--text4)">' + c.code + ' · ' + c.hex + '</div>'
-      +   '<div style="font-family:var(--mono);font-size:8px;color:var(--text3)">COLORO ' + (c.coloro || '—') + '</div>'
-      +   '<div style="font-family:var(--mono);font-size:8px;color:var(--text4)">' + (which === 'v3' ? c.hueV3 : c.hueAdj) + '</div>'
-      + '</div></div>';
+  function _clsSw(x, which){
+    var t = which === 'v3' ? x.tV3 : x.tAdj, other = which === 'v3' ? x.tAdj : x.tV3, changed = t !== other;
+    var tip = x.hex + ' · 빈도 ' + x.freq + ' · L' + Math.round(x.L) + ' C' + Math.round(x.C) + ' H' + Math.round(x.H)
+      + ' · ' + (which === 'v3' ? x.hueV3 : x.hueAdj) + (changed ? ' · ' + (which === 'v3' ? '조정 기준 ' : '원본 기준 ') + other : '');
+    return '<div onclick="_swOpen(event,\'' + x.hex + '\',\'' + encodeURIComponent(tip) + '\',\'' + encodeURIComponent(t) + '\')" title="' + tip + '"'
+      + ' style="width:34px;text-align:center;cursor:pointer">'
+      + '<div style="height:26px;border-radius:3px;background:' + x.hex + ';box-sizing:border-box;border:' + (changed ? '2px solid var(--warn)' : '1px solid var(--border)') + '"></div>'
+      + '<div style="font-family:var(--mono);font-size:7.5px;color:' + (changed ? 'var(--warn)' : 'var(--text4)') + '">×' + x.freq + '</div></div>';
   }
-  function _clsSection(title, sub, chips, which){
+  function _clsSection(title, sub, items, which){
     var TIERS = [['Core','CORE','var(--gold)'], ['Seasonal','SEASONAL','var(--blue)'], ['Accent','ACCENT','#A090F0']];
     var ORDER = ['무채','네이비','베이지','브라운','옐로','오렌지','레드','핑크','레드핑크','그린','틸','블루','퍼플'];
+    var tot = items.reduce(function(n, x){ return n + x.freq; }, 0) || 1;
     var rows = TIERS.map(function(T){
-      var l = chips.filter(function(c){ return (which === 'v3' ? c.tV3 : c.tAdj) === T[0]; });
-      l.sort(function(a, b){
-        var ha = which === 'v3' ? a.hueV3 : a.hueAdj, hb = which === 'v3' ? b.hueV3 : b.hueAdj;
-        return (ORDER.indexOf(ha) - ORDER.indexOf(hb)) || (a.L - b.L);
-      });
-      return '<div style="margin-bottom:16px">'
+      var l = items.filter(function(x){ return (which === 'v3' ? x.tV3 : x.tAdj) === T[0]; });
+      var f = l.reduce(function(n, x){ return n + x.freq; }, 0);
+      var byFam = {};
+      l.forEach(function(x){ var k = which === 'v3' ? x.hueV3 : x.hueAdj; (byFam[k] = byFam[k] || []).push(x); });
+      var fams = Object.keys(byFam).sort(function(a2, b2){ return ORDER.indexOf(a2) - ORDER.indexOf(b2); });
+      return '<div style="margin-bottom:14px">'
         + '<div style="font-family:var(--mono);font-size:12px;font-weight:800;color:' + T[2] + ';letter-spacing:0.08em;margin-bottom:6px">' + T[1]
-        +   ' <span style="color:var(--text4);font-weight:400">' + l.length + '칩</span></div>'
-        + (l.length ? '<div style="display:flex;gap:6px;flex-wrap:wrap">' + l.map(function(c){ return _clsCard(c, which); }).join('') + '</div>'
-                    : '<div class="spp-empty" style="font-size:10px">해당 없음</div>')
+        +   ' <span style="color:var(--text4);font-weight:400">' + l.length + '색 · 빈도 ' + Math.round(f / tot * 1000) / 10 + '%</span></div>'
+        + (fams.length ? fams.map(function(fm){
+            return '<div style="display:grid;grid-template-columns:64px 1fr;gap:6px;align-items:start;margin-bottom:4px">'
+              + '<span style="font-family:var(--mono);font-size:9px;color:var(--text3);padding-top:6px">' + fm + ' <span style="color:var(--text4)">' + byFam[fm].length + '</span></span>'
+              + '<div style="display:flex;gap:2px;flex-wrap:wrap">' + byFam[fm].map(function(x){ return _clsSw(x, which); }).join('') + '</div></div>';
+          }).join('') : '<div class="spp-empty" style="font-size:10px">해당 없음</div>')
         + '</div>';
     }).join('');
     return _tgtCard(title, sub, rows);
@@ -24911,44 +24925,52 @@ document.addEventListener('DOMContentLoaded',function(){
   function _clsRender(){
     var wrap = document.getElementById('disc-cls-page');
     if(!wrap) return;
-    var chips = _clsChips();
-    if(!chips.length){ wrap.innerHTML = '<div class="spp-empty">표준 75칩 데이터가 없습니다.</div>'; return; }
-    var dV3 = _cmpFrom(chips, function(c){ return c.hex; }, null, function(c){ return c.tV3; });
-    var dAdj = _cmpFrom(chips, function(c){ return c.hex; }, null, function(c){ return c.tAdj; });
-    var cnt = function(k){ var o = { Core:0, Seasonal:0, Accent:0 }; chips.forEach(function(c){ o[c[k]]++; }); return o; };
+    var items = _clsItems();
+    if(!items.length){ wrap.innerHTML = '<div class="spp-empty">마켓 데이터가 없습니다. 01 Market Analysis 에서 데이터를 먼저 불러오세요.</div>'; return; }
+    var wOf = function(x){ return x.freq; };
+    var dV3  = _cmpFrom(items, function(x){ return x.hex; }, wOf, function(x){ return x.tV3; });
+    var dAdj = _cmpFrom(items, function(x){ return x.hex; }, wOf, function(x){ return x.tAdj; });
+    var cnt = function(k){ var o = { Core:0, Seasonal:0, Accent:0 }; items.forEach(function(x){ o[x[k]]++; }); return o; };
     var nV3 = cnt('tV3'), nAdj = cnt('tAdj');
+    var totF = items.reduce(function(n, x){ return n + x.freq; }, 0);
     var row = function(label, sub, d, strong){
       return '<div style="display:grid;grid-template-columns:190px 1fr;gap:12px;align-items:center;margin-bottom:8px">'
         + '<div style="text-align:right"><div style="font-family:var(--mono);font-size:11px;font-weight:' + (strong ? 800 : 700) + ';color:' + (strong ? 'var(--gold)' : 'var(--text)') + '">' + label + '</div>'
         +   '<div style="font-family:var(--mono);font-size:9px;color:var(--text4)">' + sub + '</div></div>'
         + _cmpBar(d, 36) + '</div>';
     };
-    var numTxt = function(n){ return 'Core ' + n.Core + ' · Seasonal ' + n.Seasonal + ' · Accent ' + n.Accent; };
-    var fileMismatch = chips.filter(function(c){ return c.tV3 !== c.tFile; }).length;
-    var changed = chips.filter(function(c){ return c.tV3 !== c.tAdj; });
+    var numTxt = function(n, d){ return 'Core ' + n.Core + '색(' + d.pct.Core + '%) · Seasonal ' + n.Seasonal + '색(' + d.pct.Seasonal + '%) · Accent ' + n.Accent + '색(' + d.pct.Accent + '%)'; };
+    var changed = items.filter(function(x){ return x.tV3 !== x.tAdj; });
+    var chF = changed.reduce(function(n, x){ return n + x.freq; }, 0);
+    // 변화 요약: 원본 → 조정 방향별
+    var moves = {};
+    changed.forEach(function(x){ var k = x.tV3 + ' → ' + x.tAdj; (moves[k] = moves[k] || []).push(x); });
+    var moveHtml = Object.keys(moves).sort(function(a2, b2){ return moves[b2].length - moves[a2].length; }).map(function(k){
+      var l = moves[k];
+      return '<div style="display:grid;grid-template-columns:150px 1fr;gap:8px;align-items:start;margin-bottom:6px">'
+        + '<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--warn);padding-top:6px">' + k + ' <span style="color:var(--text4);font-weight:400">' + l.length + '색</span></span>'
+        + '<div style="display:flex;gap:2px;flex-wrap:wrap">' + l.map(function(x){ return _clsSw(x, 'adj'); }).join('') + '</div></div>';
+    }).join('');
     var html = ''
       + '<div class="spp-trend-market-hd" style="margin-bottom:14px">'
       +   '<span class="spp-trend-market-flame" style="color:var(--gold)">◈ COLOR CLASSIFICATION</span>'
-      +   '<span class="spp-trend-market-title">표준 75칩 등급 분류</span>'
-      +   '<span class="spp-trend-market-sub">① 원본 기준(등급분류기준 rev ' + CLS_RULE_V3.rev + ') vs ② 조정 기준(현재 툴) · 칩 클릭 = 코드·좌표</span>'
+      +   '<span class="spp-trend-market-title">마켓 컬러 등급 분류</span>'
+      +   '<span class="spp-trend-market-sub">01 선택 마켓 ' + items.length + '색 · 빈도 ' + totF.toLocaleString() + ' · ① 원본 기준(rev ' + CLS_RULE_V3.rev + ') vs ② 조정 기준 · 칩 클릭 = 코드·좌표</span>'
       + '</div>'
-      + _tgtCard('27FW 구성비 — 원본 기준 vs 조정 기준', '표준 75칩 · 칩 수 기준 · 폭 = 비중',
-          row('① 원본 기준', 'rev ' + CLS_RULE_V3.rev + ' · ' + numTxt(nV3), dV3, false)
-        + row('② 조정 기준', '현재 툴 · ' + numTxt(nAdj), dAdj, true)
+      + _tgtCard('27FW 구성비 — 원본 기준 vs 조정 기준', '전체 마켓 · 빈도 가중 · 폭 = 비중',
+          row('① 원본 기준', 'rev ' + CLS_RULE_V3.rev + ' · ' + numTxt(nV3, dV3), dV3, false)
+        + row('② 조정 기준', '현재 툴 · ' + numTxt(nAdj, dAdj), dAdj, true)
         + '<div style="display:flex;gap:14px;font-family:var(--mono);font-size:9px;color:var(--text3);margin:6px 0 0 202px;flex-wrap:wrap">'
         +   ['Core','Seasonal','Accent'].map(function(t){ return '<span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + FN_SOLID[t] + ';margin-right:4px"></span>' + t + '</span>'; }).join('')
         + '</div>')
-      + _tgtCard('등급이 달라진 칩 ' + changed.length, '원본 → 조정',
-          changed.length
-            ? '<div style="display:flex;gap:6px;flex-wrap:wrap">' + changed.map(function(c){ return _clsCard(c, 'adj'); }).join('') + '</div>'
-            : '<div class="spp-empty" style="font-size:10px">변화 없음</div>')
+      + _tgtCard('등급이 달라진 마켓 컬러 ' + changed.length + '색', '빈도 ' + Math.round(chF / (totF || 1) * 1000) / 10 + '% · 원본 → 조정 · 칩 아래 = 마켓 빈도',
+          changed.length ? moveHtml : '<div class="spp-empty" style="font-size:10px">변화 없음</div>')
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">'
-      +   '<div>' + _clsSection('① 원본 기준 — 등급분류기준 rev ' + CLS_RULE_V3.rev, CLS_RULE_V3.rule.join(' · '), chips, 'v3') + '</div>'
-      +   '<div>' + _clsSection('② 조정 기준 — 현재 툴', '베이지·브라운 C*<19 Core · 붉은기 브라운·다크 카키 Seasonal · 인디고 등 밝은 블루 Seasonal · 니어블랙 Core', chips, 'adj') + '</div>'
+      +   '<div>' + _clsSection('① 원본 기준 — 등급분류기준 rev ' + CLS_RULE_V3.rev, CLS_RULE_V3.rule.join(' · '), items, 'v3') + '</div>'
+      +   '<div>' + _clsSection('② 조정 기준 — 현재 툴', '베이지·브라운 C*<19 Core · 붉은기 브라운·다크 카키 Seasonal · 인디고 등 밝은 블루 Seasonal · 니어블랙 Core', items, 'adj') + '</div>'
       + '</div>'
       + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:6px">'
-      +   '원본 기준은 칩 데이터의 색상군·L*·C* 에 JSON 규칙을 그대로 적용' + (fileMismatch ? ' (칩 파일 등급과 ' + fileMismatch + '칩 불일치)' : ' — 칩 파일 등급과 전부 일치')
-      +   ' · 주황 테두리·배지 = 두 기준에서 등급이 다른 칩</div>';
+      +   '마켓 = 01 에서 선택한 브랜드의 GL·KR 컬러(품목 필터 · 유사색 ΔE<7 병합) · 계열별 빈도순 · 주황 테두리 = 두 기준에서 등급이 다른 색</div>';
     wrap.innerHTML = html;
   }
   window._clsRender = _clsRender;
