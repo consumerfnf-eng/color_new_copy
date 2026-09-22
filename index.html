@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v316 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v317 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -25342,7 +25342,8 @@ document.addEventListener('DOMContentLoaded',function(){
       var cur = main.filter(inT).length + add.filter(inT).length;
       // 1) 과다 → 자사 약한 근거부터 제거
       while(cur > cap[i]){
-        var cand = main.filter(function(f){ return inT(f) && DROP[f.kind] != null; }).sort(function(a2, b2){
+        // v317 — 확장 보완(트렌드 추가를 흡수한 자사 색)은 트렌드 추가와 같게 보호한다
+        var cand = main.filter(function(f){ return inT(f) && DROP[f.kind] != null && !f.extWatch; }).sort(function(a2, b2){
           var d = DROP[a2.kind] - DROP[b2.kind]; if(d) return d;
           return ((b2.st && b2.st.de) || 0) - ((a2.st && a2.st.de) || 0);
         })[0];
