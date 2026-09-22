@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v310 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v311 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -24590,6 +24590,7 @@ document.addEventListener('DOMContentLoaded',function(){
     };
     var FIN_B = { keep:['유지','#5FA85F','1px solid #5FA85F'], watch:['보완','var(--gold)','2px solid var(--gold)'],
                   sales:['세일즈','#3E8ED0','2px solid #3E8ED0'], add:['추가','var(--warn)','2px dashed var(--warn)'],
+                  gap:['공백','#8E6BB5','2px solid #8E6BB5'],
                   out:['제외','var(--text4)','1px solid var(--border)'] };
     var bProp  = bucketize(pal,   function(p){ return p.hex; }, function(p,h){ return swatch(h, (p.name||'') + ' ' + h); });
     var bTrend = bucketize(chips, function(c){ return c.item.trend.hex; }, function(c,h){ return swatch(h, h + ' · 빈도 ' + c.item.mkFreq); });
@@ -24638,54 +24639,33 @@ document.addEventListener('DOMContentLoaded',function(){
     // 라이프스타일별 최종 제안 등급 상한 — 최대 Core 3 · Seasonal 6 · Accent 2
     var LIFE_CAP = { Core: 3, Seasonal: 6, Accent: 2 };
 
-    // ── C섹션 ★ 최종 컬러 제안 결과를 먼저 구해서 D섹션 추가 풀로 사용 ──
-    var _cFinal = null; try{ _cFinal = _finBuild(); }catch(e){}
-    // C 최종 컬러 풀 (main+add) — D 라이프스타일 추가 보충 시 이 풀에서만 가져감
-    var _cFinalPool = [];
-    if(_cFinal){
-      _cFinal.main.concat(_cFinal.add).forEach(function(f){
-        var h = String(f.hex).toUpperCase();
-        if(/^#[0-9A-F]{6}$/.test(h)) _cFinalPool.push({ hex:h, name:f.name||'', kind:f.kind, freq:(f.ti&&f.ti.mkFreq)||(f.x&&f.x.item&&f.x.item.mkFreq)||0 });
-      });
-    }
-
     // 라이프스타일 1개의 최종 제안 도출
     //  가져가는 근거: keep=확정색이 트렌드와 같음(ΔE≤5) · watch=트렌드 톤으로 보완(ΔE 5~10)
     //               · sales=트렌드 근거 약하나 25FW 판매 성과로 유지
-    //               · add=C섹션 ★ 최종 컬러 제안(main+add)에서 남은 슬롯을 보충
+    //               · add=목표 개수를 채우려 마켓 빈도 높은 트렌드(큐레이션) 색을 보충
     //  각 등급은 keep>watch>sales>add 우선순위로 상한(LIFE_CAP)까지만 채운다.
+    // v311 — 라이프스타일 최종 = ★ 최종 컬러 제안(fin)을 라이프스타일별로 나눈 것
+    //   · 팔레트 배정색 → ★ 최종에서의 판정(유지·보완·세일즈·공백 유지)을 그대로, 최종에 없으면 제외
+    //   · 추가 → ★ 최종의 '+ 추가' 색 중 이 라이프스타일 큐레이션에 속한 색만
     function _lifeFinal(moodCols, curList){
-      var byTier = { Core:[], Seasonal:[], Accent:[] }, out = [];
-      // 1) 팔레트 배정색 → 유지/보완/세일즈
+      var main = [], out = [];
+      var byPal = {};
+      (fin ? fin.main : []).forEach(function(f){ byPal[String(f.orig || f.hex).toUpperCase()] = f; });
       moodCols.forEach(function(mc){
-        var h = mc.hex.toUpperCase(), st = stMap[h];
-        var sn = null; try{ sn = _finSalesNear(h); }catch(e){}
-        var chip = null;
-        if(st && st.tier === 'keep')       chip = { kind:'keep',  hex:h, name:mc.name, pr:0 };
-        else if(st && st.tier === 'watch') chip = { kind:'watch', hex:st.tHex, orig:h, name:mc.name, pr:1 };
-        else if(sn && _finStrong(sn))      chip = { kind:'sales', hex:h, name:mc.name, pr:2 };
-        else { out.push({ kind:'out', hex:h, name:mc.name }); return; }
-        byTier[_stdTier(chip.hex)].push(chip);
+        var h = mc.hex.toUpperCase(), f = byPal[h];
+        if(f) main.push({ kind: f.kind, hex: String(f.hex).toUpperCase(), orig: f.orig ? String(f.orig).toUpperCase() : null, name: mc.name, pr: ({ keep:0, watch:1, sales:2, gap:2 })[f.kind] || 2 });
+        else out.push({ kind: 'out', hex: h, name: mc.name });
       });
-      // 2) C섹션 ★ 최종 컬러(main+add)에서 남은 슬롯 보충 (기존: 큐레이션 풀 → 변경: C 최종 컬러 풀)
-      var usedHexSet = {};
-      byTier.Core.concat(byTier.Seasonal, byTier.Accent).forEach(function(f){ usedHexSet[String(f.hex).toUpperCase()] = true; if(f.orig) usedHexSet[String(f.orig).toUpperCase()] = true; });
-      out.forEach(function(f){ usedHexSet[String(f.hex).toUpperCase()] = true; });
-      _cFinalPool.slice().sort(function(a,b){ return (b.freq||0)-(a.freq||0); }).forEach(function(e){
-        var h = String(e.hex).toUpperCase(), T = _stdTier(h);
-        if(byTier[T].length >= LIFE_CAP[T]) return;                          // 이미 목표 개수 채움
-        if(usedHexSet[h]) return;                                             // 이미 사용된 색 제외
-        var chosen = byTier.Core.concat(byTier.Seasonal, byTier.Accent);
-        if(chosen.some(function(f){ return _tmDeltaE(f.hex, h) < FN_DEDUP; })) return;   // 유사색 제외
-        byTier[T].push({ kind:'add', hex:h, name:e.name||'', freq:e.freq, pr:3 });
-        usedHexSet[h] = true;
+      var curHex = (curList || []).map(function(e){ return String(e.hex).toUpperCase(); });
+      (fin ? fin.add : []).forEach(function(f){
+        var h = String(f.hex).toUpperCase();
+        var inCur = curHex.some(function(c){ return c === h || _tmDeltaE(c, h) < 3; });
+        if(!inCur) return;
+        if(main.some(function(m){ return _tmDeltaE(m.hex, h) < FN_DEDUP; })) return;
+        var fr = 0; (curList || []).forEach(function(e){ if(String(e.hex).toUpperCase() === h) fr = e.freq || 0; });
+        main.push({ kind: 'add', hex: h, name: 'Trend', freq: fr, pr: 3 });
       });
-      // 3) 등급별 우선순위 정렬 후 상한까지만
-      var main = [];
-      ['Core','Seasonal','Accent'].forEach(function(T){
-        byTier[T].sort(function(a,b){ return a.pr - b.pr; });
-        byTier[T].slice(0, LIFE_CAP[T]).forEach(function(c){ main.push(c); });
-      });
+      main.sort(function(a2, b2){ return a2.pr - b2.pr; });
       return { main: main, out: out };
     }
 
@@ -24734,7 +24714,7 @@ document.addEventListener('DOMContentLoaded',function(){
       var tc = function(T){ return fin2.main.filter(function(f){ return _stdTier(f.hex) === T; }).length; };
       var _moodAvgL = (function(){ var s=0,n=0; moodCols.forEach(function(x){ var h=String(x.hex).toUpperCase(); if(!/^#[0-9A-F]{6}$/.test(h)) return; s+=_tmLab(h)[0]; n++; }); return n? Math.round(s/n):null; })();
       var _lifeLdiag = (_moodAvgL==null || _mAllL==null) ? '' : (function(){ var d=_moodAvgL-_mAllL; var t=Math.abs(d)<6?'명도 적정':(d>0?'자사가 '+d+' 밝음':'자사가 '+(-d)+' 어두움'); return ' · 명도 제안L' + _moodAvgL + ' vs 마켓L' + _mAllL + ' (' + t + ')'; })();
-      var finLine = '최종 ' + fin2.main.length + '색 (Core ' + tc('Core') + '/' + LIFE_CAP.Core + ' · Seasonal ' + tc('Seasonal') + '/' + LIFE_CAP.Seasonal + ' · Accent ' + tc('Accent') + '/' + LIFE_CAP.Accent + ') — 유지 ' + nk('keep') + ' · 보완 ' + nk('watch') + ' · 세일즈 ' + nk('sales') + ' · 추가 ' + nk('add') + (fin2.out.length ? ' · 제외 ' + fin2.out.length : '') + _lifeLdiag;
+      var finLine = '최종 ' + fin2.main.length + '색 (Core ' + tc('Core') + ' · Seasonal ' + tc('Seasonal') + ' · Accent ' + tc('Accent') + ') — 유지 ' + nk('keep') + ' · 보완 ' + nk('watch') + ' · 세일즈 ' + nk('sales') + (nk('gap') ? ' · 공백 유지 ' + nk('gap') : '') + ' · 추가 ' + nk('add') + (fin2.out.length ? ' · 제외 ' + fin2.out.length : '') + _lifeLdiag;
 
       return '<div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px">'
         + '<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:2px">'
@@ -24756,7 +24736,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
     html += _rvCard('D. 라이프스타일별 분석 & 최종 제안 — 제안(팔레트) vs 트렌드(큐레이션) vs 최종',
         (lifeCards || '<div class="spp-empty">데이터 없음</div>')
-      + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:6px;line-height:1.7">지정 마켓 = 각 라이프스타일에 배정한 브랜드 · 제안 = 27FW 팔레트에서 이 라이프스타일로 배정된 색 · 트렌드 = 03 Category Curation 이 라이프스타일 픽<br>최종 등급 상한: <b>Core ' + LIFE_CAP.Core + ' · Seasonal ' + LIFE_CAP.Seasonal + ' · Accent ' + LIFE_CAP.Accent + '</b> · <b>유지</b>=확정색이 트렌드와 같음(ΔE≤5) · <b>보완</b>=트렌드 톤으로 조정(ΔE 5~10) · <b>세일즈</b>=25FW 판매 성과로 유지 · <b>추가</b>=남은 슬롯을 C섹션 ★ 최종 컬러 제안에서 보충 · <b>제외</b>=근거 부족 · 등급=디커 기준</div>');
+      + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:6px;line-height:1.7">지정 마켓 = 각 라이프스타일에 배정한 브랜드 · 제안 = 27FW 팔레트에서 이 라이프스타일로 배정된 색 · 트렌드 = 03 Category Curation 이 라이프스타일 픽<br>최종 = <b>★ 최종 컬러 제안</b>을 라이프스타일별로 나눈 것 (팔레트 배정색은 ★ 최종 판정 그대로 · 추가는 ★ 최종 추가색 중 이 라이프스타일 큐레이션에 속한 색) · <b>유지</b>=확정색이 트렌드와 같음(ΔE≤5) · <b>보완</b>=트렌드 톤으로 조정(ΔE 5~10) · <b>세일즈</b>=25FW 판매 성과로 유지 · <b>추가</b>=남은 슬롯을 마켓 빈도 높은 트렌드색으로 보충 · <b>제외</b>=근거 부족 · 등급=디커 기준</div>');
 
     // v264 — 04 하단 '근거 데이터'(A 트렌드 · B 큐레이션 · C 25FW 판매) 블록 제거
 
