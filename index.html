@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v311 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v312 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20781,7 +20781,7 @@ document.addEventListener('DOMContentLoaded',function(){
       if(typeof _passesCategoryFilter === 'function' && !_passesCategoryFilter(co)) return;
       var h = String(co.hex).toUpperCase();
       if(!/^#[0-9A-F]{6}$/.test(h)) return;
-      var f = co.freq || 1;
+      var f = co.count || co.freq || 1;   // v312: 같은 브랜드·같은 색 반복(상품 수)을 빈도에 반영
       if(byHex[h]){
         byHex[h].freq += f;
         brandsOf(co).forEach(function(b){ if(byHex[h].brands.indexOf(b) < 0) byHex[h].brands.push(b); });
@@ -21613,7 +21613,7 @@ document.addEventListener('DOMContentLoaded',function(){
       // 안 걸면 품목을 Outerwear 로 바꿨을 때 빈도는 줄고 분자는 그대로여서 어긋난다.
       if(typeof _passesCategoryFilter === 'function' && !_passesCategoryFilter(cd)) continue;
       if(!cnt[cd.brand]){ cnt[cd.brand] = 0; out.push(cd.brand); }
-      cnt[cd.brand] += (cd.freq || 1);
+      cnt[cd.brand] += (cd.count || cd.freq || 1);
     }
     out.sort(function(a,b){ return cnt[b] - cnt[a]; });      // 많이 쓴 브랜드부터
     out._counts = cnt;
@@ -22684,7 +22684,7 @@ document.addEventListener('DOMContentLoaded',function(){
       if(src.indexOf('gl') < 0 && src.indexOf('kr') < 0) return;
       if(sel && sel.size > 0 && !sel.has(bkn(cd.brand))) return;
       if(typeof _passesCategoryFilter === 'function' && !_passesCategoryFilter(cd)) return;   // 분자와 동일 기준
-      var k = bkn(cd.brand), f = cd.freq || 1;
+      var k = bkn(cd.brand), f = cd.count || cd.freq || 1;
       maps.forEach(function(m, i){ if(m.set[k]) totals[i] += f; });
     });
     return totals;
@@ -25566,7 +25566,7 @@ document.addEventListener('DOMContentLoaded',function(){
         var h = String(cd.hex).toUpperCase();
         if(!/^#[0-9A-F]{6}$/.test(h)) return;
         var t = tierMemo[h] || (tierMemo[h] = (mode === 'ours' ? FN_OURS_MAP[_tmClassify(h)] : _stdTier(h)));
-        var f = cd.freq || 1;
+        var f = cd.count || cd.freq || 1;
         maps.forEach(function(m){ if(m.set[k]){ m.w[t] += f; m.tot += f; m.hex[h] = 1; m.th[t][h] = (m.th[t][h] || 0) + f; } });
       });
     }
@@ -25712,7 +25712,7 @@ document.addEventListener('DOMContentLoaded',function(){
       bs = bs.filter(Boolean);
       if(sel && sel.size > 0 && !bs.some(function(b){ return sel.has(bkn(b)); })) return;
       if(typeof _passesCategoryFilter === 'function' && !_passesCategoryFilter(co)) return;
-      var h = String(co.hex).toUpperCase(), f = co.freq || 1;
+      var h = String(co.hex).toUpperCase(), f = co.count || co.freq || 1;
       var m = out[h] || (out[h] = {});
       bs.forEach(function(b){ m[b] = (m[b] || 0) + f; });
     });
@@ -27016,7 +27016,7 @@ document.addEventListener('DOMContentLoaded',function(){
       var src = cd.source || '';
       if(src.indexOf('gl') < 0 && src.indexOf('kr') < 0){ skippedSrc++; return; }
       if(sel && sel.size > 0 && !sel.has(bkn(cd.brand))){ skippedSel++; return; }
-      var f = cd.freq || 1;
+      var f = cd.count || cd.freq || 1;
       perBrand[cd.brand] = (perBrand[cd.brand] || 0) + f;
       total += f;
     });
