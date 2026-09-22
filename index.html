@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v313 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v314 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -26464,9 +26464,12 @@ document.addEventListener('DOMContentLoaded',function(){
     if(H > 115 && H <= 165) return '그린';
     if(H > 165 && H <= 205) return '틸';
     if(H > 205 && H <= 288) return '블루';
+    if(H > 288 && H <= 300 && a.C >= 30) return '블루';          // v314 — 선명한 코발트·로열블루(H 288~300°, C*≥30)는 블루
     if(H > 288 && H <= 330) return '퍼플';
     if(H > 330 || H < 15) return _rpSplit(a, H);
     // v298 — H 15~30° 는 이전에 모두 '오렌지'로 떨어졌다. 저채도(모브브라운·로즈그레이)는 브라운/베이지, 선명하면 레드.
+    // v314 — 밝고 색기가 있는(L*≥55 · C*≥20) 15~30° 는 로즈·코랄 핑크 (예: #E89DA4)
+    if(H >= 15 && H < 30 && a.L >= 55 && a.C >= 20 && a.C < STD_CUT.vivid_hue_c) return '핑크';
     if(H >= 15 && H < 30) return a.C < STD_CUT.vivid_hue_c ? (a.L < 60 ? '브라운' : '베이지') : '레드';
     return '오렌지';
   }
