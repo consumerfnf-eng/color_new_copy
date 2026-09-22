@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v315 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v316 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -25283,9 +25283,39 @@ document.addEventListener('DOMContentLoaded',function(){
       if(main.concat(add).some(function(f){ return _tmDeltaE(f.hex, h) < FN_DEDUP_DE; })) return;
       add.push({ kind: 'add', hex: h, name: (x.item.trend.sources || []).join('·') || 'Trend', x: x, ti: x.item, sn: _finSalesNear(h) });
     });
+    // v316 — 확장 보완: 제외될 자사 색과 추가 칩이 ΔE 15 이내면 '추가 + 제외' 대신 '자사 색을 그 트렌드 톤으로 보완'
+    try{ _finExtendWatch(main, add, out); }catch(e){}
     // v308 — 최종 등급 구성을 '전체 마켓' 비율(디커 기준 · 빈도 가중)에 맞춘다. 총 색 수는 그대로.
     try{ _finFitRatio(main, add, out); }catch(e){}
     return { main: main, add: add, out: out };
+  }
+  var FIN_EXT_WATCH_DE = 15;            // v316 — 확장 보완 한계 (ΔE 10~15)
+  function _finExtendWatch(main, add, out){
+    var pairs = [];
+    // 대상: 제외될 자사 색 + 트렌드 근거 없이 남은 자사 색(공백 유지·세일즈 유지)
+    var weak = out.concat(main.filter(function(f){ return f.kind === 'gap' || f.kind === 'sales'; }));
+    weak.forEach(function(o){
+      add.forEach(function(a){
+        var d = _tmDeltaE(o.hex, a.hex);
+        if(d <= FIN_EXT_WATCH_DE) pairs.push({ o: o, a: a, d: d });
+      });
+    });
+    pairs.sort(function(x, y){ return x.d - y.d; });
+    var usedO = [], usedA = [];
+    pairs.forEach(function(pr){
+      if(usedO.indexOf(pr.o) >= 0 || usedA.indexOf(pr.a) >= 0) return;
+      usedO.push(pr.o); usedA.push(pr.a);
+      var base = pr.o.st || {};
+      var st = {}; for(var k in base) st[k] = base[k];
+      st.de = Math.round(pr.d * 10) / 10; st.tHex = pr.a.hex; st.tier = 'watch';
+      if(pr.a.ti && pr.a.ti.trend) st.trend = pr.a.ti.trend;
+      main.push({ kind: 'watch', hex: pr.a.hex, orig: String(pr.o.orig || pr.o.hex), name: pr.o.name, st: st, sn: pr.o.sn, ti: pr.a.ti, extWatch: true, wasKind: pr.o.kind });
+    });
+    usedO.forEach(function(o){
+      var oi = out.indexOf(o); if(oi >= 0){ out.splice(oi, 1); return; }
+      var mi = main.indexOf(o); if(mi >= 0) main.splice(mi, 1);
+    });
+    usedA.forEach(function(a){ add.splice(add.indexOf(a), 1); });
   }
   var FIN_FIT_RATIO = true;
   var FIN_SKIP_EXTRA = false;          // v313 — true 로 두면 03 보충 색을 추가 후보에서 제외(v285 방식)
@@ -25469,7 +25499,8 @@ document.addEventListener('DOMContentLoaded',function(){
     if(f.kind === 'keep') why.push(['판정', '트렌드 칩과 ΔE ' + f.st.de + ' — 사실상 같은 색이라 그대로 유지']);
     if(f.kind === 'watch'){
       var rs = _dcpReason(f.orig, f.hex).parts.filter(function(x){ return x.size >= 2; });
-      why.push(['판정', '확정색 ' + f.name + ' → 트렌드 톤으로 조정 (ΔE ' + f.st.de + ')']);
+      why.push(['판정', '확정색 ' + f.name + ' → 트렌드 톤으로 조정 (ΔE ' + f.st.de + ')'
+        + (f.extWatch ? ' · 확장 보완: 새로 추가하기엔 기존 자사 색과 비슷해(ΔE ' + DCP_WATCH_DE + '~' + FIN_EXT_WATCH_DE + ') 자사 색을 보완' : '')]);
       rs.forEach(function(x){ why.push([x.label, x.text]); });
     }
     if(f.kind === 'sales') why.push(['판정', '트렌드 칩과 ΔE ' + f.st.de + ' 로 거리가 있지만 25FW 판매 성과로 유지']);
