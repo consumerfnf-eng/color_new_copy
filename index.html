@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v314 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v315 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -25326,9 +25326,12 @@ document.addEventListener('DOMContentLoaded',function(){
         var chosen = main.concat(add);
         var pool = _dcpTrendChips().filter(function(c){ return _stdTier(c.item.trend.hex) === t; })
           .sort(function(a2, b2){ return (b2.item.mkFreq || 0) - (a2.item.mkFreq || 0); });
+        var _palAll = _dcpPalUnique();
         for(var k = 0; k < pool.length && cur < cap[i]; k++){
           var h2 = pool[k].item.trend.hex;
           if(chosen.some(function(f){ return _tmDeltaE(f.hex, h2) < FN_DEDUP_DE; })) continue;
+          // v315 — 추가 칩 기준과 통일: 자사 팔레트에 ΔE 10 이내 색이 있으면 '이미 있는 톤' → 트렌드로 채우지 않는다
+          if(_palAll.some(function(p){ return _tmDeltaE(p.hex, h2) <= DCP_WATCH_DE; })) continue;
           var nf = { kind: 'add', hex: h2, name: (pool[k].item.trend.sources || []).join('·') || 'Trend',
                      x: { item: pool[k].item, group: pool[k].group, near: null, de: 0, covered: false }, ti: pool[k].item,
                      sn: _finSalesNear(h2), ratioFill: true };
