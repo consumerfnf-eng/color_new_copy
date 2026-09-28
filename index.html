@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v322 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v323 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7107,16 +7107,21 @@ function renderPalCrossView(){
         if(!byFam[f]){ byFam[f] = []; order.push(f); }   // 계열 첫 등장 = 빈도 상위 순
         byFam[f].push(c);
       });
+      // v323 — 계열당 최대 개수 제한. 한 계열이 줄을 여러 칸 차지하지 않게 한 뒤,
+      //   그래도 자리가 남으면 상한을 한 칸씩 올려 채운다.
+      const famCap = cap <= 8 ? 2 : 2;       // KEY 2색 · SUB/BASIC 2색
       const out = [];
-      let round = 0;
+      let limit = famCap;
       while(out.length < cap){
         let added = false;
-        for(let i = 0; i < order.length && out.length < cap; i++){
-          const arr = byFam[order[i]];
-          if(arr.length > round){ out.push(arr[round]); added = true; }
+        for(let round = 0; round < limit && out.length < cap; round++){
+          for(let i = 0; i < order.length && out.length < cap; i++){
+            const arr = byFam[order[i]];
+            if(arr.length > round && out.indexOf(arr[round]) < 0){ out.push(arr[round]); added = true; }
+          }
         }
         if(!added) break;
-        round++;
+        limit++;                              // 후보가 모자라면 상한을 풀어 남은 칸을 채운다
       }
       return out;
     };
