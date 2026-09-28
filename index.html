@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v320 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v321 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7057,6 +7057,18 @@ function renderPalCrossView(){
       accepted.push(c);
     });
 
+    // v321 — MLB 27FW: 디커 등급 기준으로 3줄 분류 (Accent→KEY · Seasonal→SUB · Core→BASIC)
+    const _mlb27 = (typeof _activeBrand !== 'undefined' && _activeBrand === 'MLB')
+                && (typeof _activeSeason !== 'undefined' && _activeSeason === '27FW')
+                && typeof window._discStdTier === 'function';
+    if(_mlb27){
+      accepted.forEach(c=>{
+        const t = window._discStdTier(c.hex);
+        if(t === 'Accent') keyPool.push(c);
+        else if(t === 'Core') basicPool.push(c);
+        else subPool.push(c);
+      });
+    } else
     // HSL로 3분류
     accepted.forEach(c=>{
       const [,sat,light]=typeof rgbToHsl==='function'?rgbToHsl(c.hex):[0,0,0.5];
@@ -7171,7 +7183,17 @@ function renderPalCrossView(){
   }
 
   // Trend-Based 3줄 렌더
-  const t3 = classify3rows(trendList);
+  // v321 — MLB 27FW: 01 마켓 빈도 상위 색 중 02 WGSN·Peclers 와 매칭되는 색만 선발 (DISCOVERY 방식)
+  let _trendRows = trendList;
+  try{
+    if(typeof _activeBrand !== 'undefined' && _activeBrand === 'MLB'
+       && typeof _activeSeason !== 'undefined' && _activeSeason === '27FW'
+       && typeof window._discMatchMarket === 'function'){
+      const _mm = window._discMatchMarket();
+      if(_mm && _mm.length) _trendRows = _mm;
+    }
+  }catch(e){}
+  const t3 = classify3rows(_trendRows);
   window._trendKeyPool = [...(t3.key||[]), ...(t3.sub||[]), ...(t3.basic||[])]; // Category Curation 매칭용 (KEY+SUB+BASIC All)
   // Hue 군집 정렬 함수 (비슷한 색끼리 나란히)
   const sortByHue = arr => [...arr].sort((a,b)=>{
@@ -27142,6 +27164,33 @@ document.addEventListener('DOMContentLoaded',function(){
   }
   window._discRenderStd = _stdRender;
   window._discStdTier = _stdTier;   // v320 — 다른 브랜드에서도 쓸 수 있게 노출
+  // v321 — 01 마켓 빈도 상위 색 ↔ 02 WGSN·Peclers 칩 매칭 결과 (등급 캡 없이 전량, 빈도순)
+  //   MLB 등 다른 브랜드의 03 에서도 같은 선발 방식을 쓸 수 있게 노출한다.
+  window._discMatchMarket = function(){
+    var market = [], trend = [];
+    try{ market = _tmMarketPool(); trend = _tmTrendPool(); }catch(e){ return []; }
+    if(!market.length || !trend.length) return [];
+    var byTrend = {};
+    market.forEach(function(m){
+      var best = null, bd = TM_DIST;
+      trend.forEach(function(t){
+        var d = rgbDist(m.hex, t.hex);
+        if(d < bd){ bd = d; best = t; }
+      });
+      if(!best) return;
+      var k = best.hex.toUpperCase();
+      if(!byTrend[k]) byTrend[k] = { trend: best, freq: 0, mkHexes: [], brands: {} };
+      byTrend[k].freq += (m.freq || 1);
+      byTrend[k].mkHexes.push(m.hex);
+      (m.brands || []).forEach(function(b){ byTrend[k].brands[b] = 1; });
+    });
+    return Object.keys(byTrend).map(function(k){
+      var e = byTrend[k], t = e.trend;
+      return { hex: t.hex, name: t.name || t.hex, pantone: t.pantone || '', tcxCode: t.pantone || '',
+               sources: t.sources || [], freq: e.freq, totalFreqRaw: e.freq, tScore: e.freq,
+               mkHexes: e.mkHexes, compBrands: Object.keys(e.brands) };
+    }).sort(function(a, b){ return b.freq - a.freq; });
+  };
   window._discStdHue  = _stdHue;
   window._discGoStd = function(){
     try{
