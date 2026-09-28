@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v321 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v322 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7097,10 +7097,34 @@ function renderPalCrossView(){
     subPool.sort((a,b)=>scoreOf(b)-scoreOf(a));
     basicPool.sort((a,b)=>scoreOf(b)-scoreOf(a));
 
+    // v322 — MLB 27FW: 계열(디커 _stdHue)을 돌아가며 뽑아 한 계열이 줄을 독차지하지 않게 한다
+    const _pickDiverse = (pool, cap) => {
+      if(!_mlb27 || typeof window._discStdHue !== 'function') return pool.slice(0, cap);
+      const byFam = {}, order = [];
+      pool.forEach(c => {
+        let f = '기타';
+        try{ f = window._discStdHue(c.hex) || '기타'; }catch(e){}
+        if(!byFam[f]){ byFam[f] = []; order.push(f); }   // 계열 첫 등장 = 빈도 상위 순
+        byFam[f].push(c);
+      });
+      const out = [];
+      let round = 0;
+      while(out.length < cap){
+        let added = false;
+        for(let i = 0; i < order.length && out.length < cap; i++){
+          const arr = byFam[order[i]];
+          if(arr.length > round){ out.push(arr[round]); added = true; }
+        }
+        if(!added) break;
+        round++;
+      }
+      return out;
+    };
+
     return {
-      key:   keyPool.slice(0, 8),
-      sub:   subPool.slice(0, 15),
-      basic: basicPool.slice(0, 15),
+      key:   _pickDiverse(keyPool, 8),
+      sub:   _pickDiverse(subPool, 15),
+      basic: _pickDiverse(basicPool, 15),
     };
   }
 
