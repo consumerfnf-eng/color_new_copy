@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v326 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v327 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -26735,7 +26735,19 @@ document.addEventListener('DOMContentLoaded',function(){
     return '오렌지';
   }
   // 디커 등급 판정 (v266 — Core 재정의: 기본물만 Core. 청록·그린·러스트·퍼플 등은 어두워도 Seasonal)
+  // v327 — MLB 27FW 는 '우리 기준'(_tmClassify)으로 등급을 판정한다.
+  //   basic → Core · sub → Seasonal · key → Accent. 디커 기준은 DISCOVERY 전용.
   function _stdTier(hex){
+    try{
+      if(typeof _activeBrand !== 'undefined' && _activeBrand === 'MLB'
+         && typeof _activeSeason !== 'undefined' && _activeSeason === '27FW'){
+        var g = _tmClassify(hex);
+        return g === 'key' ? 'Accent' : (g === 'basic' ? 'Core' : 'Seasonal');
+      }
+    }catch(e){}
+    return _stdTierDisc(hex);
+  }
+  function _stdTierDisc(hex){
     var a = _tmLCh(hex);
     if(a.C >= STD_CUT.accent_chroma) return 'Accent';           // ① 비비드
     // v266 — 니어블랙(검정으로 읽힘)만 색상군 무관 Core. (기존 'L<30·C<20 색상군무관' 규칙은 청록·딥그린까지 빨아들여 삭제)
