@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v324 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v325 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20655,6 +20655,22 @@ document.addEventListener('DOMContentLoaded',function(){
       var backL = e.navPal.querySelector('button');
       if(backL){ backL.setAttribute('onclick', "switchTabByName('trend')"); backL.innerHTML = '&#8592; 02 Trend Collection'; }
     }
+    // v325 — 04 Colorway 를 Palette Review 로 (DISCOVERY 와 같은 방식, 원래 내용은 숨김)
+    _lightCache.cw = [];
+    var cwBtnL = e.nav.querySelector('button.tab[onclick*="colorway"]');
+    if(cwBtnL){ _lightCache.cw.push({ el: cwBtnL, html: cwBtnL.innerHTML }); cwBtnL.innerHTML = '<span class="tab-num">04</span>Palette Review'; }
+    var cwPaneL = document.getElementById('tab-colorway');
+    if(cwPaneL){
+      Array.prototype.slice.call(cwPaneL.children).forEach(function(ch){
+        if(ch.id === 'disc-review-wrap') return;
+        _lightCache.cw.push({ el: ch, disp: ch.style.display });
+        ch.style.display = 'none';
+      });
+      var rwL = document.getElementById('disc-review-wrap');
+      if(!rwL){ rwL = document.createElement('div'); rwL.id = 'disc-review-wrap'; rwL.className = 'tab-scroll'; cwPaneL.appendChild(rwL); }
+      else rwL.style.display = '';
+    }
+    try{ if(typeof _dcpRender === 'function') _dcpRender(); }catch(e){}
     _lightOn = true;
   }
   function _revertLight(){
@@ -20666,6 +20682,8 @@ document.addEventListener('DOMContentLoaded',function(){
     if(e.navComp  && _lightCache.navComp  !== null) e.navComp.innerHTML  = _lightCache.navComp;
     if(e.navTrend && _lightCache.navTrend !== null) e.navTrend.innerHTML = _lightCache.navTrend;
     if(e.navPal   && _lightCache.navPal   !== null) e.navPal.innerHTML   = _lightCache.navPal;
+    (_lightCache.cw || []).forEach(function(r){ if(r.html != null) r.el.innerHTML = r.html; else r.el.style.display = r.disp || ''; });
+    var rwL2 = document.getElementById('disc-review-wrap'); if(rwL2) rwL2.style.display = 'none';
     _lightOn = false; _lightCache = null;
   }
 
@@ -22330,7 +22348,23 @@ document.addEventListener('DOMContentLoaded',function(){
   // ══════════════════════════════════════════════════════════════
   var DCP_UP_KEY = 'disc_palette_upload';
   var _dcpCustom = null;          // { fileName, rows:[{mood,name,code,kind,hex,note}] }
-  try { _dcpCustom = JSON.parse(localStorage.getItem(DCP_UP_KEY) || 'null'); } catch(e){ _dcpCustom = null; }
+  var _dcpUpKeyFor = function(){ try{ return DCP_UP_KEY + '_' + ((typeof _activeBrand !== 'undefined') ? _activeBrand : 'X'); }catch(e){ return DCP_UP_KEY; } };
+  function _dcpLoadCustom(){
+    // v325 — 브랜드별로 업로드 팔레트를 따로 보관 (DISCOVERY 는 기존 키도 함께 읽는다)
+    try{
+      var raw = localStorage.getItem(_dcpUpKeyFor());
+      if(!raw && (typeof _activeBrand === 'undefined' || _activeBrand === 'DISCOVERY')) raw = localStorage.getItem(DCP_UP_KEY);
+      _dcpCustom = JSON.parse(raw || 'null');
+    }catch(e){ _dcpCustom = null; }
+  }
+  _dcpLoadCustom();
+  window._dcpReloadCustom = _dcpLoadCustom;
+  // v325 — 프로그램에서 팔레트를 주입/초기화 (업로드와 동일 경로)
+  window._dcpSetCustom = function(fileName, rows){
+    _dcpCustom = (rows && rows.length) ? { fileName: fileName || 'palette', rows: rows } : null;
+    try{ if(_dcpCustom) localStorage.setItem(_dcpUpKeyFor(), JSON.stringify(_dcpCustom)); else localStorage.removeItem(_dcpUpKeyFor()); }catch(e){}
+    try{ _dcpRender(); }catch(e){}
+  };
 
   function _dcpNorm(x){ return String(x == null ? '' : x).trim(); }
 
@@ -22441,14 +22475,14 @@ document.addEventListener('DOMContentLoaded',function(){
 
   function _dcpApplyUpload(data){
     _dcpCustom = data;
-    try { localStorage.setItem(DCP_UP_KEY, JSON.stringify(data)); } catch(e){}
+    try { localStorage.setItem(_dcpUpKeyFor(), JSON.stringify(data)); } catch(e){}
     _dcpCollapsed = false;
     _dcpRender();
     try { _gapRender(); } catch(e){}     // 보완 후보도 새 팔레트 기준으로 재계산
   }
   window._dcpClearUpload = function(){
     _dcpCustom = null;
-    try { localStorage.removeItem(DCP_UP_KEY); } catch(e){}
+    try { localStorage.removeItem(_dcpUpKeyFor()); localStorage.removeItem(DCP_UP_KEY); } catch(e){}
     _dcpRender();
     try { _gapRender(); } catch(e){}
   };
@@ -22486,7 +22520,7 @@ document.addEventListener('DOMContentLoaded',function(){
         + ' · ' + _dcpCustom.rows.length + '색</span>'
         + '<button onclick="_dcpClearUpload()" style="font-family:var(--mono);font-size:10px;padding:4px 10px;'
         + 'border-radius:4px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text3)">내장 팔레트로</button>'
-      : '<span style="font-family:var(--mono);font-size:10px;color:var(--text4)">내장: DISCOVERY 27FW</span>';
+      : '<span style="font-family:var(--mono);font-size:10px;color:var(--text4)">' + (_rvIsDisc() ? '내장: DISCOVERY 27FW' : '업로드 필요: ' + _rvBrand() + ' 27FW') + '</span>';
     return ''
       + '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;padding:10px 12px;'
       +   'border:1px dashed var(--border2);border-radius:6px">'
@@ -22678,30 +22712,34 @@ document.addEventListener('DOMContentLoaded',function(){
 
   function _dcpRender(){
     var sect = document.getElementById(DCP_SECT_ID);
-    if(!_inScope()){ if(sect) sect.style.display = 'none'; return; }
+    if(!_rvScope()){ if(sect) sect.style.display = 'none'; return; }
     _dcpInjectStyle();
     sect = _dcpSection();
     if(!sect) return;
     sect.style.display = 'block';
     var cv0 = _dcpCustomView();
     var cnt = cv0 ? cv0.total
-            : (DCP_CORE_1.filter(function(x){ return !x.gap; }).length
+            : (!_rvIsDisc() ? 0
+             : DCP_CORE_1.filter(function(x){ return !x.gap; }).length
              + DCP_CORE_2.filter(function(x){ return !x.gap; }).length
              + DCP_MOODS.reduce(function(n,m){ return n + m.rows.reduce(function(k,r){ return k + r.length; }, 0); }, 0));
+    if(!_rvIsDisc() && cv0) cnt = cv0.total;
     sect.innerHTML = '<div class="spp-trend-market-hd" style="margin-bottom:0">'
       +   '<span class="spp-trend-market-flame" style="color:var(--gold)">▣ 27FW PALETTE</span>'
-      +   '<span class="spp-trend-market-title">' + (cv0 ? '업로드 팔레트' : 'DISCOVERY 27FW Color Palette') + '</span>'
-      +   '<span class="spp-trend-market-sub">' + (cv0 ? cv0.fileName : '사내 확정 팔레트 260915 · CORE + 라이프스타일 3종')
+      +   '<span class="spp-trend-market-title">' + (cv0 ? '업로드 팔레트' : (_rvBrand() + ' 27FW Color Palette')) + '</span>'
+      +   '<span class="spp-trend-market-sub">' + (cv0 ? cv0.fileName : (_rvIsDisc() ? '사내 확정 팔레트 260915 · CORE + 라이프스타일 3종' : '확정 팔레트 파일을 올려주세요'))
       +     ' · 총 ' + cnt + '색</span>'
       + '</div>'
-      + _dcpBodyHtml()
+      + (_rvIsDisc() || cv0 ? _dcpBodyHtml()
+         : (_dcpUploadPanel() + '<div class="spp-empty" style="font-size:11px;margin-top:10px">'
+            + 'CSV·XLSX 파일을 올리면 이 브랜드의 확정 팔레트로 분석합니다. 컬럼: 구분 / 컬러명 / 컬러 코드 / 코드 종류 / HEX / 비고</div>'))
       + '<div class="dcp-scope" style="margin-top:26px;padding-top:20px;border-top:1px solid var(--border)">'
       +   '<div class="spp-trend-market-hd" style="margin-bottom:14px">'
       +     '<span class="spp-trend-market-flame" style="color:var(--gold);font-size:14px">✎ REVIEW</span>'
       +     '<span class="spp-trend-market-title" style="font-size:22px">팔레트 분석</span>'
       +     '<span class="spp-trend-market-sub" style="font-size:13px">확정 팔레트를 마켓·트렌드 데이터에 비춰 계산한 결과</span>'
       +   '</div>'
-      +   _rvHtml()
+      +   ((_rvIsDisc() || cv0) ? _rvHtml() : '')
       + '</div>';
   }
   window._discRender27fwPalette = _dcpRender;
@@ -22734,6 +22772,7 @@ document.addEventListener('DOMContentLoaded',function(){
       });
       return out;
     }
+    if(!_rvIsDisc()) return out;      // v325 — DISCOVERY 외 브랜드는 내장 팔레트를 쓰지 않는다
     function push(arr){
       arr.forEach(function(it){
         if(it.gap || !it.hex) return;
@@ -24099,6 +24138,17 @@ document.addEventListener('DOMContentLoaded',function(){
   var _dcpStatus = null, _dcpStatusKey = null;
 
   function _dcpTrendChips(){
+    if(!_rvIsDisc()){
+      // v325 — MLB: 03 에서 쓰는 '마켓 빈도 × 트렌드 매칭' 결과를 그대로 후보로 삼는다
+      var mm = [];
+      try{ mm = window._discMatchMarket ? window._discMatchMarket() : []; }catch(e){ mm = []; }
+      return mm.map(function(x){
+        var t = _stdTier(x.hex);
+        return { group: (t === 'Accent' ? 'key' : (t === 'Core' ? 'basic' : 'sub')),
+                 item: { trend: { hex: x.hex, name: x.name, pantone: x.pantone, sources: x.sources || [] },
+                         mkFreq: x.freq || 1, mkHexes: x.mkHexes || [], _extra: false } };
+      });
+    }
     if(!_tmLastBuild){ try{ _tmBuild(); }catch(e){} }
     var out = [];
     if(_tmLastBuild && _tmLastBuild.buckets){
@@ -24118,7 +24168,8 @@ document.addEventListener('DOMContentLoaded',function(){
   }
 
   function _dcpStatusMap(){
-    var key = (typeof _tmLastBuild !== 'undefined' ? _tmLastBuild : null);
+    var key = _rvIsDisc() ? (typeof _tmLastBuild !== 'undefined' ? _tmLastBuild : null)
+                          : ('mlb:' + _dcpTrendChips().length + ':' + _dcpPalUnique().length);
     if(_dcpStatus && _dcpStatusKey === key && _dcpStatus._pal === _dcpCustom) return _dcpStatus;
     var chips = _dcpTrendChips(), map = {};
     if(chips.length){
@@ -24207,11 +24258,12 @@ document.addEventListener('DOMContentLoaded',function(){
       + '<div class="disc-rv-sales">' + box.innerHTML + '</div>';
   }
   function _dcpTabBar(){
+    // v325 — 세일즈 탭은 25FW 판매 데이터가 있는 DISCOVERY 에서만
     var m = _dcpStatusMap(), cnt = { all: 0, keep: 0, watch: 0, risk: 0 };
     Object.keys(m).forEach(function(h){ cnt[m[h].tier]++; cnt.all++; });
     cnt.final = cnt.risk ? ('· 위험 ' + cnt.risk) : '';
     return '<div style="display:flex;gap:6px;margin:0 0 14px;flex-wrap:wrap">'
-      + DCP_TABS.map(function(t){
+      + DCP_TABS.filter(function(t){ return t[0] !== 'sales' || _rvIsDisc(); }).map(function(t){
           var on = (DCP_TAB === t[0]);
           var n = (t[0] === 'watch') ? (cnt.watch + ' + 추가 ' + _dcpAddList().length)
                 : (t[0] === 'final') ? (function(){ try{ var fr = _finBuild(); return fr ? (fr.main.length + fr.add.length) : ''; }catch(e){ return ''; } })()
@@ -24764,6 +24816,8 @@ document.addEventListener('DOMContentLoaded',function(){
     html += _finHtml();
 
     // ── D. 라이프스타일별 분석 & 최종 제안 (마켓 지정 브랜드 기준) ──────────────
+    // v325 — 라이프스타일 정의가 있는 DISCOVERY 에서만
+    if(_rvIsDisc()){
     var cats = []; try{ cats = _fnCatRatios('disc'); }catch(e){}
     var catBy = {}; cats.forEach(function(c){ catBy[c.key] = c; });
     var defs = []; try{ defs = _gapCatDefs(); }catch(e){}
@@ -24877,6 +24931,7 @@ document.addEventListener('DOMContentLoaded',function(){
     html += _rvCard('D. 라이프스타일별 분석 & 최종 제안 — 제안(팔레트) vs 트렌드(큐레이션) vs 최종',
         (lifeCards || '<div class="spp-empty">데이터 없음</div>')
       + '<div style="font-family:var(--mono);font-size:8px;color:var(--text4);margin-top:6px;line-height:1.7">지정 마켓 = 각 라이프스타일에 배정한 브랜드 · 제안 = 27FW 팔레트에서 이 라이프스타일로 배정된 색 · 트렌드 = 03 Category Curation 이 라이프스타일 픽<br>최종 = <b>★ 최종 컬러 제안</b>을 라이프스타일별로 나눈 것 (팔레트 배정색은 ★ 최종 판정 그대로 · 추가는 ★ 최종 추가색 중 이 라이프스타일 큐레이션에 속한 색) · <b>유지</b>=확정색이 트렌드와 같음(ΔE≤5) · <b>보완</b>=트렌드 톤으로 조정(ΔE 5~10) · <b>세일즈</b>=25FW 판매 성과로 유지 · <b>추가</b>=남은 슬롯을 마켓 빈도 높은 트렌드색으로 보충 · <b>제외</b>=근거 부족 · 등급=디커 기준</div>');
+    }   // /DISCOVERY 전용 D 섹션
 
     // v264 — 04 하단 '근거 데이터'(A 트렌드 · B 큐레이션 · C 25FW 판매) 블록 제거
 
@@ -25276,6 +25331,7 @@ document.addEventListener('DOMContentLoaded',function(){
       + '</div>' + rows + '</div>';
   }
   function _cmpSales(){
+    if(!_rvIsDisc()) return [];     // v325 — 25FW 판매 데이터는 DISCOVERY 전용
     var d = window.DISC_SALES_DATA || {}, out = [];
     ['key','sub','basic'].forEach(function(g){ (d[g] || []).forEach(function(c){ if(c && c.hex) out.push(c); }); });
     return out;
@@ -27240,6 +27296,16 @@ document.addEventListener('DOMContentLoaded',function(){
     }).sort(function(a, b){ return b.freq - a.freq; });
   };
   window._discStdHue  = _stdHue;
+  // v325 — 04 Palette Review 를 MLB 27FW 에서도 쓴다 (팔레트는 업로드 파일 기준)
+  function _rvScope(){
+    try{
+      return (typeof _activeSeason !== 'undefined' && _activeSeason === '27FW')
+          && (typeof _activeBrand !== 'undefined' && (_activeBrand === 'DISCOVERY' || _activeBrand === 'MLB'));
+    }catch(e){ return false; }
+  }
+  function _rvBrand(){ try{ return (typeof _activeBrand !== 'undefined') ? _activeBrand : ''; }catch(e){ return ''; } }
+  function _rvIsDisc(){ return _rvBrand() === 'DISCOVERY'; }
+  window._discRvScope = _rvScope;
   window._discMarketPoolRaw = function(){ try{ return _tmMarketPool(); }catch(e){ return []; } };
   window._discGoStd = function(){
     try{
