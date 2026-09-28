@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v325 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v326 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20652,8 +20652,12 @@ document.addEventListener('DOMContentLoaded',function(){
         + '<button class="btn btn-primary" onclick="switchTabByName(\'palette\')" style="' + BTN_PRI + '">03 Palette Proposal &#8594;</button>';
     }
     if(e.navPal){
-      var backL = e.navPal.querySelector('button');
-      if(backL){ backL.setAttribute('onclick', "switchTabByName('trend')"); backL.innerHTML = '&#8592; 02 Trend Collection'; }
+      // v326 — 03 하단 내비: 뒤로 = 02 Trend, 앞으로 = 04 Palette Review
+      var btnsL = e.navPal.querySelectorAll('button');
+      if(btnsL[0]){ btnsL[0].setAttribute('onclick', "switchTabByName('trend')"); btnsL[0].innerHTML = '&#8592; 02 Trend Collection'; }
+      if(btnsL[1]){ btnsL[1].setAttribute('onclick', "switchTabByName('colorway')"); btnsL[1].innerHTML = '04 Palette Review &#8594;'; }
+      var infoL = e.navPal.querySelector('.step-nav-info');
+      if(infoL) infoL.innerHTML = 'STEP <strong>03</strong> / 04 &nbsp;&middot;&nbsp; Palette Proposal → Palette Review';
     }
     // v325 — 04 Colorway 를 Palette Review 로 (DISCOVERY 와 같은 방식, 원래 내용은 숨김)
     _lightCache.cw = [];
