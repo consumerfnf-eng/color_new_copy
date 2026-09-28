@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v319 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v320 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -15911,6 +15911,15 @@ function getLifestyle(brand, group, source, court) {
 // ── Colors 타입 분류 (채도/명도 기준)
 function getColorType(hex) {
   if (!hex) return 'basic';
+  // v320 — MLB 27FW 는 DISCOVERY 와 같은 등급 기준(디커 조정판)을 쓴다.
+  //   Core → basic(CORE), Seasonal·Accent → accent(SIGNATURE). 화면 구성은 그대로.
+  try{
+    if(typeof _activeBrand !== 'undefined' && _activeBrand === 'MLB'
+       && typeof _activeSeason !== 'undefined' && _activeSeason === '27FW'
+       && typeof window._discStdTier === 'function'){
+      return window._discStdTier(hex) === 'Core' ? 'basic' : 'accent';
+    }
+  }catch(e){}
   // basic = 모노톤(Black / White / Gray 계열)만
   const { h, s, v } = (() => {
     const [hh, ss, vv] = _hexToHSV(hex);
@@ -20534,8 +20543,68 @@ document.addEventListener('DOMContentLoaded',function(){
     _cache = null;
   }
 
+  // v320 — MLB 27FW: 탭 순서(01 Market · 02 Trend · 03 Palette)만 맞춘다.
+  //   Trend 페이지 구성·04 Colorway·브랜드 설정은 건드리지 않는다.
+  var LIGHT_BRANDS = ['MLB'];
+  var _lightOn = false, _lightCache = null;
+  function _inScopeLight(){
+    try{
+      return LIGHT_BRANDS.indexOf(typeof _activeBrand !== 'undefined' ? _activeBrand : '') >= 0
+          && (typeof _activeSeason !== 'undefined' && _activeSeason === SCOPE_SEASON);
+    }catch(e){ return false; }
+  }
+  function _applyLight(){
+    if(_lightOn) return;
+    var e = _els();
+    if(!e.nav || !e.tabComp || !e.tabTrend) return;
+    _lightCache = {
+      tabComp: _pos(e.tabComp), tabTrend: _pos(e.tabTrend),
+      numComp: e.tabComp.querySelector('.tab-num') ? e.tabComp.querySelector('.tab-num').textContent : null,
+      numTrend: e.tabTrend.querySelector('.tab-num') ? e.tabTrend.querySelector('.tab-num').textContent : null,
+      navComp: e.navComp ? e.navComp.innerHTML : null,
+      navTrend: e.navTrend ? e.navTrend.innerHTML : null,
+      navPal: e.navPal ? e.navPal.innerHTML : null
+    };
+    e.nav.insertBefore(e.tabComp, e.tabTrend);
+    if(e.tabComp.querySelector('.tab-num'))  e.tabComp.querySelector('.tab-num').textContent  = '01';
+    if(e.tabTrend.querySelector('.tab-num')) e.tabTrend.querySelector('.tab-num').textContent = '02';
+    if(e.navComp){
+      var runBtn = e.navComp.querySelector('#collect-all-btn-comp');
+      var runHTML = runBtn ? runBtn.outerHTML : '';
+      e.navComp.innerHTML = '<div style="flex:1"></div>'
+        + '<div class="step-nav-info">STEP <strong>01</strong> / 03 &nbsp;&middot;&nbsp; Market Analysis → Trend Collection</div>'
+        + '<div style="display:flex;align-items:center;gap:10px">' + runHTML
+        + '<button class="btn btn-primary" onclick="switchTabByName(\'trend\')" style="' + BTN_PRI + '">02 Trend Collection &#8594;</button></div>';
+    }
+    if(e.navTrend){
+      e.navTrend.innerHTML = '<button class="btn btn-sec" onclick="switchTabByName(\'competitor\')" style="' + BTN_SEC + '">&#8592; 01 Market Analysis</button>'
+        + '<div class="step-nav-info">STEP <strong>02</strong> / 03 &nbsp;&middot;&nbsp; Trend Collection → Palette Proposal</div>'
+        + '<button class="btn btn-primary" onclick="switchTabByName(\'palette\')" style="' + BTN_PRI + '">03 Palette Proposal &#8594;</button>';
+    }
+    if(e.navPal){
+      var backL = e.navPal.querySelector('button');
+      if(backL){ backL.setAttribute('onclick', "switchTabByName('trend')"); backL.innerHTML = '&#8592; 02 Trend Collection'; }
+    }
+    _lightOn = true;
+  }
+  function _revertLight(){
+    if(!_lightOn || !_lightCache) return;
+    var e = _els();
+    _restore(_lightCache.tabComp); _restore(_lightCache.tabTrend);
+    if(e.tabComp && e.tabComp.querySelector('.tab-num') && _lightCache.numComp)  e.tabComp.querySelector('.tab-num').textContent  = _lightCache.numComp;
+    if(e.tabTrend && e.tabTrend.querySelector('.tab-num') && _lightCache.numTrend) e.tabTrend.querySelector('.tab-num').textContent = _lightCache.numTrend;
+    if(e.navComp  && _lightCache.navComp  !== null) e.navComp.innerHTML  = _lightCache.navComp;
+    if(e.navTrend && _lightCache.navTrend !== null) e.navTrend.innerHTML = _lightCache.navTrend;
+    if(e.navPal   && _lightCache.navPal   !== null) e.navPal.innerHTML   = _lightCache.navPal;
+    _lightOn = false; _lightCache = null;
+  }
+
   function sync(){
-    try{ if(_inScope()) _apply(); else _revert(); }catch(err){ console.warn('[disc-layout] sync 오류:', err); }
+    try{
+      if(_inScope()){ _revertLight(); _apply(); }
+      else if(_inScopeLight()){ _revert(); _applyLight(); }
+      else { _revertLight(); _revert(); }
+    }catch(err){ console.warn('[disc-layout] sync 오류:', err); }
     try{ if(typeof _purgeNewsletter === 'function') _purgeNewsletter(); }catch(err){}
     try{ if(typeof _dcpRender === 'function') _dcpRender(); }catch(err){}
     try{ if(typeof _gapRender === 'function') _gapRender(); }catch(err){}
@@ -20559,7 +20628,7 @@ document.addEventListener('DOMContentLoaded',function(){
       try{
         sync();
         // DISCOVERY 27FW 는 Market(01)이 첫 화면
-        if(fn === 'pickSeason' && _inScope() && typeof switchTabByName === 'function') switchTabByName('competitor');
+        if(fn === 'pickSeason' && (_inScope() || _inScopeLight()) && typeof switchTabByName === 'function') switchTabByName('competitor');
       }catch(e){}
       return r;
     };
@@ -27072,6 +27141,8 @@ document.addEventListener('DOMContentLoaded',function(){
     wrap.innerHTML = head + _stages + secA + secB + secConcl + secC;
   }
   window._discRenderStd = _stdRender;
+  window._discStdTier = _stdTier;   // v320 — 다른 브랜드에서도 쓸 수 있게 노출
+  window._discStdHue  = _stdHue;
   window._discGoStd = function(){
     try{
       if(!_inScope() || !_stdEnsureTab()) return;
