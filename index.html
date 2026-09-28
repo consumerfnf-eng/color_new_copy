@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v323 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v324 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -1577,6 +1577,7 @@ function enterBrandFromHome(brand) {
               </button>
             </div>
             <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:10px">Trend PDF + Competitor brand frequency</div>
+            <div id="mlb-fam-diag" style="display:none;font-family:var(--mono);font-size:8.5px;color:var(--text4);margin:-6px 0 10px;line-height:1.5"></div>
             <!-- SUB 줄 -->
             <div style="margin-bottom:8px">
               <div style="font-family:var(--mono);font-size:8px;color:var(--blue);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:5px">SUB</div>
@@ -7223,6 +7224,24 @@ function renderPalCrossView(){
     }
   }catch(e){}
   const t3 = classify3rows(_trendRows);
+  // v324 — MLB 27FW 계열 진단: 마켓 N색 → 매칭 N색 → 화면 표시 N색
+  try{
+    const _dg = document.getElementById('mlb-fam-diag');
+    if(_dg && typeof _activeBrand !== 'undefined' && _activeBrand === 'MLB'
+       && typeof _activeSeason !== 'undefined' && _activeSeason === '27FW'
+       && typeof window._discStdHue === 'function'){
+      const famOf = h => { try{ return window._discStdHue(h) || '기타'; }catch(e){ return '기타'; } };
+      const cnt = {}, add = (f, k) => { (cnt[f] = cnt[f] || { mkt:0, match:0, show:0 })[k]++; };
+      try{ (window._discMarketPoolRaw ? window._discMarketPoolRaw() : []).forEach(m => add(famOf(m.hex), 'mkt')); }catch(e){}
+      (_trendRows || []).forEach(c => add(famOf(c.hex), 'match'));
+      [].concat(t3.key || [], t3.sub || [], t3.basic || []).forEach(c => add(famOf(c.hex), 'show'));
+      const ORDER = ['무채','네이비','베이지','브라운','옐로','오렌지','레드','핑크','그린','틸','블루','퍼플','기타'];
+      const txt = Object.keys(cnt).sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b))
+        .map(f => f + ' ' + cnt[f].mkt + '→' + cnt[f].match + '→' + cnt[f].show).join(' · ');
+      _dg.innerHTML = '계열 진단 (마켓→매칭→표시) · ' + txt;
+      _dg.style.display = '';
+    } else if(_dg){ _dg.style.display = 'none'; }
+  }catch(e){}
   window._trendKeyPool = [...(t3.key||[]), ...(t3.sub||[]), ...(t3.basic||[])]; // Category Curation 매칭용 (KEY+SUB+BASIC All)
   // Hue 군집 정렬 함수 (비슷한 색끼리 나란히)
   const sortByHue = arr => [...arr].sort((a,b)=>{
@@ -27221,6 +27240,7 @@ document.addEventListener('DOMContentLoaded',function(){
     }).sort(function(a, b){ return b.freq - a.freq; });
   };
   window._discStdHue  = _stdHue;
+  window._discMarketPoolRaw = function(){ try{ return _tmMarketPool(); }catch(e){ return []; } };
   window._discGoStd = function(){
     try{
       if(!_inScope() || !_stdEnsureTab()) return;
