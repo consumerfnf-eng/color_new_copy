@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v332 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v333 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7071,7 +7071,9 @@ function renderPalCrossView(){
       // 3) 고명도 & 거의 무채색 (L>0.82, S<0.18) — 크림/오프화이트(near-white)만. 색조 뚜렷한 파스텔은 SUB로.
       // 4) 저명도 저채도 (L<0.25, S<0.35) — 네이비/차콜/딥뉴트럴(near-black) 계열
       // 선명한 유채색(S>=0.35, L 0.18~0.82)만 KEY/SUB로
-      const isNeutral   = sat < 0.15;
+      // v333 — MLB·SERGIO: 색기가 남은 중명도 뮤트색은 BASIC 에서 제외
+      const _hueN = (typeof rgbToHsl === 'function' ? rgbToHsl(c.hex)[0] : 0);
+      const isNeutral   = _mlb27 ? (sat < 0.15 && !(sat >= 0.10 && light >= 0.35 && light <= 0.75 && !(_hueN >= 20 && _hueN <= 110))) : (sat < 0.15);
       const isVeryLight = light > 0.82 && sat < 0.18;   // 파스텔(색조 뚜렷)은 BASIC 제외 → SUB
       const isMidLight  = light > 0.72 && sat < 0.15;   // 라이트 파스텔도 SUB로
       const isVeryDark  = light < 0.25 && sat < 0.35;
@@ -7083,7 +7085,7 @@ function renderPalCrossView(){
         ? (()=>{ const [hue]=typeof rgbToHsl==='function'?rgbToHsl(c.hex):[0,0,0.5]; return sat<0.15||(light>0.82&&sat<0.18)||light<0.12||(hue>=195&&hue<=265&&light<0.35); })()
         : (light<0.12||light>0.92||isNeutral||isVeryLight||isMidLight||isVeryDark);
       if(_isSergioBasic) basicPool.push(c);
-      else if(sat>=0.35 && light>=0.18 && light<=0.82) keyPool.push(c);
+      else if(sat >= 0.35 && light >= (_mlb27 ? 0.33 : 0.18) && light <= 0.82) keyPool.push(c);   // v333 — 어두운 딥컬러는 KEY 제외
       else subPool.push(c);
     });
 
@@ -26710,11 +26712,14 @@ document.addEventListener('DOMContentLoaded',function(){
     var r = (typeof rgbToHsl === 'function') ? rgbToHsl(hex) : [0, 0, 0.5];
     var sat = r[1], light = r[2];
     var hue = r[0];
-    var isNeutral = sat < 0.15, isVeryLight = light > 0.82 && sat < 0.18,
+    // v333 — 색기가 남은 중명도 뮤트색(S 0.10~0.15 · L 0.35~0.75)은 기본색이 아니라 시즌색
+    var isNeutral = sat < 0.15 && !(sat >= 0.10 && light >= 0.35 && light <= 0.75 && !(hue >= 20 && hue <= 110));
+    var isVeryLight = light > 0.82 && sat < 0.18,
         isMidLight = light > 0.72 && sat < 0.15, isVeryDark = light < 0.25 && sat < 0.35;
     var isDarkNavy = light < 0.30 && hue >= 195 && hue <= 275;      // v332 — 다크 네이비·딥블루는 기본색
     if(light < 0.12 || light > 0.92 || isNeutral || isVeryLight || isMidLight || isVeryDark || isDarkNavy) return 'Core';
-    if(sat >= 0.35 && light >= 0.18 && light <= 0.82) return 'Accent';
+    // v333 — 포인트 컬러는 너무 어두우면 제외 (딥 브라운·와인은 시즌색)
+    if(sat >= 0.35 && light >= 0.33 && light <= 0.82) return 'Accent';
     return 'Seasonal';
   }
   function _stdTier(hex){
