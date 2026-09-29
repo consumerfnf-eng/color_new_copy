@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v334 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v335 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7074,7 +7074,7 @@ function renderPalCrossView(){
       // 선명한 유채색(S>=0.35, L 0.18~0.82)만 KEY/SUB로
       // v333 — MLB·SERGIO: 색기가 남은 중명도 뮤트색은 BASIC 에서 제외
       const _hueN = (typeof rgbToHsl === 'function' ? rgbToHsl(c.hex)[0] : 0);
-      const isNeutral   = _mlb27 ? (sat < 0.15 && !(sat >= 0.10 && light >= 0.35 && light <= 0.75 && !(_hueN >= 20 && _hueN <= 110))) : (sat < 0.15);
+      const isNeutral   = _mlb27 ? (sat < 0.15 && !(sat >= 0.10 && light >= 0.35 && light <= 0.75 && (_hueN >= 280 || _hueN < 20))) : (sat < 0.15);
       const isVeryLight = light > 0.82 && sat < 0.18;   // 파스텔(색조 뚜렷)은 BASIC 제외 → SUB
       const isMidLight  = light > 0.72 && sat < 0.15;   // 라이트 파스텔도 SUB로
       const isVeryDark  = light < 0.25 && sat < 0.35;
@@ -26716,7 +26716,8 @@ document.addEventListener('DOMContentLoaded',function(){
     var sat = r[1], light = r[2];
     var hue = r[0];
     // v333 — 색기가 남은 중명도 뮤트색(S 0.10~0.15 · L 0.35~0.75)은 기본색이 아니라 시즌색
-    var isNeutral = sat < 0.15 && !(sat >= 0.10 && light >= 0.35 && light <= 0.75 && !(hue >= 20 && hue <= 110));
+    // v335 — 뮤트 예외는 로즈·모브(H 280~360 / 0~20)만. 블루그레이·그레이지는 기본색 유지
+    var isNeutral = sat < 0.15 && !(sat >= 0.10 && light >= 0.35 && light <= 0.75 && (hue >= 280 || hue < 20));
     var isVeryLight = light > 0.82 && sat < 0.18,
         isMidLight = light > 0.72 && sat < 0.15, isVeryDark = light < 0.25 && sat < 0.35;
     var isDarkNavy = light < 0.30 && hue >= 195 && hue <= 275;      // v332 — 다크 네이비·딥블루는 기본색
