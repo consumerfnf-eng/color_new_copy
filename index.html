@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v329 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v331 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7058,17 +7058,10 @@ function renderPalCrossView(){
     });
 
     // v321 — MLB 27FW: 디커 등급 기준으로 3줄 분류 (Accent→KEY · Seasonal→SUB · Core→BASIC)
-    const _mlb27 = (typeof _activeBrand !== 'undefined' && _activeBrand === 'MLB')
+    const _mlb27 = (typeof _activeBrand !== 'undefined' && (_activeBrand === 'MLB' || _activeBrand === 'SERGIO TACCHINI'))
                 && (typeof _activeSeason !== 'undefined' && _activeSeason === '27FW')
                 && typeof window._discStdTier === 'function';
-    if(_mlb27){
-      accepted.forEach(c=>{
-        const t = window._discStdTier(c.hex);
-        if(t === 'Accent') keyPool.push(c);
-        else if(t === 'Core') basicPool.push(c);
-        else subPool.push(c);
-      });
-    } else
+    // v331 — MLB·SERGIO 도 3줄 분류는 기존 HSL 기준을 그대로 쓴다 (선발·계열 순환만 새 방식)
     // HSL로 3분류
     accepted.forEach(c=>{
       const [,sat,light]=typeof rgbToHsl==='function'?rgbToHsl(c.hex):[0,0,0.5];
@@ -7215,7 +7208,7 @@ function renderPalCrossView(){
   // v321 — MLB 27FW: 01 마켓 빈도 상위 색 중 02 WGSN·Peclers 와 매칭되는 색만 선발 (DISCOVERY 방식)
   let _trendRows = trendList;
   try{
-    if(typeof _activeBrand !== 'undefined' && _activeBrand === 'MLB'
+    if(typeof _activeBrand !== 'undefined' && (_activeBrand === 'MLB' || _activeBrand === 'SERGIO TACCHINI')
        && typeof _activeSeason !== 'undefined' && _activeSeason === '27FW'
        && typeof window._discMatchMarket === 'function'){
       const _mm = window._discMatchMarket();
@@ -15962,15 +15955,7 @@ function getLifestyle(brand, group, source, court) {
 // ── Colors 타입 분류 (채도/명도 기준)
 function getColorType(hex) {
   if (!hex) return 'basic';
-  // v320 — MLB 27FW 는 DISCOVERY 와 같은 등급 기준(디커 조정판)을 쓴다.
-  //   Core → basic(CORE), Seasonal·Accent → accent(SIGNATURE). 화면 구성은 그대로.
-  try{
-    if(typeof _activeBrand !== 'undefined' && _activeBrand === 'MLB'
-       && typeof _activeSeason !== 'undefined' && _activeSeason === '27FW'
-       && typeof window._discStdTier === 'function'){
-      return window._discStdTier(hex) === 'Core' ? 'basic' : 'accent';
-    }
-  }catch(e){}
+  // v331 — CORE / SIGNATURE 판정은 브랜드별 기존 기준 그대로
   // basic = 모노톤(Black / White / Gray 계열)만
   const { h, s, v } = (() => {
     const [hh, ss, vv] = _hexToHSV(hex);
@@ -20596,7 +20581,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
   // v320 — MLB 27FW: 탭 순서(01 Market · 02 Trend · 03 Palette)만 맞춘다.
   //   Trend 페이지 구성·04 Colorway·브랜드 설정은 건드리지 않는다.
-  var LIGHT_BRANDS = ['MLB'];
+  var LIGHT_BRANDS = ['MLB', 'SERGIO TACCHINI'];   // v330 — ST 도 동일 순서
   var _lightOn = false, _lightCache = null;
   function _inScopeLight(){
     try{
@@ -26716,15 +26701,21 @@ document.addEventListener('DOMContentLoaded',function(){
     return '오렌지';
   }
   // 디커 등급 판정 (v266 — Core 재정의: 기본물만 Core. 청록·그린·러스트·퍼플 등은 어두워도 Seasonal)
-  // v327 — MLB 27FW 는 '우리 기준'(_tmClassify)으로 등급을 판정한다.
-  //   basic → Core · sub → Seasonal · key → Accent. 디커 기준은 DISCOVERY 전용.
+  // v331 — MLB·SERGIO TACCHINI 27FW 의 04 리뷰 등급은 03 과 같은 기존 HSL 기준을 쓴다
+  //   BASIC(Core) = 극단 명도·무채·저명도 저채도 · KEY(Accent) = S≥0.35 & L 0.18~0.82 · 나머지 SUB(Seasonal)
+  function _hslTier(hex){
+    var r = (typeof rgbToHsl === 'function') ? rgbToHsl(hex) : [0, 0, 0.5];
+    var sat = r[1], light = r[2];
+    var isNeutral = sat < 0.15, isVeryLight = light > 0.82 && sat < 0.18,
+        isMidLight = light > 0.72 && sat < 0.15, isVeryDark = light < 0.25 && sat < 0.35;
+    if(light < 0.12 || light > 0.92 || isNeutral || isVeryLight || isMidLight || isVeryDark) return 'Core';
+    if(sat >= 0.35 && light >= 0.18 && light <= 0.82) return 'Accent';
+    return 'Seasonal';
+  }
   function _stdTier(hex){
     try{
-      if(typeof _activeBrand !== 'undefined' && _activeBrand === 'MLB'
-         && typeof _activeSeason !== 'undefined' && _activeSeason === '27FW'){
-        var g = _tmClassify(hex);
-        return g === 'key' ? 'Accent' : (g === 'basic' ? 'Core' : 'Seasonal');
-      }
+      if(typeof _activeBrand !== 'undefined' && (_activeBrand === 'MLB' || _activeBrand === 'SERGIO TACCHINI')
+         && typeof _activeSeason !== 'undefined' && _activeSeason === '27FW') return _hslTier(hex);
     }catch(e){}
     return _stdTierDisc(hex);
   }
@@ -27297,7 +27288,8 @@ document.addEventListener('DOMContentLoaded',function(){
   function _rvScope(){
     try{
       return (typeof _activeSeason !== 'undefined' && _activeSeason === '27FW')
-          && (typeof _activeBrand !== 'undefined' && (_activeBrand === 'DISCOVERY' || _activeBrand === 'MLB'));
+          && (typeof _activeBrand !== 'undefined'
+              && (_activeBrand === 'DISCOVERY' || _activeBrand === 'MLB' || _activeBrand === 'SERGIO TACCHINI'));
     }catch(e){ return false; }
   }
   function _rvBrand(){ try{ return (typeof _activeBrand !== 'undefined') ? _activeBrand : ''; }catch(e){ return ''; } }
