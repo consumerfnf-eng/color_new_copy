@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v333 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v334 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7034,6 +7034,7 @@ function renderPalCrossView(){
   // BASIC: 채도 15% 미만 or 명도 극단         → 최대 15개
   // ── 3줄 분류 — 카테고리별 독립 풀에서 따로 추출 ──
   // 팬톤 코드 기준 중복 제거 → HEX ΔE<5 유사색 제거 → HSL 분류
+  var MLB_DIVERSE = false;   // v334 — 계열 순환 배치 사용 여부
   function classify3rows(list){
     const keyPool=[], subPool=[], basicPool=[];
 
@@ -7089,7 +7090,7 @@ function renderPalCrossView(){
       else subPool.push(c);
     });
 
-    // 각 풀 스코어 순 정렬
+    // 각 풀 스코어 순 정렬 (MLB_DIVERSE: 계열 순환 사용 여부)
     const scoreOf = c => c.tScore||c.saleScore||c.freq||1;
     keyPool.sort((a,b)=>scoreOf(b)-scoreOf(a));
     subPool.sort((a,b)=>scoreOf(b)-scoreOf(a));
@@ -7097,7 +7098,9 @@ function renderPalCrossView(){
 
     // v322 — MLB 27FW: 계열(디커 _stdHue)을 돌아가며 뽑아 한 계열이 줄을 독차지하지 않게 한다
     const _pickDiverse = (pool, cap) => {
-      if(!_mlb27 || typeof window._discStdHue !== 'function') return pool.slice(0, cap);
+      // v334 — 배치는 예전처럼 '점수(마켓 빈도) 상위부터' 그대로 채운다.
+      //   계열 순환·계열당 상한은 MLB_DIVERSE 를 true 로 바꾸면 다시 동작한다.
+      if(!MLB_DIVERSE || !_mlb27 || typeof window._discStdHue !== 'function') return pool.slice(0, cap);
       const byFam = {}, order = [];
       pool.forEach(c => {
         let f = '기타';
