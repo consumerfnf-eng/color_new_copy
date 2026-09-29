@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v331 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v332 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -7058,7 +7058,7 @@ function renderPalCrossView(){
     });
 
     // v321 — MLB 27FW: 디커 등급 기준으로 3줄 분류 (Accent→KEY · Seasonal→SUB · Core→BASIC)
-    const _mlb27 = (typeof _activeBrand !== 'undefined' && (_activeBrand === 'MLB' || _activeBrand === 'SERGIO TACCHINI'))
+    const _mlb27 = (typeof _activeBrand !== 'undefined' && (_activeBrand === 'MLB' || _activeBrand === 'SERGIO'))
                 && (typeof _activeSeason !== 'undefined' && _activeSeason === '27FW')
                 && typeof window._discStdTier === 'function';
     // v331 — MLB·SERGIO 도 3줄 분류는 기존 HSL 기준을 그대로 쓴다 (선발·계열 순환만 새 방식)
@@ -7076,7 +7076,10 @@ function renderPalCrossView(){
       const isMidLight  = light > 0.72 && sat < 0.15;   // 라이트 파스텔도 SUB로
       const isVeryDark  = light < 0.25 && sat < 0.35;
       // SERGIO: White/Grey/Black/Navy 계열만 Basic으로 분류
-      const _isSergioBasic = (typeof _activeBrand !== 'undefined' && _activeBrand === 'SERGIO')
+      // v332 — MLB·SERGIO: 다크 네이비·딥블루(L<0.30 · H 195~275)는 BASIC
+      const _hueC = (typeof rgbToHsl === 'function' ? rgbToHsl(c.hex)[0] : 0);
+      const _isDarkNavy = _mlb27 && light < 0.30 && _hueC >= 195 && _hueC <= 275;
+      const _isSergioBasic = _isDarkNavy || (typeof _activeBrand !== 'undefined' && _activeBrand === 'SERGIO')
         ? (()=>{ const [hue]=typeof rgbToHsl==='function'?rgbToHsl(c.hex):[0,0,0.5]; return sat<0.15||(light>0.82&&sat<0.18)||light<0.12||(hue>=195&&hue<=265&&light<0.35); })()
         : (light<0.12||light>0.92||isNeutral||isVeryLight||isMidLight||isVeryDark);
       if(_isSergioBasic) basicPool.push(c);
@@ -7208,7 +7211,7 @@ function renderPalCrossView(){
   // v321 — MLB 27FW: 01 마켓 빈도 상위 색 중 02 WGSN·Peclers 와 매칭되는 색만 선발 (DISCOVERY 방식)
   let _trendRows = trendList;
   try{
-    if(typeof _activeBrand !== 'undefined' && (_activeBrand === 'MLB' || _activeBrand === 'SERGIO TACCHINI')
+    if(typeof _activeBrand !== 'undefined' && (_activeBrand === 'MLB' || _activeBrand === 'SERGIO')
        && typeof _activeSeason !== 'undefined' && _activeSeason === '27FW'
        && typeof window._discMatchMarket === 'function'){
       const _mm = window._discMatchMarket();
@@ -20581,7 +20584,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
   // v320 — MLB 27FW: 탭 순서(01 Market · 02 Trend · 03 Palette)만 맞춘다.
   //   Trend 페이지 구성·04 Colorway·브랜드 설정은 건드리지 않는다.
-  var LIGHT_BRANDS = ['MLB', 'SERGIO TACCHINI'];   // v330 — ST 도 동일 순서
+  var LIGHT_BRANDS = ['MLB', 'SERGIO'];   // v330 — ST 도 동일 순서
   var _lightOn = false, _lightCache = null;
   function _inScopeLight(){
     try{
@@ -26706,15 +26709,17 @@ document.addEventListener('DOMContentLoaded',function(){
   function _hslTier(hex){
     var r = (typeof rgbToHsl === 'function') ? rgbToHsl(hex) : [0, 0, 0.5];
     var sat = r[1], light = r[2];
+    var hue = r[0];
     var isNeutral = sat < 0.15, isVeryLight = light > 0.82 && sat < 0.18,
         isMidLight = light > 0.72 && sat < 0.15, isVeryDark = light < 0.25 && sat < 0.35;
-    if(light < 0.12 || light > 0.92 || isNeutral || isVeryLight || isMidLight || isVeryDark) return 'Core';
+    var isDarkNavy = light < 0.30 && hue >= 195 && hue <= 275;      // v332 — 다크 네이비·딥블루는 기본색
+    if(light < 0.12 || light > 0.92 || isNeutral || isVeryLight || isMidLight || isVeryDark || isDarkNavy) return 'Core';
     if(sat >= 0.35 && light >= 0.18 && light <= 0.82) return 'Accent';
     return 'Seasonal';
   }
   function _stdTier(hex){
     try{
-      if(typeof _activeBrand !== 'undefined' && (_activeBrand === 'MLB' || _activeBrand === 'SERGIO TACCHINI')
+      if(typeof _activeBrand !== 'undefined' && (_activeBrand === 'MLB' || _activeBrand === 'SERGIO')
          && typeof _activeSeason !== 'undefined' && _activeSeason === '27FW') return _hslTier(hex);
     }catch(e){}
     return _stdTierDisc(hex);
@@ -27289,7 +27294,7 @@ document.addEventListener('DOMContentLoaded',function(){
     try{
       return (typeof _activeSeason !== 'undefined' && _activeSeason === '27FW')
           && (typeof _activeBrand !== 'undefined'
-              && (_activeBrand === 'DISCOVERY' || _activeBrand === 'MLB' || _activeBrand === 'SERGIO TACCHINI'));
+              && (_activeBrand === 'DISCOVERY' || _activeBrand === 'MLB' || _activeBrand === 'SERGIO'));
     }catch(e){ return false; }
   }
   function _rvBrand(){ try{ return (typeof _activeBrand !== 'undefined') ? _activeBrand : ''; }catch(e){ return ''; } }
