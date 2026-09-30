@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v338 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v339 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -19305,13 +19305,32 @@ function _sppChipHtml(co, marketKey, catKey){
   const similarHtml = similar.length ? `<div class="spp-mini-similar">${similar.map(s=>
     `<div class="spp-mini-similar-sw" style="background:${s.hex}" title="${s.code} TCX — ${s.name||s.code}" onclick="event.stopPropagation();openSppSwatchPopover(${regIdx})"></div>`
   ).join('')}</div>` : '';
+  // v339 — DISCOVERY 03 칩과 같은 형식: 출처 · 코드 · HEX · 계열·명도
+  let srcTxt = '';
+  try{
+    const ss = (co.sources || co._trendMatches?.[0]?.sources || []);
+    srcTxt = Array.isArray(ss) ? ss.filter(x => x && x !== 'comp').join(' · ') : String(ss || '');
+    if(!srcTxt && co.trendMatch) srcTxt = 'TREND';
+  }catch(e){}
+  let famTxt = '';
+  try{
+    if(typeof window._discStdHue === 'function'){
+      const fam = window._discStdHue(co.hex);
+      const L = (typeof _tmLCh === 'function') ? _tmLCh(co.hex).L : (_sppRgbToHsl(co.hex)[2] * 100);
+      const band = L < 35 ? '다크' : (L < 58 ? '미드' : (L < 78 ? '라이트' : '페일'));
+      famTxt = fam + '·' + band;
+    }
+  }catch(e){}
   return `<div class="spp-chip" onclick="openSppSwatchPopover(${regIdx})" title="${safeName}">
+    ${srcTxt ? `<div class="spp-chip-name" style="font-weight:700;color:var(--text2)">${srcTxt}</div>` : ''}
+    <div class="spp-chip-code">${code}</div>
     <div style="position:relative">
       <div class="spp-chip-sw" style="background:${co.hex}"></div>
       ${trendBadge}
     </div>
+    <div class="spp-chip-code" style="color:var(--text3)">${String(co.hex).toUpperCase()}</div>
     <div class="spp-chip-freq">×${co.freq||1}</div>
-    <div class="spp-chip-code">${code}</div>
+    ${famTxt ? `<div class="spp-chip-name">${famTxt}</div>` : ''}
     ${similarHtml}
   </div>`;
 }
