@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v344 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v345 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -19316,7 +19316,8 @@ function _sppChipHtml(co, marketKey, catKey){
   let srcTxt = '';
   try{
     const ss = (co.sources || (co._trendMatches && co._trendMatches[0] && co._trendMatches[0].sources) || []);
-    srcTxt = Array.isArray(ss) ? ss.filter(x => x && x !== 'comp').join('·') : String(ss || '');
+    // v345 — 출처 라벨은 WGSN·Peclers 만 (newsletter·comp 는 제외)
+    srcTxt = Array.isArray(ss) ? ss.filter(x => /wgsn|peclers/i.test(String(x))).join('·') : String(ss || '');
     if(!srcTxt && co.trendMatch) srcTxt = 'TREND';
   }catch(e){}
   let famTxt = '';
@@ -20692,6 +20693,22 @@ document.addEventListener('DOMContentLoaded',function(){
     var nz = document.getElementById('news-zone');
     var nzCard = nz ? (nz.closest ? nz.closest('.card') : null) || nz : null;
     if(nzCard){ _lightCache.news = { el: nzCard, disp: nzCard.style.display }; nzCard.style.display = 'none'; }
+    // v345 — 02 배치: 좌 WGSN / 우 Peclers · Collected 는 아래 전체폭 (DISCOVERY 와 동일)
+    var eT = _els();
+    _lightCache.zones = [];
+    if(eT.twoCol && eT.twoCol.children[0] && eT.twoCol.children[1]){
+      var colL2 = eT.twoCol.children[0], colR2 = eT.twoCol.children[1];
+      [eT.wgsnCard, eT.pecCard, eT.collCard, eT.trendLog, eT.collectBtn].forEach(function(el){
+        if(el) _lightCache.zones.push(_pos(el));
+      });
+      if(eT.wgsnCard) colL2.appendChild(eT.wgsnCard);
+      if(eT.pecCard)  colR2.appendChild(eT.pecCard);
+      if(eT.scroll){
+        if(eT.trendLog)   eT.scroll.appendChild(eT.trendLog);
+        if(eT.collectBtn) eT.scroll.appendChild(eT.collectBtn);
+        if(eT.collCard)   eT.scroll.appendChild(eT.collCard);
+      }
+    }
     // v325 — 04 Colorway 를 Palette Review 로 (DISCOVERY 와 같은 방식, 원래 내용은 숨김)
     _lightCache.cw = [];
     var cwBtnL = e.nav.querySelector('button.tab[onclick*="colorway"]');
@@ -20721,6 +20738,7 @@ document.addEventListener('DOMContentLoaded',function(){
     if(e.navPal   && _lightCache.navPal   !== null) e.navPal.innerHTML   = _lightCache.navPal;
     (_lightCache.cw || []).forEach(function(r){ if(r.html != null) r.el.innerHTML = r.html; else r.el.style.display = r.disp || ''; });
     if(_lightCache.news && _lightCache.news.el) _lightCache.news.el.style.display = _lightCache.news.disp || '';
+    (_lightCache.zones || []).forEach(function(pz){ _restore(pz); });
     var rwL2 = document.getElementById('disc-review-wrap'); if(rwL2) rwL2.style.display = 'none';
     _lightOn = false; _lightCache = null;
   }
