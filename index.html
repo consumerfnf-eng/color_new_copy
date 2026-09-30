@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v337 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v338 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -18945,6 +18945,10 @@ function _spp_syncActive(){
 
 // ── 상수 ──
 const SPP_SAT_POINT        = 0.50;
+// v338 — KEY 조건을 MLB 와 동일하게 (S 0.35↑ · L 0.33~0.82)
+const SPP_KEY_SAT          = 0.35;
+const SPP_KEY_L_MIN        = 0.33;
+const SPP_KEY_L_MAX        = 0.82;
 const SPP_SAT_SUB          = 0.20;
 const SPP_TREND_POOL_TOP_N = 20;
 const SPP_TREND_MATCH_DIST = 30;
@@ -19198,7 +19202,7 @@ function _sppBuildMarketPalette(rows){
       cat = window._sppCatCache[code];
     } else {
       const [hh]=_sppRgbToHsl(co.hex); if(isTrueNeutral(sat, light, hh)) cat = 'basic';
-      else if(sat>=SPP_SAT_POINT&&light>=0.38&&light<=0.80) cat = 'key';   // KEY=밝은 비비드 액센트만. 어두운 딥주얼톤(버건디 등)은 채도 높아도 SUB로.
+      else if(sat>=SPP_KEY_SAT&&light>=SPP_KEY_L_MIN&&light<=SPP_KEY_L_MAX) cat = 'key';   // KEY=밝은 비비드 액센트만. 어두운 딥주얼톤(버건디 등)은 채도 높아도 SUB로.
       else if(sat>=SPP_SAT_SUB) cat = 'sub';
       else cat = 'sub';   // 채도 낮은 유색(틸 등)도 basic이 아니라 sub로 — basic은 블랙/그레이/화이트/아이보리/네이비만
       if(code) window._sppCatCache[code] = cat;
