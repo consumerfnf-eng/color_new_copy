@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v336 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v337 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -19105,7 +19105,8 @@ function _sppGetTrendPool(){
   // 마켓(comp) 전용 색은 '트렌드'가 아니므로 매칭 풀에서 제외 — trend 배지/매칭은 실제 트렌드 소스(newsletter/wgsn/peclers/pdf)만.
   // 단, 트렌드 소스에도 함께 있는 색(sources에 comp 외 다른 것도 있음)은 유지.
   const trendOnly = src.filter(c => !c.sources || !c.sources.length || c.sources.some(s => s !== 'comp'));
-  return trendOnly.sort((a,b)=>(b.freq||1)-(a.freq||1)).slice(0, SPP_TREND_POOL_TOP_N);
+  // v337 — 매칭 풀은 WGSN·Peclers 전체 (MLB 와 동일 조건). 상위 N 제한은 배지 표시용으로만 남김.
+  return trendOnly.sort((a,b)=>(b.freq||1)-(a.freq||1));
 }
 
 // ── rows 집계 + 트렌드 보너스 ──
