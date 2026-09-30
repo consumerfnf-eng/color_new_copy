@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v335 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v336 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -19132,15 +19132,37 @@ function _sppAggregateRows(rows){
   });
   const trendPool = _sppGetTrendPool();
   const out = [...map.values()];
+  out.forEach(co=>{ delete co._brandFreq; });
+  if(!trendPool.length){
+    out.forEach(co=>{ co.score = co.freq; co.trendMatch = false; co._trendMatches = []; });
+    return out.sort((a,b)=>b.score-a.score);
+  }
+  // v336 — MLB 와 같은 방식: 마켓 색을 트렌드 칩(WGSN·Peclers)에 매칭하고,
+  //   화면에 올리는 칩은 트렌드 색, 점수는 그 칩에 붙은 마켓 빈도 합으로 한다.
+  const byTrend = new Map();
   out.forEach(co=>{
-    delete co._brandFreq; // 내부용 임시 필드 제거
-    if(!trendPool.length){ co.score=co.freq; co.trendMatch=false; co._trendMatches=[]; return; }
-    const matches = trendPool.map(t=>({...t,_dist:_sppRgbDist(co.hex,t.hex)})).filter(t=>t._dist<SPP_TREND_MATCH_DIST).sort((a,b)=>a._dist-b._dist);
-    co.trendMatch = matches.length>0;
-    co._trendMatches = matches;
-    co.score = co.trendMatch ? co.freq*(1+SPP_TREND_MATCH_BONUS) : co.freq;
+    const matches = trendPool.map(t=>({...t,_dist:_sppRgbDist(co.hex,t.hex)}))
+                             .filter(t=>t._dist<SPP_TREND_MATCH_DIST).sort((a,b)=>a._dist-b._dist);
+    if(!matches.length) return;                     // 트렌드와 겹치지 않는 마켓 색은 제외
+    const t0 = matches[0], k = String(t0.hex).toUpperCase();
+    if(!byTrend.has(k)){
+      byTrend.set(k, { hex:k, freq:0, name:co.name, brands:[], trendMatch:true, _trendMatches:matches,
+                       _marketHexes:[], _brandFreq:{} });
+    }
+    const e = byTrend.get(k);
+    e.freq += co.freq;
+    e._marketHexes.push(co.hex);
+    (co.brands||[]).forEach(b=>{ if(!e.brands.includes(b)) e.brands.push(b); });
+    e._brandFreq[co.name] = (e._brandFreq[co.name]||0) + co.freq;
   });
-  return out.sort((a,b)=>b.score-a.score);
+  const merged = [...byTrend.values()];
+  merged.forEach(e=>{
+    let top = e.name, tf = -1;
+    for(const [b,f] of Object.entries(e._brandFreq)){ if(f > tf){ tf = f; top = b; } }
+    e.name = top; delete e._brandFreq;
+    e.score = e.freq;
+  });
+  return merged.sort((a,b)=>b.score-a.score);
 }
 
 // ── 분류 → 팔레트 빌드 ──
