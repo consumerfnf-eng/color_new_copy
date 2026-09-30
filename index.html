@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v345 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v346 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -19190,11 +19190,17 @@ function _sppBuildMarketPalette(rows){
     // Black: 명도 매우 낮음
     if(l < 0.12) return true;
     // Grey: 채도 거의 없음 (무채색) — 어떤 Hue든 채도 낮으면 Grey
-    if(s < 0.10) return true;
+    // v346 — 단, 세이지·올리브처럼 색기가 남은 중명도 그린·틸(H 75~200 · L 0.30~0.75)은 SUB
+    if(s < 0.10){
+      if(s >= 0.03 && h >= 75 && h <= 200 && l >= 0.30 && l <= 0.75) return false;
+      return true;
+    }
     // Ivory / Ecru / Beige: 밝고 저채도 웜톤 (Hue 20~65°, 명도 65%+, 채도 28% 이하)
     if(h >= 20 && h <= 65 && l >= 0.65 && s <= 0.28) return true;
     // Navy: Hue 210~255° + 명도 낮음 + 채도 "적당"(너무 선명한 블루는 navy 아님 → SUB/KEY)
     if(h >= 210 && h <= 255 && l < 0.30 && s >= 0.15 && s < 0.52) return true;
+    // v346 — 아주 어두운 네이비·딥블루는 채도가 높아도 기본색 (예: 19-4029 #102341)
+    if(h >= 195 && h <= 260 && l < 0.22) return true;
     // 나머지 유채색은 모두 제외
     return false;
   };
