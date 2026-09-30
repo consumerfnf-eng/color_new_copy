@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v347 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v348 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -19185,7 +19185,8 @@ function _sppBuildMarketPalette(rows){
   //   - 극단 명도(매우 어둡거나 밝음)라도 채도가 있으면(녹색·레드 계열) BASIC 아님
   const isTrueNeutral = (s, l, h) => {
     // White/Ivory/Cream + 라이트 그레이시: 거의 화이트(l>0.88)는 전부 basic, 밝고 거의 무채색(l>0.65 & s<0.18)도 basic. 색조 뚜렷한 파스텔(s≥0.18)은 SUB로.
-    if(l > 0.88 && s < 0.40) return true;   // v347 — 색기 있는 크림·피치(S≥0.40)는 BASIC 아님 → SUB
+    // v348 — 아주 밝은 색: 채도 0.40 미만이거나, 아이보리·크림 색상각(35~70°)이면 BASIC
+    if(l > 0.88 && (s < 0.40 || (h >= 35 && h <= 70))) return true;
     if(l > 0.65 && s < 0.18) return true;
     // Black: 명도 매우 낮음
     if(l < 0.12) return true;
@@ -19288,6 +19289,9 @@ function _sppBuildMarketPalette(rows){
   }
   // 브랜드 제한 풀고 최종 보충 (8개 채우기 최우선) — sub 자체 풀 + key/basic 풀 모두 활용
   sub = fillToN(sub, [...classified.sub.filter(c=>!isDupOfBasicOrKey(c)), ...classified.key, ...classified.basic], 8, new Set([...basicHexSet,...keyHexSet]), new Set([...basicCodeSet,...keyCodeSet]));
+  // v348 — 표시 순서를 빈도(마켓 상품 수) 내림차순으로
+  const _byFreq = (a, b) => (b.freq || 0) - (a.freq || 0);
+  key.sort(_byFreq); sub.sort(_byFreq); basic.sort(_byFreq);
   return { key, sub, basic };
 }
 
