@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v342 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v343 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -19108,7 +19108,13 @@ function _sppGetTrendPool(){
   const src = window.getTrendSourceColors ? window.getTrendSourceColors() : [];
   // 마켓(comp) 전용 색은 '트렌드'가 아니므로 매칭 풀에서 제외 — trend 배지/매칭은 실제 트렌드 소스(newsletter/wgsn/peclers/pdf)만.
   // 단, 트렌드 소스에도 함께 있는 색(sources에 comp 외 다른 것도 있음)은 유지.
-  const trendOnly = src.filter(c => !c.sources || !c.sources.length || c.sources.some(s => s !== 'comp'));
+  // v343 — DISCOVERY 와 동일하게 WGSN·Peclers 만 매칭 풀로 쓴다 (뉴스레터·마켓 전용 색 제외)
+  const _isTrendSrc = v => /wgsn|peclers/i.test(String(v || ''));
+  const trendOnly = src.filter(c => {
+    const ss = c.sources || [];
+    if(ss.length) return ss.some(_isTrendSrc);
+    return _isTrendSrc(c.src) || _isTrendSrc(c.source) || _isTrendSrc(c.system) || _isTrendSrc(c.label);
+  });
   // v337 — 매칭 풀은 WGSN·Peclers 전체 (MLB 와 동일 조건). 상위 N 제한은 배지 표시용으로만 남김.
   return trendOnly.sort((a,b)=>(b.freq||1)-(a.freq||1));
 }
