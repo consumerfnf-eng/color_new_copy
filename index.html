@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v340 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v341 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -19322,7 +19322,9 @@ function _sppChipHtml(co, marketKey, catKey){
     }
   }catch(e){}
   const hexUp = String(co.hex).toUpperCase();
-  return `<div class="spp-chip dcp-chip" style="cursor:pointer" onclick="openSppSwatchPopover(${regIdx})" title="${safeName} · ×${co.freq||1}">
+  // dcp-* 스타일은 .dcp-scope 안에서만 적용되므로 래퍼를 씌운다 (v341)
+  try{ if(typeof window._discInjectChipStyle === 'function') window._discInjectChipStyle(); }catch(e){}
+  return `<div class="dcp-scope" style="display:inline-block"><div class="spp-chip dcp-chip" style="cursor:pointer" onclick="openSppSwatchPopover(${regIdx})" title="${safeName} · ×${co.freq||1}">
     <div class="dcp-name" style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:0.04em">${srcTxt || '&nbsp;'}</div>
     <div class="dcp-card">
       <div class="dcp-code">${code || '&nbsp;'}</div>
@@ -19332,7 +19334,7 @@ function _sppChipHtml(co, marketKey, catKey){
     <div class="spp-chip-freq">×${co.freq||1}</div>
     ${famTxt ? `<div style="font-family:var(--mono);font-size:8px;text-align:center;color:var(--text4)">${famTxt}</div>` : ''}
     ${similarHtml}
-  </div>`;
+  </div></div>`;
 }
 
 // ── KR/EU/GLOBAL 팔레트 렌더 ──
@@ -22560,6 +22562,7 @@ document.addEventListener('DOMContentLoaded',function(){
       + '</div>';
   }
 
+  window._discInjectChipStyle = function(){ try{ _dcpInjectStyle(); }catch(e){} };
   function _dcpInjectStyle(){
     if(document.getElementById(DCP_STYLE_ID)) return;
     var st = document.createElement('style');
