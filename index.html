@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v348 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v349 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -19187,7 +19187,8 @@ function _sppBuildMarketPalette(rows){
     // White/Ivory/Cream + 라이트 그레이시: 거의 화이트(l>0.88)는 전부 basic, 밝고 거의 무채색(l>0.65 & s<0.18)도 basic. 색조 뚜렷한 파스텔(s≥0.18)은 SUB로.
     // v348 — 아주 밝은 색: 채도 0.40 미만이거나, 아이보리·크림 색상각(35~70°)이면 BASIC
     if(l > 0.88 && (s < 0.40 || (h >= 35 && h <= 70))) return true;
-    if(l > 0.65 && s < 0.18) return true;
+    // v349 — 밝은 저채도라도 민트·세이지처럼 색기가 보이는 그린·틸(H 75~200 · S≥0.12)은 SUB
+    if(l > 0.65 && s < 0.18) return !(s >= 0.12 && h >= 75 && h <= 200);
     // Black: 명도 매우 낮음
     if(l < 0.12) return true;
     // Grey: 채도 거의 없음 (무채색) — 어떤 Hue든 채도 낮으면 Grey
