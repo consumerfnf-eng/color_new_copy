@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v341 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v342 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -18959,9 +18959,9 @@ const SPP_INTERSECTION_CATS = [
   { label:'Red',           color:'#CC3333', hueMin:338, hueMax:18,  satMin:0.40, lMin:0.18, lMax:0.58 },
   { label:'Pink',          color:'#E87090', hueMin:300, hueMax:360, satMin:0.20, lMin:0.40 },
   { label:'Orange·Yellow', color:'#D07020', hueMin:18,  hueMax:72,  satMin:0.68, lMin:0.40 },
-  { label:'Green',         color:'#3A8050', hueMin:72,  hueMax:168, satMin:0.15 },
+  { label:'Green',         color:'#3A8050', hueMin:72,  hueMax:200, satMin:0.15 },   // v342 — 청록(틸)까지 그린으로
   { label:'Navy',          color:'#152848', hueMin:195, hueMax:255, satMin:0.10, lMin:0.06, lMax:0.38 },
-  { label:'Blue',          color:'#3060B0', hueMin:168, hueMax:245, satMin:0.20, lMin:0.38 },
+  { label:'Blue',          color:'#3060B0', hueMin:200, hueMax:245, satMin:0.20, lMin:0.38 },   // v342 — 200° 부터 블루
   { label:'Purple',        color:'#7040A0', hueMin:252, hueMax:315, satMin:0.18 },
   { label:'Brown·Khaki',   color:'#7A5530', hueMin:18,  hueMax:60,  satMin:0.08, satMax:0.68, lMin:0.12, lMax:0.62 },
 ];
@@ -19298,7 +19298,8 @@ function _sppFindSimilarN(hex, n){
 function _sppChipHtml(co, marketKey, catKey){
   const code = co.pantone || (co.tcxCode?co.tcxCode+' TCX':'') || _sppPantoneApprox(co.hex) || '';
   const safeName = (co.name||co.hex).replace(/"/g,'&quot;');
-  const trendBadge = co.trendMatch ? '<div class="spp-trend-badge" title="트렌드 매칭">T</div>' : '';
+  // v342 — 이제 트렌드와 매칭된 색만 올라오므로 T 배지는 표시하지 않는다 (출처 라벨로 구분)
+  const trendBadge = '';
   const regIdx = _sppRegisterChip({...co,_marketKey:marketKey,_catKey:catKey});
   // 4개 유사 컬러 인라인 표시
   const similar = _sppFindSimilarN(co.hex, 4);
