@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v343 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v344 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20688,6 +20688,10 @@ document.addEventListener('DOMContentLoaded',function(){
       var infoL = e.navPal.querySelector('.step-nav-info');
       if(infoL) infoL.innerHTML = 'STEP <strong>03</strong> / 04 &nbsp;&middot;&nbsp; Palette Proposal → Palette Review';
     }
+    // v344 — 02 Trend Collection 의 Newsletter 카드 숨김 (DISCOVERY 와 동일)
+    var nz = document.getElementById('news-zone');
+    var nzCard = nz ? (nz.closest ? nz.closest('.card') : null) || nz : null;
+    if(nzCard){ _lightCache.news = { el: nzCard, disp: nzCard.style.display }; nzCard.style.display = 'none'; }
     // v325 — 04 Colorway 를 Palette Review 로 (DISCOVERY 와 같은 방식, 원래 내용은 숨김)
     _lightCache.cw = [];
     var cwBtnL = e.nav.querySelector('button.tab[onclick*="colorway"]');
@@ -20716,6 +20720,7 @@ document.addEventListener('DOMContentLoaded',function(){
     if(e.navTrend && _lightCache.navTrend !== null) e.navTrend.innerHTML = _lightCache.navTrend;
     if(e.navPal   && _lightCache.navPal   !== null) e.navPal.innerHTML   = _lightCache.navPal;
     (_lightCache.cw || []).forEach(function(r){ if(r.html != null) r.el.innerHTML = r.html; else r.el.style.display = r.disp || ''; });
+    if(_lightCache.news && _lightCache.news.el) _lightCache.news.el.style.display = _lightCache.news.disp || '';
     var rwL2 = document.getElementById('disc-review-wrap'); if(rwL2) rwL2.style.display = 'none';
     _lightOn = false; _lightCache = null;
   }
