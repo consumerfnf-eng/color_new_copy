@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v351 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v352 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20781,11 +20781,25 @@ document.addEventListener('DOMContentLoaded',function(){
     _lightOn = false; _lightCache = null;
   }
 
+  // v352 — DISCOVERY 전용 섹션은 스코프를 벗어나면 모두 숨긴다 (ST·MLB 03 에 섞이는 문제)
+  function _hideDiscSections(){
+    ['disc-trend-matched','disc-27fw-palette','disc-gap-candidates','disc-cn-trendmatched',
+     'disc-std-page','disc-cat-curation-tm','disc-review-wrap'].forEach(function(id){
+      var el = document.getElementById(id);
+      if(el) el.style.display = 'none';
+    });
+  }
   function sync(){
     try{
-      if(_inScope()){ _revertLight(); _apply(); }
-      else if(_inScopeLight()){ _revert(); _applyLight(); }
-      else { _revertLight(); _revert(); }
+      if(_inScope()){
+        _revertLight(); _apply();
+        // v352 — 다른 브랜드에서 돌아오면 숨겨둔 DISCOVERY 섹션을 다시 그린다
+        try{ if(typeof _tmRender === 'function') _tmRender(); }catch(e){}
+        try{ if(typeof _dcpRender === 'function') _dcpRender(); }catch(e){}
+        try{ if(typeof _cnRender === 'function') _cnRender(); }catch(e){}
+      }
+      else if(_inScopeLight()){ _revert(); _hideDiscSections(); _applyLight(); }
+      else { _revertLight(); _revert(); _hideDiscSections(); }
     }catch(err){ console.warn('[disc-layout] sync 오류:', err); }
     try{ if(typeof _purgeNewsletter === 'function') _purgeNewsletter(); }catch(err){}
     try{ if(typeof _dcpRender === 'function') _dcpRender(); }catch(err){}
