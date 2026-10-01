@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v349 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v351 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -308,7 +308,7 @@ html,body{background:#FFFFFF;color:var(--text);font-family:var(--sans);height:10
 .spp-market-hd{display:flex;align-items:baseline;gap:10px;margin-bottom:14px}
 .spp-market-title{font-family:var(--sans);font-size:16px;font-weight:700;color:var(--text)}
 .spp-market-sub{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:0.06em;text-transform:uppercase}
-.spp-trend-market-box{background:rgba(160,144,240,0.05);border:1px solid rgba(160,144,240,0.2);border-radius:12px;padding:18px 20px}
+.spp-trend-market-box{background:transparent;border:1px solid var(--border);border-radius:12px;padding:18px 20px}   /* v351 — 배경색 제거 */
 .spp-trend-market-hd{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:4px}
 .spp-trend-market-flame{font-size:13px;font-weight:700;color:#A090F0}
 .spp-trend-market-title{font-family:var(--sans);font-size:15px;font-weight:700;color:var(--text)}
@@ -1338,7 +1338,7 @@ function enterBrandFromHome(brand) {
         </div>
 
         <!-- Intersection -->
-        <div class="spp-intersection-section" id="spp-intersection-section">
+        <div class="spp-intersection-section" id="spp-intersection-section" style="display:none">
           <div class="spp-intersection-section-hd">
             <span class="spp-intersection-section-title">★ Intersection</span>
             <span class="spp-intersection-section-sub">GLOBAL ∩ EU — Cross-Market Colors</span>
@@ -19313,7 +19313,18 @@ function _sppFindSimilarN(hex, n){
 }
 
 function _sppChipHtml(co, marketKey, catKey){
-  const code = co.pantone || (co.tcxCode?co.tcxCode+' TCX':'') || _sppPantoneApprox(co.hex) || '';
+  // v351 — DISCOVERY 칩과 같은 표기: 'COLORO 076-86-07' / 'Pantone 15-3909 TCX'
+  let code = '';
+  (function(){
+    const raw = String(co.pantone || co.tcxCode || co.code || '');
+    const cm = raw.match(/(\d{3})[\s-](\d{2})[\s-](\d{2})/);
+    if(cm && /coloro/i.test(raw)){ code = 'COLORO ' + cm[1] + '-' + cm[2] + '-' + cm[3]; return; }
+    const pm = raw.match(/(\d{2}-\d{4})/);
+    if(pm){ code = 'Pantone ' + pm[1] + ' TCX'; return; }
+    const ap = _sppPantoneApprox(co.hex);
+    if(ap){ const am = String(ap).match(/(\d{2}-\d{4})/); code = am ? 'Pantone ≈ ' + am[1] + ' TCX' : String(ap); return; }
+    try{ const n = window.coloroNearest && window.coloroNearest(co.hex); if(n) code = 'COLORO ≈ ' + n.code; }catch(e){}
+  })();
   const safeName = (co.name||co.hex).replace(/"/g,'&quot;');
   // v342 — 이제 트렌드와 매칭된 색만 올라오므로 T 배지는 표시하지 않는다 (출처 라벨로 구분)
   const trendBadge = '';
@@ -19328,7 +19339,8 @@ function _sppChipHtml(co, marketKey, catKey){
   try{
     const ss = (co.sources || (co._trendMatches && co._trendMatches[0] && co._trendMatches[0].sources) || []);
     // v345 — 출처 라벨은 WGSN·Peclers 만 (newsletter·comp 는 제외)
-    srcTxt = Array.isArray(ss) ? ss.filter(x => /wgsn|peclers/i.test(String(x))).join('·') : String(ss || '');
+    const _nice = v => /wgsn/i.test(v) ? 'WGSN' : (/peclers/i.test(v) ? 'Peclers' : '');
+    srcTxt = Array.isArray(ss) ? ss.map(x => _nice(String(x))).filter(Boolean).join(' · ') : _nice(String(ss || ''));
     if(!srcTxt && co.trendMatch) srcTxt = 'TREND';
   }catch(e){}
   let famTxt = '';
@@ -19341,12 +19353,27 @@ function _sppChipHtml(co, marketKey, catKey){
     }
   }catch(e){}
   const hexUp = String(co.hex).toUpperCase();
+  // v350 — COLORO 코드도 함께 표기 (데이터에 있으면 그대로, 없으면 3,500색에서 가장 가까운 코드)
+  let coloroLine = '';
+  try{
+    const raw = String(co.pantone || co.code || co.name || '');
+    const m = raw.match(/(\d{3})[\s-](\d{2})[\s-](\d{2})/);
+    if(/^COLORO/.test(code)){
+      coloroLine = '';
+    } else if(m && /coloro/i.test(raw)){
+      coloroLine = `<div class="dcp-code" style="border-top:0">COLORO ${m[1]}-${m[2]}-${m[3]}</div>`;
+    } else if(typeof window.coloroNearest === 'function'){
+      const n = window.coloroNearest(co.hex);
+      if(n) coloroLine = `<div class="dcp-code" style="border-top:0;color:var(--text4)" title="HEX 기준 가장 가까운 COLORO 칩 (ΔE ${n.de})">COLORO ≈ ${n.code}</div>`;
+    }
+  }catch(e){}
   // dcp-* 스타일은 .dcp-scope 안에서만 적용되므로 래퍼를 씌운다 (v341)
   try{ if(typeof window._discInjectChipStyle === 'function') window._discInjectChipStyle(); }catch(e){}
   return `<div class="dcp-scope" style="display:inline-block"><div class="spp-chip dcp-chip" style="cursor:pointer" onclick="openSppSwatchPopover(${regIdx})" title="${safeName} · ×${co.freq||1}">
     <div class="dcp-name" style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:0.04em">${srcTxt || '&nbsp;'}</div>
     <div class="dcp-card">
       <div class="dcp-code">${code || '&nbsp;'}</div>
+      ${coloroLine}
       <div class="dcp-fill" style="background:${co.hex};position:relative">${trendBadge}</div>
       <div class="dcp-hex">${hexUp}</div>
     </div>
