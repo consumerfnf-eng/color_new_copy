@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v352 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v353 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -19323,7 +19323,7 @@ function _sppChipHtml(co, marketKey, catKey){
     if(pm){ code = 'Pantone ' + pm[1] + ' TCX'; return; }
     const ap = _sppPantoneApprox(co.hex);
     if(ap){ const am = String(ap).match(/(\d{2}-\d{4})/); code = am ? 'Pantone ≈ ' + am[1] + ' TCX' : String(ap); return; }
-    try{ const n = window.coloroNearest && window.coloroNearest(co.hex); if(n) code = 'COLORO ≈ ' + n.code; }catch(e){}
+    try{ const n = window.coloroNearest && window.coloroNearest(co.hex); if(n) code = (n.de === 0 ? 'COLORO ' : 'COLORO ≈ ') + n.code; }catch(e){}
   })();
   const safeName = (co.name||co.hex).replace(/"/g,'&quot;');
   // v342 — 이제 트렌드와 매칭된 색만 올라오므로 T 배지는 표시하지 않는다 (출처 라벨로 구분)
@@ -19364,7 +19364,7 @@ function _sppChipHtml(co, marketKey, catKey){
       coloroLine = `<div class="dcp-code" style="border-top:0">COLORO ${m[1]}-${m[2]}-${m[3]}</div>`;
     } else if(typeof window.coloroNearest === 'function'){
       const n = window.coloroNearest(co.hex);
-      if(n) coloroLine = `<div class="dcp-code" style="border-top:0;color:var(--text4)" title="HEX 기준 가장 가까운 COLORO 칩 (ΔE ${n.de})">COLORO ≈ ${n.code}</div>`;
+      if(n) coloroLine = `<div class="dcp-code" style="border-top:0;color:var(--text4)" title="HEX 기준 ${n.de === 0 ? '동일' : '가장 가까운'} COLORO 칩 (ΔE ${n.de})">COLORO ${n.de === 0 ? '' : '≈ '}${n.code}</div>`;
     }
   }catch(e){}
   // dcp-* 스타일은 .dcp-scope 안에서만 적용되므로 래퍼를 씌운다 (v341)
@@ -20783,7 +20783,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
   // v352 — DISCOVERY 전용 섹션은 스코프를 벗어나면 모두 숨긴다 (ST·MLB 03 에 섞이는 문제)
   function _hideDiscSections(){
-    ['disc-trend-matched','disc-27fw-palette','disc-gap-candidates','disc-cn-trendmatched',
+    ['disc-palette-wrap','disc-trend-matched','disc-27fw-palette','disc-gap-candidates','disc-cn-trendmatched',
      'disc-std-page','disc-cat-curation-tm','disc-review-wrap'].forEach(function(id){
       var el = document.getElementById(id);
       if(el) el.style.display = 'none';
@@ -21326,6 +21326,74 @@ document.addEventListener('DOMContentLoaded',function(){
     return _tgtCache;
   }
   window._discTargetBuild = _tgtBuild;
+
+  // ══════════════════════════════════════════════════════════════
+  //  v353 — 엑셀(.xls) 내려받기 : 컬러명 · 코드 · 팬톤 · HEX · 등급
+  // ══════════════════════════════════════════════════════════════
+  function _xlsEsc(v){ return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function _xlsDownload(fileName, cols, rows){
+    var head = '<tr>' + cols.map(function(c){ return '<th style="background:#EEE;font-weight:bold">' + _xlsEsc(c) + '</th>'; }).join('') + '</tr>';
+    var body = rows.map(function(r){
+      return '<tr>' + r.map(function(v, i){
+        var isHex = /^#[0-9A-Fa-f]{6}$/.test(String(v));
+        return '<td' + (isHex ? ' style="background:' + v + '"' : '') + '>' + _xlsEsc(v) + '</td>';
+      }).join('') + '</tr>';
+    }).join('');
+    var html = '<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"></head>'
+             + '<body><table border="1">' + head + body + '</table></body></html>';
+    var blob = new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = fileName;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  }
+  function _xlsCodeOf(hex, pantoneRaw){
+    var raw = String(pantoneRaw || ''), out = { coloro: '', pantone: '' };
+    var cm = raw.match(/(\d{3})[\s-](\d{2})[\s-](\d{2})/);
+    if(cm && /coloro/i.test(raw)) out.coloro = cm[1] + '-' + cm[2] + '-' + cm[3];
+    var pm = raw.match(/(\d{2}-\d{4})/);
+    if(pm) out.pantone = pm[1] + ' TCX';
+    if(!out.coloro){
+      try{ var n = window.coloroNearest && window.coloroNearest(hex); if(n) out.coloro = (n.de === 0 ? '' : '≈ ') + n.code; }catch(e){}
+    }
+    if(!out.pantone){
+      try{ var hc = window.hexToColoro && window.hexToColoro(hex); if(hc && hc.pantone) out.pantone = '≈ ' + _tmPantoneCode(hc.pantone) + ' TCX'; }catch(e){}
+    }
+    return out;
+  }
+  // 03 Trend-Matched : SEASONAL / ACCENT / CORE 전량
+  window._discXlsTrendMatched = function(){
+    var r = _tmLastBuild || _tmBuild(), b = r.buckets;
+    var rows = [];
+    [['SEASONAL','sub'], ['ACCENT','key'], ['CORE','basic']].forEach(function(g){
+      (b[g[1]] || []).forEach(function(it){
+        var t = it.trend, hex = String(t.hex).toUpperCase(), c = _xlsCodeOf(hex, t.pantone);
+        var cl = _tgtCellOf(hex);
+        rows.push([g[0], (t.sources || []).join('·'), c.coloro, c.pantone, hex,
+                   cl.fam + '·' + cl.band, it.mkFreq || '', it._extra ? '보충' : '']);
+      });
+    });
+    _xlsDownload('DISCOVERY_27FW_03_TrendMatched.xls',
+      ['등급','출처','COLORO','PANTONE','HEX','계열·명도','마켓 빈도','비고'], rows);
+  };
+  // 04 ★ 최종 컬러 제안
+  window._discXlsFinal = function(){
+    var fr = null; try{ fr = _finBuild(); }catch(e){}
+    if(!fr){ alert('최종 제안 데이터가 아직 없습니다.'); return; }
+    var KIND = { keep:'유지', watch:'보완', sales:'세일즈 유지', gap:'공백 유지', add:'추가' };
+    var rows = fr.main.concat(fr.add).map(function(f){
+      var hex = String(f.hex).toUpperCase();
+      var raw = '';
+      try{ raw = (f.ti && f.ti.trend && f.ti.trend.pantone) || _rptPalMeta(hex) || ''; }catch(e){}
+      var c = _xlsCodeOf(hex, raw), cl = _tgtCellOf(hex);
+      return [_stdTier(hex), KIND[f.kind] || f.kind, f.name || '', c.coloro, c.pantone, hex,
+              cl.fam + '·' + cl.band, f.orig ? String(f.orig).toUpperCase() : ''];
+    });
+    _xlsDownload('DISCOVERY_27FW_04_Final.xls',
+      ['등급','판정','컬러명','COLORO','PANTONE','HEX','계열·명도','원래 자사색'], rows);
+  };
+  var XLS_BTN = 'font-family:var(--mono);font-size:9px;padding:4px 10px;border-radius:4px;cursor:pointer;'
+              + 'border:1px solid var(--border);background:var(--surface);color:var(--text3)';
 
   // ── 03 화면 패널 (v276) — 마켓 분포 / 톤 구성 목표 / 결론 ──
   var TGT_OPEN = { dist: false, cells: false };
@@ -22236,7 +22304,9 @@ document.addEventListener('DOMContentLoaded',function(){
       +   '<span class="spp-trend-market-flame" style="color:var(--gold)">◈ TREND-MATCHED</span>'
       +   '<span class="spp-trend-market-title">Trend-Matched Proposal</span>'
       +   '<span class="spp-trend-market-sub">마켓 빈도 상위 컬러 중 WGSN·Peclers와 일치하는 색만 제안 · 칩은 WGSN/Peclers 원본 컬러</span>'
-      +   '<span style="margin-left:auto;display:flex;gap:4px">' + _tmSortTabs() + '</span>'
+      +   '<span style="margin-left:auto;display:flex;gap:6px;align-items:center">' + _tmSortTabs()
+      +     '<button onclick="window._discXlsTrendMatched()" style="' + XLS_BTN + '" title="SEASONAL · ACCENT · CORE 전량">엑셀 내려받기</button>'
+      +   '</span>'
       + '</div>'
       + '<div style="font-family:var(--mono);font-size:9px;color:var(--text4);margin-bottom:14px">'
       +   '마켓 ' + t.scanned + '색 · 트렌드 풀 ' + t.trendPool + '색 · 매칭 임계 ΔRGB ≤ ' + TM_DIST
@@ -24316,6 +24386,7 @@ document.addEventListener('DOMContentLoaded',function(){
       + '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px;flex-wrap:wrap">'
       +   '<span style="font-family:var(--mono);font-size:12px;font-weight:800;color:var(--text)">최종 ' + all.length + '색</span>'
       +   '<span style="font-family:var(--mono);font-size:10px">' + sum + ' · <span style="color:var(--text4)">제외 ' + r.out.length + '</span> · ' + _finFitLine() + '</span>'
+      +   '<button onclick="window._discXlsFinal()" style="margin-left:auto;' + XLS_BTN + '">엑셀 내려받기</button>'
       + '</div>'
       + (r.add.length
           ? '<div style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--warn);margin-bottom:6px">+ 추가 컬러칩 ' + r.add.length + '</div>'
@@ -25807,7 +25878,8 @@ document.addEventListener('DOMContentLoaded',function(){
     return _rvCard('★ 최종 컬러 제안 — 확정 ' + r.main.length + '색 + 추가 ' + r.add.length + '색',
         '<div style="display:flex;gap:16px;font-family:var(--mono);font-size:12px;color:var(--text2);margin-bottom:16px;flex-wrap:wrap;align-items:center">'
       +   '<span style="font-weight:700">유지 ' + n('keep') + ' · 보완 ' + n('watch') + ' · 세일즈 유지 ' + n('sales') + ' · 공백 유지 ' + n('gap') + ' · 제외 ' + r.out.length + '</span>'
-      +   _finFitLine() + legend + '</div>'
+      +   _finFitLine()
+      +   '<button onclick="window._discXlsFinal()" style="margin-left:auto;' + XLS_BTN + '" title="최종 제안 전량">엑셀 내려받기</button>' + legend + '</div>'
       + _bandBox
       + '<div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">'
       +   '<div style="flex:3 1 560px;min-width:0">' + col(r.main) + '</div>'
