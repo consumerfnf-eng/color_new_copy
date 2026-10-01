@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v353 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v354 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -19158,6 +19158,8 @@ function _sppAggregateRows(rows){
     const t0 = matches[0], k = String(t0.hex).toUpperCase();
     if(!byTrend.has(k)){
       byTrend.set(k, { hex:k, freq:0, name:co.name, brands:[], trendMatch:true, _trendMatches:matches,
+                       pantone: t0.pantone || t0.tcxCode || t0.code || '',   // v354 — 원본 코드 유지
+                       tcxCode: t0.tcxCode || '', sources: t0.sources || [],
                        _marketHexes:[], _brandFreq:{} });
     }
     const e = byTrend.get(k);
@@ -19313,12 +19315,12 @@ function _sppFindSimilarN(hex, n){
 }
 
 function _sppChipHtml(co, marketKey, catKey){
-  // v351 — DISCOVERY 칩과 같은 표기: 'COLORO 076-86-07' / 'Pantone 15-3909 TCX'
+  // v354 — DISCOVERY 와 동일: 코드는 한 줄. 원본이 COLORO 면 COLORO, 팬톤이면 Pantone, 없으면 근사 한 줄.
   let code = '';
   (function(){
     const raw = String(co.pantone || co.tcxCode || co.code || '');
     const cm = raw.match(/(\d{3})[\s-](\d{2})[\s-](\d{2})/);
-    if(cm && /coloro/i.test(raw)){ code = 'COLORO ' + cm[1] + '-' + cm[2] + '-' + cm[3]; return; }
+    if(cm && (/coloro/i.test(raw) || !/\d{2}-\d{4}/.test(raw))){ code = 'COLORO ' + cm[1] + '-' + cm[2] + '-' + cm[3]; return; }
     const pm = raw.match(/(\d{2}-\d{4})/);
     if(pm){ code = 'Pantone ' + pm[1] + ' TCX'; return; }
     const ap = _sppPantoneApprox(co.hex);
@@ -19353,20 +19355,7 @@ function _sppChipHtml(co, marketKey, catKey){
     }
   }catch(e){}
   const hexUp = String(co.hex).toUpperCase();
-  // v350 — COLORO 코드도 함께 표기 (데이터에 있으면 그대로, 없으면 3,500색에서 가장 가까운 코드)
-  let coloroLine = '';
-  try{
-    const raw = String(co.pantone || co.code || co.name || '');
-    const m = raw.match(/(\d{3})[\s-](\d{2})[\s-](\d{2})/);
-    if(/^COLORO/.test(code)){
-      coloroLine = '';
-    } else if(m && /coloro/i.test(raw)){
-      coloroLine = `<div class="dcp-code" style="border-top:0">COLORO ${m[1]}-${m[2]}-${m[3]}</div>`;
-    } else if(typeof window.coloroNearest === 'function'){
-      const n = window.coloroNearest(co.hex);
-      if(n) coloroLine = `<div class="dcp-code" style="border-top:0;color:var(--text4)" title="HEX 기준 ${n.de === 0 ? '동일' : '가장 가까운'} COLORO 칩 (ΔE ${n.de})">COLORO ${n.de === 0 ? '' : '≈ '}${n.code}</div>`;
-    }
-  }catch(e){}
+  const coloroLine = '';   // v354 — 코드는 한 줄만 표시
   // dcp-* 스타일은 .dcp-scope 안에서만 적용되므로 래퍼를 씌운다 (v341)
   try{ if(typeof window._discInjectChipStyle === 'function') window._discInjectChipStyle(); }catch(e){}
   return `<div class="dcp-scope" style="display:inline-block"><div class="spp-chip dcp-chip" style="cursor:pointer" onclick="openSppSwatchPopover(${regIdx})" title="${safeName} · ×${co.freq||1}">
