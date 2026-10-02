@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- BUILD_VERSION: DISC_STD_v354 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
+<!-- BUILD_VERSION: DISC_STD_v355 (2026-09-18) — 05 F 셀단위 과부족(04 목표 소비) · 탭 라벨 한글 통일 · 04 밴드 폴백+희소밴드 병합 · 라이프스타일 명도 ΔL · (기존 탭재배치/3단/60색 유지) -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20438,12 +20438,34 @@ function _stSalesChipHtml(d,catKey){
     : -1;
   const qtyTxt=(d.qty||0).toLocaleString();
   const rateTxt=((d.rate||0)*100).toFixed(1);
-  return '<div class="spp-chip" onclick="openSppSwatchPopover('+reg+')" title="'+(d.name||'')+' \u00b7 '+(d.code||'')+'\n\ud310\ub9e4 '+qtyTxt+'\uac1c \u00b7 \ud310\ub9e4\uc728 '+rateTxt+'%">'
-    +'<div style="position:relative"><div class="spp-chip-sw" style="background:'+swHex+'"></div></div>'
+  // v355 — Trend-Based 칩과 같은 카드 형식 (출처 자리 = 컬러명 · 코드 · HEX · 수량 · 계열·명도)
+  var hexUp = String(swHex).toUpperCase();
+  var codeTxt = code;
+  if(!codeTxt){
+    try{ var n0 = window.coloroNearest && window.coloroNearest(hexUp);
+         if(n0) codeTxt = (n0.de === 0 ? 'COLORO ' : 'COLORO ≈ ') + n0.code; }catch(e){}
+  } else if(d.pantone){ codeTxt = 'Pantone ' + d.pantone + ' TCX'; }
+  var famTxt2 = '';
+  try{
+    if(typeof window._discStdHue === 'function'){
+      var fam2 = window._discStdHue(hexUp);
+      var L2 = (typeof _tmLCh === 'function') ? _tmLCh(hexUp).L : (_sppRgbToHsl(hexUp)[2] * 100);
+      var band2 = L2 < 35 ? '다크' : (L2 < 58 ? '미드' : (L2 < 78 ? '라이트' : '페일'));
+      famTxt2 = fam2 + '·' + band2;
+    }
+  }catch(e){}
+  try{ if(typeof window._discInjectChipStyle === 'function') window._discInjectChipStyle(); }catch(e){}
+  return '<div class="dcp-scope" style="display:inline-block"><div class="spp-chip dcp-chip" style="cursor:pointer" onclick="openSppSwatchPopover('+reg+')"'
+    +' title="'+(d.name||'')+' \u00b7 '+(d.code||'')+' \u00b7 \ud310\ub9e4 '+qtyTxt+'\uac1c \u00b7 \ud310\ub9e4\uc728 '+rateTxt+'%">'
+    +'<div class="dcp-name" style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:0.04em">'+(d.name||'&nbsp;')+'</div>'
+    +'<div class="dcp-card">'
+    +  '<div class="dcp-code">'+(codeTxt||'&nbsp;')+'</div>'
+    +  '<div class="dcp-fill" style="background:'+swHex+'"></div>'
+    +  '<div class="dcp-hex">'+hexUp+'</div>'
+    +'</div>'
     +'<div class="spp-chip-freq">'+qtyTxt+'</div>'
-    +'<div class="spp-chip-name">'+(d.name||'')+'</div>'
-    +'<div class="spp-chip-code">'+code+'</div>'
-    +'</div>';
+    + (famTxt2 ? '<div style="font-family:var(--mono);font-size:8px;text-align:center;color:var(--text4)">'+famTxt2+'</div>' : '')
+    +'</div></div>';
 }
 function _spp_renderSalesBased(){
   const secSub=document.getElementById('spp-sales-sub');
